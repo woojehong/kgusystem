@@ -1,0 +1,132 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ─────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Internal userId of the requester (resolved through authlinks).
+    function myUserId() {
+      return get(/databases/$(database)/documents/authlinks/$(request.auth.uid)).data.userId;
+    }
+
+    // Same resolution, but visible to writes inside the same batch
+    // (needed during sign-up, when the authlink is created together
+    // with the profile).
+    function myUserIdAfter() {
+      return getAfter(/databases/$(database)/documents/authlinks/$(request.auth.uid)).data.userId;
+    }
+
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(myUserId())).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && myRole() in ['admin', 'super'];
+    }
+
+    function isSuper() {
+      return isSignedIn() && myRole() == 'super';
+    }
+
+    // ── Nickname → account mapping (public lookup for login) ───────
+
+    match /nicknames/{nickname} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && (request.resource.data.userId == myUserIdAfter() || isSuper());
+      allow update: if isSuper();
+      allow delete: if isSignedIn()
+        && (resource.data.userId == myUserId() || isSuper());
+    }
+
+    // ── Auth uid → userId links ─────────────────────────────────────
+
+    match /authlinks/{authUid} {
+      allow read: if isSignedIn() && request.auth.uid == authUid;
+      allow create: if isSignedIn() && (request.auth.uid == authUid || isSuper());
+      allow update, delete: if isSuper();
+    }
+
+    // ── User profiles ───────────────────────────────────────────────
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+
+      // Self-registration (role 'user'), or one-time super bootstrap
+      // while meta/super does not exist yet.
+      allow create: if isSignedIn()
+        && myUserIdAfter() == userId
+        && (
+          request.resource.data.role == 'user'
+          || (
+            request.resource.data.role == 'super'
+            && !exists(/databases/$(database)/documents/meta/super)
+          )
+        );
+
+      allow update: if isSignedIn() && (
+        isSuper()
+        // Owners may edit everything except their own role.
+        || (myUserId() == userId && request.resource.data.role == resource.data.role)
+        // Admins may only touch the notice field (promotion popups).
+        || (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notice']))
+      );
+
+      allow delete: if isSuper();
+    }
+
+    // ── Meta (bootstrap flags) ──────────────────────────────────────
+
+    match /meta/{docId} {
+      allow read: if true;
+      allow create: if isSignedIn() && (
+        (docId == 'super' && !exists(/databases/$(database)/documents/meta/super))
+        || (docId == 'seed' && isSuper())
+      );
+      allow update, delete: if isSuper() && docId != 'super';
+    }
+
+    // ── Game data & guilds (public read for the sign-up form) ───────
+
+    match /gamedata/{docId} {
+      allow read: if true;
+      allow write: if isSuper();
+    }
+
+    match /guilds/{guildId} {
+      allow read: if true;
+      allow write: if isSuper();
+    }
+
+    // ── Raids ───────────────────────────────────────────────────────
+
+    match /raids/{raidId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+
+      // Applications: one document per member (doc id == userId);
+      // reservations are admin-created with a generated id.
+      match /apps/{appId} {
+        allow read: if isSignedIn();
+        allow create: if isAdmin()
+          || (
+            isSignedIn()
+            && appId == myUserId()
+            && request.resource.data.userId == myUserId()
+            && request.resource.data.isReservation == false
+          );
+        allow update, delete: if isAdmin() || (isSignedIn() && appId == myUserId());
+      }
+
+      // Memos: visible to admins and the author only.
+      match /memos/{appId} {
+        allow read, write: if isAdmin() || (isSignedIn() && appId == myUserId());
+      }
+    }
+  }
+}

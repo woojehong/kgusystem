@@ -1,0 +1,162 @@
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  writeBatch,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
+import { db } from '../firebase';
+import { CLASSES, SYNERGIES, SERVERS, SEED_GUILDS } from './constants';
+
+// ── Game data (single-document collections, editable post-seed) ─────
+
+export async function loadGamedata() {
+  const [classesSnap, synergiesSnap, serversSnap] = await Promise.all([
+    getDoc(doc(db, 'gamedata', 'classes')),
+    getDoc(doc(db, 'gamedata', 'synergies')),
+    getDoc(doc(db, 'gamedata', 'servers')),
+  ]);
+  return {
+    classes: classesSnap.exists() ? classesSnap.data().list : CLASSES,
+    synergies: synergiesSnap.exists() ? synergiesSnap.data().list : SYNERGIES,
+    servers: serversSnap.exists() ? serversSnap.data().list : SERVERS,
+  };
+}
+
+/** One-time initial data install, triggered from the super admin page. */
+export async function seedInitialData() {
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'gamedata', 'classes'), { list: CLASSES });
+  batch.set(doc(db, 'gamedata', 'synergies'), { list: SYNERGIES });
+  batch.set(doc(db, 'gamedata', 'servers'), { list: SERVERS });
+  SEED_GUILDS.forEach((g) => {
+    const { id, ...rest } = g;
+    batch.set(doc(db, 'guilds', id), { ...rest, createdAt: serverTimestamp() });
+  });
+  batch.set(doc(db, 'meta', 'seed'), { done: true, at: serverTimestamp() });
+  await batch.commit();
+}
+
+export async function isSeeded() {
+  const snap = await getDoc(doc(db, 'meta', 'seed'));
+  return snap.exists();
+}
+
+// ── Guilds ──────────────────────────────────────────────────────────
+
+export async function fetchGuilds() {
+  const snap = await getDocs(collection(db, 'guilds'));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export function saveGuild(guildId, data) {
+  return setDoc(doc(db, 'guilds', guildId), data, { merge: true });
+}
+
+export function deleteGuild(guildId) {
+  return deleteDoc(doc(db, 'guilds', guildId));
+}
+
+// ── Raids ───────────────────────────────────────────────────────────
+
+export async function createRaid(data) {
+  const ref = await addDoc(collection(db, 'raids'), {
+    ...data,
+    startAt: Timestamp.fromDate(data.startAt),
+    endAt: Timestamp.fromDate(data.endAt),
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export function updateRaid(raidId, data) {
+  const payload = { ...data };
+  if (payload.startAt instanceof Date) payload.startAt = Timestamp.fromDate(payload.startAt);
+  if (payload.endAt instanceof Date) payload.endAt = Timestamp.fromDate(payload.endAt);
+  return updateDoc(doc(db, 'raids', raidId), payload);
+}
+
+export async function deleteRaid(raidId) {
+  const apps = await getDocs(collection(db, 'raids', raidId, 'apps'));
+  const memos = await getDocs(collection(db, 'raids', raidId, 'memos'));
+  const batch = writeBatch(db);
+  apps.docs.forEach((d) => batch.delete(d.ref));
+  memos.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(doc(db, 'raids', raidId));
+  await batch.commit();
+}
+
+// ── Applications ────────────────────────────────────────────────────
+
+export function appDocRef(raidId, appId) {
+  return doc(db, 'raids', raidId, 'apps', appId);
+}
+
+export function memoDocRef(raidId, appId) {
+  return doc(db, 'raids', raidId, 'memos', appId);
+}
+
+export async function submitApplication(raidId, appId, appData, memoText) {
+  const batch = writeBatch(db);
+  batch.set(appDocRef(raidId, appId), {
+    ...appData,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  if (memoText && memoText.trim()) {
+    batch.set(memoDocRef(raidId, appId), { text: memoText.trim(), updatedAt: serverTimestamp() });
+  } else {
+    batch.delete(memoDocRef(raidId, appId));
+  }
+  await batch.commit();
+}
+
+export async function updateApplication(raidId, appId, appData, memoText) {
+  const batch = writeBatch(db);
+  batch.update(appDocRef(raidId, appId), { ...appData, updatedAt: serverTimestamp() });
+  if (memoText !== undefined) {
+    if (memoText && memoText.trim()) {
+      batch.set(memoDocRef(raidId, appId), { text: memoText.trim(), updatedAt: serverTimestamp() });
+    } else {
+      batch.delete(memoDocRef(raidId, appId));
+    }
+  }
+  await batch.commit();
+}
+
+export async function cancelApplication(raidId, appId) {
+  const batch = writeBatch(db);
+  batch.delete(appDocRef(raidId, appId));
+  batch.delete(memoDocRef(raidId, appId));
+  await batch.commit();
+}
+
+export async function fetchMemo(raidId, appId) {
+  const snap = await getDoc(memoDocRef(raidId, appId));
+  return snap.exists() ? snap.data().text : '';
+}
+
+export async function fetchAllMemos(raidId) {
+  const snap = await getDocs(collection(db, 'raids', raidId, 'memos'));
+  const map = {};
+  snap.docs.forEach((d) => {
+    map[d.id] = d.data().text;
+  });
+  return map;
+}
+
+// ── User notices (promotion / demotion popups) ──────────────────────
+
+export function setUserNotice(userId, notice) {
+  return updateDoc(doc(db, 'users', userId), { notice });
+}
+
+export function clearUserNotice(userId) {
+  return updateDoc(doc(db, 'users', userId), { notice: null });
+}
