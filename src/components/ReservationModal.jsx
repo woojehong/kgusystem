@@ -140,7 +140,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
         {role === 'dps' && cls && (
           <div>
             <label className="label-sm">
-              특성 <span className="text-base-400 font-normal">(선택 — 근/원 칼럼 자동 배치)</span>
+              특성 <span className="text-base-400 font-normal">(선택)</span>
             </label>
             <div className="flex flex-wrap gap-1.5">
               <button
@@ -164,7 +164,6 @@ export default function ReservationModal({ open, onClose, raid, role }) {
                   }`}
                 >
                   {s.name}
-                  <span className="ml-1 text-xs text-base-400">{s.range === 'melee' ? '근' : '원'}</span>
                 </button>
               ))}
             </div>

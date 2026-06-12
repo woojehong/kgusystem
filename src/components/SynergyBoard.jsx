@@ -1,9 +1,10 @@
 import { useApp } from '../context/AppContext';
 
 /**
- * Raid synergy board. A synergy lights up (class color + check) when at
- * least one confirmed applicant — or a reservation with a class — of
- * the providing class is present; otherwise it renders desaturated.
+ * Compact synergy board. Shows only the providing class names: a class
+ * chip lights up in its class color when at least one confirmed
+ * applicant (or a reservation with a class) is present; otherwise it
+ * renders desaturated. Tooltips carry the underlying buff details.
  */
 export default function SynergyBoard({ apps }) {
   const { gamedata } = useApp();
@@ -13,42 +14,46 @@ export default function SynergyBoard({ apps }) {
     apps.filter((a) => a.status === 'active' && a.classId).map((a) => a.classId)
   );
 
-  const buffs = synergies.filter((s) => s.type === 'buff');
-  const utilities = synergies.filter((s) => s.type === 'utility');
-
-  const renderRow = (synergy) => {
-    const cls = classes.find((c) => c.id === synergy.classId);
-    const has = presentClasses.has(synergy.classId);
-    const color = cls?.color || '#888';
-    return (
-      <div
-        key={synergy.id}
-        className={`flex items-center gap-2 px-2 py-1 rounded-lg transition ${has ? '' : 'grayscale opacity-40'}`}
-        title={`${synergy.effect} (${cls?.name || ''})`}
-      >
-        <span
-          className="w-4 h-4 inline-flex items-center justify-center rounded text-[10px] font-black shrink-0"
-          style={{ backgroundColor: has ? `${color}33` : '#33394a', color: has ? color : '#7a8398' }}
-        >
-          {has ? '✓' : ''}
-        </span>
-        <span
-          className="text-xs font-semibold truncate"
-          style={{ color: has ? color : undefined, textShadow: has ? '0 0 1px rgba(0,0,0,0.6)' : undefined }}
-        >
-          {synergy.name}
-        </span>
-        <span className="ml-auto text-[10px] text-base-400 hidden sm:block truncate">{synergy.effect}</span>
-      </div>
-    );
+  const chipsFor = (type) => {
+    const seen = new Set();
+    return synergies
+      .filter((s) => s.type === type)
+      .filter((s) => (seen.has(s.classId) ? false : seen.add(s.classId)))
+      .map((s) => {
+        const cls = classes.find((c) => c.id === s.classId);
+        const has = presentClasses.has(s.classId);
+        const color = cls?.color || '#888';
+        const tooltip = synergies
+          .filter((x) => x.classId === s.classId && x.type === type)
+          .map((x) => `${x.name}: ${x.effect}`)
+          .join(' / ');
+        return (
+          <span
+            key={s.classId}
+            title={tooltip}
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold border transition ${
+              has ? '' : 'grayscale opacity-40'
+            }`}
+            style={{
+              color: has ? color : '#7a8398',
+              borderColor: has ? `${color}55` : '#2a3347',
+              backgroundColor: has ? `${color}14` : 'transparent',
+              textShadow: has ? '0 0 1px rgba(0,0,0,0.6)' : undefined,
+            }}
+          >
+            {has ? '✓ ' : ''}
+            {cls?.name || ''}
+          </span>
+        );
+      });
   };
 
   return (
-    <div className="card p-3">
-      <p className="text-xs font-bold text-base-400 mb-2 px-1">공격대 시너지</p>
-      <div className="grid grid-cols-1 gap-0.5">{buffs.map(renderRow)}</div>
-      <p className="text-xs font-bold text-base-400 mt-3 mb-1 px-1">유틸리티</p>
-      <div className="grid grid-cols-1 gap-0.5">{utilities.map(renderRow)}</div>
+    <div className="card p-2.5">
+      <p className="text-[11px] font-bold text-base-400 mb-1.5 px-0.5">공격대 시너지</p>
+      <div className="flex flex-wrap gap-1">{chipsFor('buff')}</div>
+      <p className="text-[11px] font-bold text-base-400 mt-2 mb-1 px-0.5">유틸리티</p>
+      <div className="flex flex-wrap gap-1">{chipsFor('utility')}</div>
     </div>
   );
 }

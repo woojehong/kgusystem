@@ -25,6 +25,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const { guilds } = useApp();
   const isEdit = !!raid;
 
+  const [title, setTitle] = useState('');
   const [difficulty, setDifficulty] = useState('normal');
   const [startTime, setStartTime] = useState('20:00');
   const [endTime, setEndTime] = useState('23:00');
@@ -42,6 +43,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
     setError('');
     setConfirmDelete(false);
     if (raid) {
+      setTitle(raid.title || '');
       setDifficulty(raid.difficulty);
       const s = raid.startAt.toDate();
       const e = raid.endAt.toDate();
@@ -55,6 +57,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setMinIlvl(raid.minIlvl == null ? '' : String(raid.minIlvl));
       setDescription(raid.description || '');
     } else {
+      setTitle('');
       setDifficulty('normal');
       setStartTime('20:00');
       setEndTime('23:00');
@@ -80,6 +83,10 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
 
   const submit = async () => {
     setError('');
+    if (!title.trim()) {
+      setError('레이드 파티 제목을 입력해주세요.');
+      return;
+    }
     if (!TIME_PATTERN.test(startTime) || !TIME_PATTERN.test(endTime)) {
       setError('시간은 HH:MM 형식으로 입력해주세요. (예: 20:30)');
       return;
@@ -96,6 +103,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
     try {
       const { startAt, endAt } = buildRaidTimes(effectiveDateKey, startTime, endTime);
       const payload = {
+        title: title.trim(),
         dateKey: effectiveDateKey,
         startAt,
         endAt,
@@ -136,6 +144,17 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       title={`레이드 ${isEdit ? '수정' : '추가'} · ${formatDateLabel(effectiveDateKey)}`}
     >
       <div className="space-y-4">
+        <div>
+          <label className="label-sm">레이드 파티 제목</label>
+          <input
+            className="input-base"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="예: 한길련 정기 공대 1팟"
+            maxLength={30}
+          />
+        </div>
+
         <div>
           <label className="label-sm">난이도</label>
           <div className="grid grid-cols-3 gap-2">

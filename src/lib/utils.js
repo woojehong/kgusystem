@@ -56,8 +56,7 @@ export function buildRaidTimes(dateKey, startTime, endTime) {
 export function formatTimeRange(startAt, endAt) {
   const fmt = (d) =>
     `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  const crossesMidnight = endAt.getDate() !== startAt.getDate();
-  return `${fmt(startAt)} ~ ${crossesMidnight ? '익일 ' : ''}${fmt(endAt)}`;
+  return `${fmt(startAt)} ~ ${fmt(endAt)}`;
 }
 
 /** 4-week calendar matrix starting on the Sunday of the current week. */

@@ -537,9 +537,10 @@ function RaidsTab() {
               </span>
               <div className="min-w-0">
                 <p className="font-semibold text-sm truncate">
+                  {r.title ? `${r.title} · ` : ''}
                   {formatDateLabel(r.dateKey)} {formatTimeRange(r.startAt.toDate(), r.endAt.toDate())}
                 </p>
-                <p className="text-xs text-base-400 truncate">공대장 {r.leader}</p>
+                <p className="text-xs text-base-400 truncate">공격대장 {r.leader}</p>
               </div>
               <div className="ml-auto flex gap-1.5 shrink-0">
                 <button

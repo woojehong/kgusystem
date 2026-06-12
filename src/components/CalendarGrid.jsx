@@ -81,7 +81,7 @@ export default function CalendarGrid({ raids, onCreate }) {
                         style={{ color: diff.color, backgroundColor: `${diff.color}1f` }}
                       >
                         {String(s.getHours()).padStart(2, '0')}:{String(s.getMinutes()).padStart(2, '0')}{' '}
-                        {diff.label}
+                        {r.title || diff.label}
                       </span>
                     );
                   })}

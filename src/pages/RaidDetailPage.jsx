@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { doc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useApp } from '../context/AppContext';
-import { DIFFICULTIES, RANGES } from '../lib/constants';
+import { DIFFICULTIES } from '../lib/constants';
 import {
   formatDateLabel,
   formatTimeRange,
@@ -87,12 +87,7 @@ export default function RaidDetailPage() {
 
     const tanks = sortBySeq(actives.filter((a) => a.role === 'tank'));
     const healers = sortBySeq(actives.filter((a) => a.role === 'healer'));
-    const dpsAll = sortBySeq(actives.filter((a) => a.role === 'dps'));
-    const dpsMelee = dpsAll.filter((a) => a.range === 'melee');
-    const dpsRanged = dpsAll.filter((a) => a.range === 'ranged');
-    const dpsUndecided = dpsAll.filter((a) => a.range == null);
-
-    const dpsRank = new Map(dpsAll.map((a, i) => [a.id, i + 1]));
+    const dps = sortBySeq(actives.filter((a) => a.role === 'dps'));
 
     const waitTanks = sortBySeq(waits.filter((a) => a.role === 'tank'));
     const waitHealers = sortBySeq(waits.filter((a) => a.role === 'healer'));
@@ -101,15 +96,11 @@ export default function RaidDetailPage() {
     return {
       tanks,
       healers,
-      dpsAll,
-      dpsMelee,
-      dpsRanged,
-      dpsUndecided,
-      dpsRank,
+      dps,
       waitTanks,
       waitHealers,
       waitDps,
-      counts: { tank: tanks.length, healer: healers.length, dps: dpsAll.length },
+      counts: { tank: tanks.length, healer: healers.length, dps: dps.length },
     };
   }, [apps]);
 
@@ -181,61 +172,74 @@ export default function RaidDetailPage() {
         {/* ── Raid header ── */}
         <div className="card relative overflow-hidden p-5" style={{ backgroundColor: diff.soft }}>
           <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
-          <div className="flex flex-wrap items-center gap-2 pl-2">
-            <span
-              className="text-sm font-bold px-2.5 py-1 rounded-lg"
-              style={{ color: diff.color, backgroundColor: `${diff.color}22` }}
-            >
-              {diff.label}
-            </span>
-            <h1 className="text-xl font-bold">
-              {formatDateLabel(raid.dateKey)} {formatTimeRange(raid.startAt.toDate(), raid.endAt.toDate())}
-            </h1>
-            {adminView && (
-              <button
-                type="button"
-                onClick={() => setRaidEditOpen(true)}
-                className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 font-semibold transition"
+          <div className="pl-2">
+            <div className="flex items-start gap-2">
+              <h1 className="text-2xl font-black leading-tight break-keep">
+                {raid.title || `${diff.label} 공격대`}
+              </h1>
+              {adminView && (
+                <button
+                  type="button"
+                  onClick={() => setRaidEditOpen(true)}
+                  className="ml-auto shrink-0 text-xs px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 font-semibold transition"
+                >
+                  레이드 수정
+                </button>
+              )}
+            </div>
+
+            <div className="mt-2 flex items-center gap-2.5 flex-wrap">
+              <span
+                className="text-sm font-bold px-2.5 py-1 rounded-lg shrink-0"
+                style={{ color: diff.color, backgroundColor: `${diff.color}22` }}
               >
-                레이드 수정
-              </button>
+                {diff.label}
+              </span>
+              <span className="text-xl sm:text-2xl font-bold text-white">
+                {formatDateLabel(raid.dateKey)}
+              </span>
+              <span className="text-lg font-semibold text-base-200">
+                {formatTimeRange(raid.startAt.toDate(), raid.endAt.toDate())}
+              </span>
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-base-700/60 flex flex-wrap gap-x-5 gap-y-1 text-sm text-base-300">
+              <span>
+                공격대장 : <b className="text-base-100">{raid.leader}</b>
+              </span>
+              <span>
+                최소 아이템레벨 :{' '}
+                <b className="text-base-100">{raid.minIlvl == null ? '제한없음' : raid.minIlvl}</b>
+              </span>
+              <span className="flex items-center gap-1.5">
+                힐러 정원 : <b className="text-base-100">{caps.healer}</b>
+                {adminView && (
+                  <span className="inline-flex gap-1 ml-1">
+                    <button
+                      type="button"
+                      className="w-6 h-6 rounded-md bg-base-700 hover:bg-base-600 font-bold transition"
+                      onClick={() => updateRaid(raid.id, { healerCap: Math.max(0, raid.healerCap - 1) })}
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      className="w-6 h-6 rounded-md bg-base-700 hover:bg-base-600 font-bold transition"
+                      onClick={() => updateRaid(raid.id, { healerCap: raid.healerCap + 1 })}
+                    >
+                      +
+                    </button>
+                  </span>
+                )}
+              </span>
+            </div>
+
+            {raid.description && (
+              <p className="mt-3 text-sm text-base-200 whitespace-pre-wrap border-t border-base-700/50 pt-3">
+                📢 {raid.description}
+              </p>
             )}
           </div>
-          <div className="pl-2 mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-base-300">
-            <span>
-              공대장 <b className="text-base-100">{raid.leader}</b>
-            </span>
-            <span>
-              최소 아이템레벨{' '}
-              <b className="text-base-100">{raid.minIlvl == null ? '제한없음' : raid.minIlvl}</b>
-            </span>
-            <span className="flex items-center gap-1.5">
-              힐러 정원 <b className="text-base-100">{caps.healer}</b>
-              {adminView && (
-                <span className="inline-flex gap-1 ml-1">
-                  <button
-                    type="button"
-                    className="w-6 h-6 rounded-md bg-base-700 hover:bg-base-600 font-bold transition"
-                    onClick={() => updateRaid(raid.id, { healerCap: Math.max(0, raid.healerCap - 1) })}
-                  >
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    className="w-6 h-6 rounded-md bg-base-700 hover:bg-base-600 font-bold transition"
-                    onClick={() => updateRaid(raid.id, { healerCap: raid.healerCap + 1 })}
-                  >
-                    +
-                  </button>
-                </span>
-              )}
-            </span>
-          </div>
-          {raid.description && (
-            <p className="pl-2 mt-3 text-sm text-base-200 whitespace-pre-wrap border-t border-base-700/50 pt-3">
-              📢 {raid.description}
-            </p>
-          )}
         </div>
 
         {/* ── Apply actions ── */}
@@ -280,74 +284,56 @@ export default function RaidDetailPage() {
           )}
         </div>
 
-        {/* ── Body: positions / synergy / swap / waitlist ── */}
-        <div className="mt-5 flex flex-col gap-4">
-          <div className="order-2 sm:order-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* ── Roster (primary) ── */}
+        <div className="mt-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="card p-3">
+              <SectionHeader
+                label="탱커"
+                count={derived.counts.tank}
+                cap={caps.tank}
+                adminMode={adminView}
+                onAdd={() => setReserveRole('tank')}
+              />
+              <div className="space-y-1.5">
+                {renderCards(derived.tanks, (a) => derived.tanks.indexOf(a) + 1)}
+              </div>
+            </div>
+            <div className="card p-3">
+              <SectionHeader
+                label="힐러"
+                count={derived.counts.healer}
+                cap={caps.healer}
+                adminMode={adminView}
+                onAdd={() => setReserveRole('healer')}
+              />
+              <div className="space-y-1.5">
+                {renderCards(derived.healers, (a) => derived.healers.indexOf(a) + 1)}
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-3">
+            <SectionHeader
+              label="딜러"
+              count={derived.counts.dps}
+              cap={caps.dps}
+              adminMode={adminView}
+              onAdd={() => setReserveRole('dps')}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-x-3">
+              {renderCards(derived.dps, (a) => derived.dps.indexOf(a) + 1)}
+            </div>
+          </div>
+
+          {/* ── Secondary panels (compact) ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <SynergyBoard apps={apps} />
             <SwapList apps={apps} />
           </div>
 
-          <div className="order-1 sm:order-2 space-y-4">
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div className="card p-3">
-                <SectionHeader
-                  label="탱커"
-                  count={derived.counts.tank}
-                  cap={caps.tank}
-                  adminMode={adminView}
-                  onAdd={() => setReserveRole('tank')}
-                />
-                <div className="space-y-1.5">
-                  {renderCards(derived.tanks, (a) => derived.tanks.indexOf(a) + 1)}
-                </div>
-              </div>
-              <div className="card p-3">
-                <SectionHeader
-                  label="힐러"
-                  count={derived.counts.healer}
-                  cap={caps.healer}
-                  adminMode={adminView}
-                  onAdd={() => setReserveRole('healer')}
-                />
-                <div className="space-y-1.5">
-                  {renderCards(derived.healers, (a) => derived.healers.indexOf(a) + 1)}
-                </div>
-              </div>
-            </div>
-
-            <div className="card p-3">
-              <SectionHeader
-                label="딜러"
-                count={derived.counts.dps}
-                cap={caps.dps}
-                adminMode={adminView}
-                onAdd={() => setReserveRole('dps')}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  [RANGES.melee.label, derived.dpsMelee],
-                  [RANGES.ranged.label, derived.dpsRanged],
-                ].map(([label, list]) => (
-                  <div key={label}>
-                    <p className="text-xs font-semibold text-base-400 mb-1.5">{label}</p>
-                    <div className="space-y-1.5">
-                      {renderCards(list, (a) => derived.dpsRank.get(a.id))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {derived.dpsUndecided.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-base-700">
-                  <p className="text-xs font-semibold text-base-400 mb-1.5">칼럼 미정 (예약)</p>
-                  <div className="space-y-1.5">
-                    {renderCards(derived.dpsUndecided, (a) => derived.dpsRank.get(a.id))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="order-3 card p-3 sm:max-w-2xl sm:mx-auto sm:w-full">
+          {/* ── Waitlist ── */}
+          <div className="card p-3 sm:max-w-2xl sm:mx-auto sm:w-full">
             <p className="font-bold text-sm mb-2 text-center">대기 목록</p>
             {waitGroups.every(([, list]) => list.length === 0) ? (
               <p className="text-sm text-base-400 text-center py-2">대기자가 없습니다.</p>

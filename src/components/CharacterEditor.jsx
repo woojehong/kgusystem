@@ -98,7 +98,7 @@ export default function CharacterEditor({ value, onChange }) {
                   )}
                   {spec.name}
                   <span className="ml-1 text-xs text-base-400">
-                    {spec.role === 'tank' ? '탱' : spec.role === 'healer' ? '힐' : spec.range === 'melee' ? '근딜' : '원딜'}
+                    {spec.role === 'tank' ? '탱' : spec.role === 'healer' ? '힐' : '딜'}
                   </span>
                 </button>
               );

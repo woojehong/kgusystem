@@ -1,8 +1,8 @@
 import { badgeTextStyle } from '../lib/utils';
 
 /**
- * Swap candidates, derived from applicants who turned the swap toggle
- * on. Classified by the roles of their other registered specs.
+ * Compact swap candidate panel, derived from applicants who turned the
+ * swap toggle on. Classified by the roles of their other registered specs.
  */
 export default function SwapList({ apps }) {
   const candidates = apps.filter((a) => a.swap && !a.isReservation);
@@ -26,27 +26,25 @@ export default function SwapList({ apps }) {
   ];
 
   return (
-    <div className="card p-3">
-      <p className="text-xs font-bold text-base-400 mb-2 px-1">스왑 가능자</p>
-      <div className="space-y-2.5">
+    <div className="card p-2.5">
+      <p className="text-[11px] font-bold text-base-400 mb-1.5 px-0.5">스왑 가능자</p>
+      <div className="space-y-1.5">
         {groups.map((g) => (
-          <div key={g.key}>
-            <p className="text-[11px] font-semibold text-base-300 px-1 mb-1">{g.label}</p>
+          <div key={g.key} className="flex flex-wrap items-center gap-1">
+            <span className="text-[10px] font-semibold text-base-300 mr-0.5">{g.label}</span>
             {g.list.length === 0 ? (
-              <p className="text-[11px] text-base-400 px-1">없음</p>
+              <span className="text-[10px] text-base-400">없음</span>
             ) : (
-              <div className="flex flex-wrap gap-1">
-                {g.list.map((a) => (
-                  <span
-                    key={a.id}
-                    className="text-xs font-semibold px-2 py-0.5 rounded-full bg-base-850 border border-base-700"
-                    style={badgeTextStyle(a.classColor)}
-                    title={`${a.className} | ${a.specName}`}
-                  >
-                    {a.charName}
-                  </span>
-                ))}
-              </div>
+              g.list.map((a) => (
+                <span
+                  key={a.id}
+                  className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md bg-base-850 border border-base-700"
+                  style={badgeTextStyle(a.classColor)}
+                  title={`${a.className} | ${a.specName}`}
+                >
+                  {a.charName}
+                </span>
+              ))
             )}
           </div>
         ))}

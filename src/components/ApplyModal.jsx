@@ -272,7 +272,7 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
                   >
                     {s.name}
                     <span className="ml-1 text-xs text-base-400">
-                      {s.role === 'tank' ? '탱' : s.role === 'healer' ? '힐' : s.range === 'melee' ? '근딜' : '원딜'}
+                      {s.role === 'tank' ? '탱' : s.role === 'healer' ? '힐' : '딜'}
                     </span>
                   </button>
                 ))}

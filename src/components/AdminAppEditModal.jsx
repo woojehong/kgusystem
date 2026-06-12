@@ -4,15 +4,13 @@ import { updateApplication, cancelApplication, fetchMemo, setUserNotice } from '
 import Modal from './Modal';
 
 const POSITION_OPTIONS = [
-  { key: 'tank', label: '탱커', role: 'tank', range: null },
-  { key: 'healer', label: '힐러', role: 'healer', range: null },
-  { key: 'dps-melee', label: '딜러 (근거리)', role: 'dps', range: 'melee' },
-  { key: 'dps-ranged', label: '딜러 (원거리)', role: 'dps', range: 'ranged' },
+  { key: 'tank', label: '탱커', role: 'tank' },
+  { key: 'healer', label: '힐러', role: 'healer' },
+  { key: 'dps', label: '딜러', role: 'dps' },
 ];
 
 function positionKey(app) {
-  if (app.role !== 'dps') return app.role;
-  return app.range === 'ranged' ? 'dps-ranged' : 'dps-melee';
+  return app.role;
 }
 
 /**
@@ -64,7 +62,7 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
       const payload = {
         ilvl: ilvl ? Number(ilvl) : null,
         role: opt.role,
-        range: opt.role === 'dps' ? opt.range : null,
+        range: opt.role === 'dps' ? app.range ?? null : null,
         status,
       };
       // A position or status change re-enters at the back of the queue.
@@ -130,7 +128,7 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
 
         <div>
           <label className="label-sm">포지션 (강제 변경 가능)</label>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-3 gap-1.5">
             {POSITION_OPTIONS.map((o) => (
               <button
                 key={o.key}
