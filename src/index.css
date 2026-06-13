@@ -29,8 +29,18 @@ body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.5; }
 }
-.kwgu-badge-shimmer { animation: kwgu-shimmer 2s linear infinite; }
-.kwgu-badge-pulse   { animation: kwgu-pulse 1.8s ease-in-out infinite; }
+.kwgu-badge-shimmer  { animation: kwgu-shimmer 2s linear infinite; }
+.kwgu-badge-pulse    { animation: kwgu-pulse 1.8s ease-in-out infinite; }
+
+@keyframes kwgu-flicker {
+  0%, 94%, 100% { opacity: 1; }
+  95%           { opacity: 0.25; }
+  96%           { opacity: 0.85; }
+  97%           { opacity: 0.15; }
+  98%           { opacity: 0.9; }
+  99%           { opacity: 0.4; }
+}
+.kwgu-badge-flicker { animation: kwgu-flicker 3.5s ease-in-out infinite; }
 
 @layer components {
   .btn-primary {

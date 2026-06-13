@@ -440,66 +440,105 @@ function GuildsTab({ guilds, reload }) {
 // ── Badge tab option definitions ────────────────────────────────────
 
 const SHAPE_OPTIONS = [
-  { key: 'pill',        label: '알약',    clip: null, radius: '9999px' },
-  { key: 'rounded-sm',  label: '소원각',  clip: null, radius: '4px' },
-  { key: 'rounded-md',  label: '중원각',  clip: null, radius: '8px' },
-  { key: 'rounded-lg',  label: '대원각',  clip: null, radius: '14px' },
-  { key: 'square',      label: '직각',    clip: null, radius: '2px' },
-  { key: 'leaf',        label: '잎사귀',  clip: null, radius: '50% 0% 50% 0%' },
-  { key: 'hexagon',     label: '육각형',  clip: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)', radius: null },
-  { key: 'diamond',     label: '다이아',  clip: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',                    radius: null },
-  { key: 'shield',      label: '방패',    clip: 'polygon(0% 0%, 100% 0%, 100% 65%, 50% 100%, 0% 65%)',           radius: null },
-  { key: 'octagon',     label: '팔각형',  clip: 'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)', radius: null },
-  { key: 'star',        label: '별',      clip: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)', radius: null },
-  { key: 'tag',         label: '태그',    clip: 'polygon(0% 0%, 85% 0%, 100% 50%, 85% 100%, 0% 100%)',           radius: null },
+  // Radius-based (10)
+  { key: 'pill',          label: '알약',      clip: null, radius: '9999px' },
+  { key: 'rounded-sm',    label: '소원각',    clip: null, radius: '4px' },
+  { key: 'rounded-md',    label: '중원각',    clip: null, radius: '8px' },
+  { key: 'rounded-lg',    label: '대원각',    clip: null, radius: '14px' },
+  { key: 'rounded-xl',    label: '특대원각',  clip: null, radius: '20px' },
+  { key: 'square',        label: '직각',      clip: null, radius: '2px' },
+  { key: 'leaf',          label: '잎사귀',    clip: null, radius: '50% 0% 50% 0%' },
+  { key: 'circle',        label: '원형',      clip: null, radius: '50%' },
+  { key: 'blob',          label: '블롭',      clip: null, radius: '30% 70% 70% 30% / 30% 30% 70% 70%' },
+  { key: 'sharp-round',   label: '비대칭각',  clip: null, radius: '12px 0px 12px 0px' },
+  // Clip-path based (12)
+  { key: 'hexagon',       label: '육각형',    clip: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',                                      radius: null },
+  { key: 'diamond',       label: '다이아',    clip: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',                                                          radius: null },
+  { key: 'shield',        label: '방패',      clip: 'polygon(0% 0%, 100% 0%, 100% 65%, 50% 100%, 0% 65%)',                                                  radius: null },
+  { key: 'octagon',       label: '팔각형',    clip: 'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)',                      radius: null },
+  { key: 'star',          label: '별',        clip: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)',     radius: null },
+  { key: 'tag',           label: '태그',      clip: 'polygon(0% 0%, 85% 0%, 100% 50%, 85% 100%, 0% 100%)',                                                  radius: null },
+  { key: 'chevron',       label: '쉐브론',    clip: 'polygon(15% 0%, 100% 0%, 100% 100%, 15% 100%, 0% 50%)',                                                radius: null },
+  { key: 'ribbon',        label: '리본',      clip: 'polygon(0% 0%, 100% 0%, 85% 50%, 100% 100%, 0% 100%, 15% 50%)',                                        radius: null },
+  { key: 'arrow',         label: '화살표',    clip: 'polygon(0% 20%, 65% 20%, 65% 0%, 100% 50%, 65% 100%, 65% 80%, 0% 80%)',                                radius: null },
+  { key: 'parallelogram', label: '평행사변형',clip: 'polygon(15% 0%, 100% 0%, 85% 100%, 0% 100%)',                                                          radius: null },
+  { key: 'pentagon',      label: '오각형',    clip: 'polygon(50% 0%, 100% 35%, 82% 100%, 18% 100%, 0% 35%)',                                                radius: null },
+  { key: 'trapezoid',     label: '사다리꼴',  clip: 'polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%)',                                                           radius: null },
 ];
 
 const BG_OPTIONS = [
-  { key: 'solid',            label: '단색' },
-  { key: 'gradient-h',       label: '가로 그라디언트' },
-  { key: 'gradient-v',       label: '세로 그라디언트' },
-  { key: 'gradient-diagonal',label: '대각선 그라디언트' },
-  { key: 'gradient-3',       label: '3색 그라디언트' },
-  { key: 'radial',           label: '방사형' },
-  { key: 'conic',            label: '코닉' },
-  { key: 'glass',            label: '유리' },
-  { key: 'mesh',             label: '메시' },
-  { key: 'neon',             label: '네온' },
-  { key: 'stripe',           label: '스트라이프' },
-  { key: 'outline',          label: '테두리만' },
+  { key: 'solid',             label: '단색' },
+  { key: 'gradient-h',        label: '가로 그라디언트' },
+  { key: 'gradient-v',        label: '세로 그라디언트' },
+  { key: 'gradient-diagonal', label: '대각선 그라디언트' },
+  { key: 'gradient-3',        label: '3색 그라디언트' },
+  { key: 'radial',            label: '방사형' },
+  { key: 'conic',             label: '코닉' },
+  { key: 'glass',             label: '유리' },
+  { key: 'mesh',              label: '메시' },
+  { key: 'neon',              label: '네온' },
+  { key: 'stripe',            label: '스트라이프' },
+  { key: 'outline',           label: '테두리만' },
+  { key: 'aurora',            label: '오로라' },
+  { key: 'holographic',       label: '홀로그래픽' },
+  { key: 'metallic',          label: '메탈릭' },
+  { key: 'frosted',           label: '프로스티드' },
+  { key: 'dots',              label: '도트 패턴' },
+  { key: 'fire',              label: '파이어' },
+  { key: 'ocean',             label: '오션' },
+  { key: 'sunset',            label: '선셋' },
+  { key: 'mirror',            label: '미러' },
 ];
 
 const BORDER_OPTIONS = [
-  { key: 'none',         label: '없음' },
-  { key: 'thin',         label: '얇게' },
-  { key: 'medium',       label: '보통' },
-  { key: 'thick',        label: '굵게' },
-  { key: 'dashed',       label: '파선' },
-  { key: 'dotted',       label: '점선' },
-  { key: 'double',       label: '이중선' },
-  { key: 'gradient',     label: '그라디언트' },
-  { key: 'outline-only', label: '아웃라인' },
-  { key: 'glow',         label: '글로우' },
-  { key: 'neon-glow',    label: '네온 글로우' },
-  { key: 'inner',        label: '안쪽선' },
+  { key: 'none',          label: '없음' },
+  { key: 'thin',          label: '얇게' },
+  { key: 'medium',        label: '보통' },
+  { key: 'thick',         label: '굵게' },
+  { key: 'dashed',        label: '파선' },
+  { key: 'dotted',        label: '점선' },
+  { key: 'double',        label: '이중선' },
+  { key: 'gradient',      label: '그라디언트' },
+  { key: 'outline-only',  label: '아웃라인' },
+  { key: 'glow',          label: '글로우' },
+  { key: 'neon-glow',     label: '네온 글로우' },
+  { key: 'inner',         label: '안쪽선' },
+  { key: 'groove',        label: '홈선' },
+  { key: 'ridge',         label: '융기선' },
+  { key: 'inset-2',       label: '두꺼운 안쪽' },
+  { key: 'multi-glow',    label: '다중 글로우' },
+  { key: 'thick-neon',    label: '두꺼운 네온' },
+  { key: 'top-accent',    label: '상단 강조' },
+  { key: 'bottom-accent', label: '하단 강조' },
+  { key: 'sharp-outer',   label: '날카로운 외곽' },
 ];
 
 const EFFECT_OPTIONS = [
-  { key: 'none',       label: '없음' },
-  { key: 'glow-sm',   label: '글로우(소)' },
-  { key: 'glow-lg',   label: '글로우(대)' },
-  { key: 'shimmer',   label: '쉬머 ✦' },
-  { key: 'pulse',     label: '펄스 ✦' },
-  { key: 'inner-glow',label: '내부 글로우' },
-  { key: 'shadow',    label: '그림자' },
-  { key: 'emboss',    label: '엠보스' },
-  { key: 'holo',      label: '홀로그램' },
+  { key: 'none',          label: '없음' },
+  { key: 'glow-sm',       label: '글로우(소)' },
+  { key: 'glow-lg',       label: '글로우(대)' },
+  { key: 'shimmer',       label: '쉬머 ✦' },
+  { key: 'pulse',         label: '펄스 ✦' },
+  { key: 'inner-glow',    label: '내부 글로우' },
+  { key: 'shadow',        label: '그림자' },
+  { key: 'emboss',        label: '엠보스' },
+  { key: 'holo',          label: '홀로그램' },
+  { key: 'float',         label: '플로팅' },
+  { key: 'tilt',          label: '기울기 그림자' },
+  { key: 'fire-glow',     label: '파이어 글로우' },
+  { key: 'ice-glow',      label: '아이스 글로우' },
+  { key: 'deep',          label: '깊은 그림자' },
+  { key: 'rainbow-aura',  label: '레인보우 오라' },
+  { key: 'sepia',         label: '세피아' },
+  { key: 'blur-out',      label: '블러 아웃' },
+  { key: 'flicker',       label: '깜빡임 ✦' },
 ];
 
 const TEXT_COLOR_OPTIONS = [
-  { key: 'auto',  label: '자동' },
-  { key: 'white', label: '흰색' },
-  { key: 'dark',  label: '어두운색' },
+  { key: 'auto',   label: '자동' },
+  { key: 'white',  label: '흰색' },
+  { key: 'dark',   label: '어두운색' },
+  { key: 'custom', label: '직접 지정' },
 ];
 
 const TEXT_STYLE_OPTIONS = [
@@ -549,29 +588,36 @@ function GuildEditModal({ guild, onClose }) {
 
   // ── 뱃지수정 tab state ─────────────────────────────────────────
   const eb = guild.badge || {};
-  const [badgeShape,       setBadgeShape]       = useState(eb.shape       || 'pill');
-  const [badgeBgType,      setBadgeBgType]      = useState(eb.bgType      || 'solid');
-  const [badgeColor2,      setBadgeColor2]      = useState(eb.color2      || guild.color || '#7dd3fc');
-  const [badgeColor3,      setBadgeColor3]      = useState(eb.color3      || guild.color || '#7dd3fc');
-  const [badgeBorder,      setBadgeBorder]      = useState(eb.border      || 'thin');
-  const [badgeBorderColor, setBadgeBorderColor] = useState(eb.borderColor || guild.color || '#7dd3fc');
-  const [badgeEffect,      setBadgeEffect]      = useState(eb.effect      || 'none');
-  const [badgeTextColor,   setBadgeTextColor]   = useState(eb.textColor   || 'auto');
-  const [badgeTextStyle_,  setBadgeTextStyle_]  = useState(eb.textStyle   || 'normal');
+  const [badgeShape,          setBadgeShape]          = useState(eb.shape           || 'pill');
+  const [badgeBgType,         setBadgeBgType]         = useState(eb.bgType          || 'solid');
+  const [badgeColor2,         setBadgeColor2]         = useState(eb.color2          || guild.color || '#7dd3fc');
+  const [badgeColor3,         setBadgeColor3]         = useState(eb.color3          || guild.color || '#7dd3fc');
+  const [badgeBorder,         setBadgeBorder]         = useState(eb.border          || 'thin');
+  const [badgeBorderColor,    setBadgeBorderColor]    = useState(eb.borderColor     || guild.color || '#7dd3fc');
+  const [badgeEffect,         setBadgeEffect]         = useState(eb.effect          || 'none');
+  const [badgeTextColor,      setBadgeTextColor]      = useState(eb.textColor       || 'auto');
+  const [badgeTextCustomColor,setBadgeTextCustomColor]= useState(eb.textCustomColor || guild.color || '#7dd3fc');
+  const [badgeTextStyle_,     setBadgeTextStyle_]     = useState(eb.textStyle       || 'normal');
 
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const needsColor2 = ['gradient-h','gradient-v','gradient-diagonal','gradient-3','radial','conic','glass','mesh','stripe'].includes(badgeBgType);
-  const needsColor3 = ['gradient-3','conic','mesh'].includes(badgeBgType);
+  const needsColor2 = [
+    'gradient-h','gradient-v','gradient-diagonal','gradient-3','radial','conic',
+    'glass','mesh','stripe','aurora','holographic','metallic','fire','ocean','sunset',
+  ].includes(badgeBgType);
+  const needsColor3 = [
+    'gradient-3','conic','mesh','aurora','holographic','ocean','sunset',
+  ].includes(badgeBgType);
 
   // Current badge config for live preview
   const previewBadgeConfig = {
     shape: badgeShape, bgType: badgeBgType,
     color2: badgeColor2, color3: badgeColor3,
     border: badgeBorder, borderColor: badgeBorderColor,
-    effect: badgeEffect, textColor: badgeTextColor, textStyle: badgeTextStyle_,
+    effect: badgeEffect, textColor: badgeTextColor,
+    textCustomColor: badgeTextCustomColor, textStyle: badgeTextStyle_,
   };
   const { style: pvStyle, animClass: pvAnim, isClipPath: pvClip } = buildBadgeStyles(previewBadgeConfig, color);
 
@@ -591,7 +637,8 @@ function GuildEditModal({ guild, onClose }) {
           shape: badgeShape, bgType: badgeBgType,
           color2: badgeColor2, color3: badgeColor3,
           border: badgeBorder, borderColor: badgeBorderColor,
-          effect: badgeEffect, textColor: badgeTextColor, textStyle: badgeTextStyle_,
+          effect: badgeEffect, textColor: badgeTextColor,
+          textCustomColor: badgeTextCustomColor, textStyle: badgeTextStyle_,
         },
       });
       onClose(true);
@@ -811,7 +858,7 @@ function GuildEditModal({ guild, onClose }) {
             ))}
           </BadgeSection>
 
-          {/* Text */}
+          {/* Text color */}
           <BadgeSection label="텍스트 색">
             {TEXT_COLOR_OPTIONS.map((t) => (
               <OptBtn key={t.key} active={badgeTextColor === t.key} onClick={() => setBadgeTextColor(t.key)}>
@@ -819,6 +866,23 @@ function GuildEditModal({ guild, onClose }) {
               </OptBtn>
             ))}
           </BadgeSection>
+
+          {badgeTextColor === 'custom' && (
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-base-400 w-24 shrink-0">텍스트 색상</label>
+              <input
+                type="color"
+                value={badgeTextCustomColor}
+                onChange={(e) => setBadgeTextCustomColor(e.target.value)}
+                className="w-8 h-8 rounded border border-base-600 cursor-pointer bg-transparent"
+              />
+              <input
+                className="input-base flex-1 text-xs py-1"
+                value={badgeTextCustomColor}
+                onChange={(e) => setBadgeTextCustomColor(e.target.value)}
+              />
+            </div>
+          )}
 
           <BadgeSection label="텍스트 스타일">
             {TEXT_STYLE_OPTIONS.map((t) => (

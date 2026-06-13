@@ -181,15 +181,19 @@ export default function RaidDetailPage() {
 
   const renderCards = (list, rankFn) =>
     list.map((app) => (
-      <ApplicantCard
+      <div
         key={app.id}
-        app={app}
-        rank={rankFn(app)}
-        memo={adminView ? memos[app.id] : undefined}
-        adminView={adminView}
-        onAdminClick={setAdminTarget}
-        highlight={app.id === userId}
-      />
+        style={{ flexBasis: 'calc(25% - 4.5px)', flexShrink: 0, minWidth: 0 }}
+      >
+        <ApplicantCard
+          app={app}
+          rank={rankFn(app)}
+          memo={adminView ? memos[app.id] : undefined}
+          adminView={adminView}
+          onAdminClick={setAdminTarget}
+          highlight={app.id === userId}
+        />
+      </div>
     ));
 
   const waitGroups = [
@@ -353,7 +357,7 @@ export default function RaidDetailPage() {
               adminMode={adminView}
               onAdd={() => setReserveRole('tank')}
             />
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="flex flex-wrap justify-center gap-1.5">
               {renderCards(derived.tanks, (a) => `T${derived.tanks.indexOf(a) + 1}`)}
             </div>
           </div>
@@ -366,7 +370,7 @@ export default function RaidDetailPage() {
               adminMode={adminView}
               onAdd={() => setReserveRole('healer')}
             />
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="flex flex-wrap justify-center gap-1.5">
               {renderCards(derived.healers, (a) => `H${derived.healers.indexOf(a) + 1}`)}
             </div>
           </div>
@@ -379,7 +383,7 @@ export default function RaidDetailPage() {
               adminMode={adminView}
               onAdd={() => setReserveRole('dps')}
             />
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="flex flex-wrap justify-center gap-1.5">
               {renderCards(derived.dps, (a) => `D${derived.dps.indexOf(a) + 1}`)}
             </div>
           </div>
