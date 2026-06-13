@@ -265,6 +265,7 @@ export default function IndexPage() {
         {isCalendar ? (
           <CalendarGrid
             raids={filteredRaids}
+            counts={counts}
             onCreate={openFormForDate}
             isAdmin={showAdmin}
           />

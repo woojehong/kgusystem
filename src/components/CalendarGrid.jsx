@@ -1,14 +1,7 @@
 import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
-import { buildCalendarWeeks, toDateKey, WEEKDAYS_KO } from '../lib/utils';
+import { buildCalendarWeeks, toDateKey, WEEKDAYS_KO, getCaps } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
-
-/**
- * 4-week calendar grid.
- * - Admin: shows a + button per non-past cell to open the raid creation form.
- * - All users: clicking a raid chip navigates to its detail page.
- * - Chip format: HH:MM [연합|shortName|guildName] 레이드제목
- */
 
 function chipPrefix(partyType, guilds) {
   if (!partyType || partyType === 'union') return '연합';
@@ -17,7 +10,9 @@ function chipPrefix(partyType, guilds) {
   return g.shortName || g.name;
 }
 
-export default function CalendarGrid({ raids, onCreate, isAdmin }) {
+const ROLE_COLORS = { tank: '#38bdf8', healer: '#34d399', dps: '#fb7185' };
+
+export default function CalendarGrid({ raids, counts = {}, onCreate, isAdmin }) {
   const navigate = useNavigate();
   const { guilds } = useApp();
   const weeks = buildCalendarWeeks();
@@ -52,6 +47,7 @@ export default function CalendarGrid({ raids, onCreate, isAdmin }) {
         <div
           key={toDateKey(week[0])}
           className="grid grid-cols-7 border-b border-base-700 last:border-b-0"
+          style={{ alignItems: 'stretch' }}
         >
           {week.map((day) => {
             const key = toDateKey(day);
@@ -62,12 +58,12 @@ export default function CalendarGrid({ raids, onCreate, isAdmin }) {
             return (
               <div
                 key={key}
-                className={`relative min-h-[72px] sm:min-h-[96px] p-1 sm:p-1.5 border-r border-base-700 last:border-r-0 ${
+                className={`p-1 sm:p-1.5 border-r border-base-700 last:border-r-0 ${
                   isPast ? 'opacity-35' : ''
                 }`}
               >
                 {/* Date row */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-0.5">
                   <span
                     className={`inline-flex items-center justify-center h-6 px-1 text-xs font-bold rounded-full ${
                       isToday ? 'bg-indigo-500 text-white px-2' : 'text-base-300'
@@ -87,29 +83,55 @@ export default function CalendarGrid({ raids, onCreate, isAdmin }) {
                   )}
                 </div>
 
-                {/* Raid chips */}
-                <div className="mt-0.5 space-y-1">
+                {/* Raid chips — 2줄 레이아웃, 칸 자동 확장 */}
+                <div className="space-y-1">
                   {dayRaids.map((r) => {
                     const diff = DIFFICULTIES[r.difficulty] || DIFFICULTIES.normal;
                     const s = r.startAt.toDate();
                     const time = `${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`;
                     const prefix = chipPrefix(r.partyType, guilds);
                     return (
-                      <span
+                      <div
                         key={r.id}
                         role="link"
                         tabIndex={0}
                         onClick={() => navigate(`/raid/${r.id}`)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') navigate(`/raid/${r.id}`);
-                        }}
-                        className="block w-full truncate text-[10px] sm:text-xs font-semibold px-1 sm:px-1.5 py-0.5 rounded-md cursor-pointer hover:opacity-80 transition"
+                        onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/raid/${r.id}`); }}
+                        className="w-full text-[10px] sm:text-xs font-semibold px-1 sm:px-1.5 py-1 rounded-md cursor-pointer hover:opacity-80 transition leading-tight"
                         style={{ color: diff.color, backgroundColor: `${diff.color}1f` }}
                       >
-                        {time}{' '}
-                        {prefix && <span className="opacity-75">[{prefix}]</span>}{' '}
-                        {r.title || diff.label}
-                      </span>
+                        {/* 줄 1: 시간 + [bracket] */}
+                        <div className="truncate opacity-80">
+                          {time}{prefix && ` [${prefix}]`}
+                        </div>
+                        {/* 줄 2: 레이드 제목 */}
+                        <div className="truncate font-bold mt-0.5">
+                          {r.title || diff.label}
+                        </div>
+                        {/* 줄 3: 탱/힐/딜 카운트 */}
+                        {(() => {
+                          const c = counts[r.id];
+                          const caps = getCaps(r);
+                          if (!c) return null;
+                          return (
+                            <div className="flex gap-1 mt-0.5">
+                              {[
+                                { key: 'tank',   label: '탱', cur: c.tank,   cap: caps.tank   },
+                                { key: 'healer', label: '힐', cur: c.healer, cap: caps.healer },
+                                { key: 'dps',    label: '딜', cur: c.dps,    cap: caps.dps    },
+                              ].map(({ key, label, cur, cap }) => (
+                                <span
+                                  key={key}
+                                  className="text-[9px] font-bold"
+                                  style={{ color: ROLE_COLORS[key] }}
+                                >
+                                  {label} {cur}/{cap}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
                     );
                   })}
                 </div>
