@@ -345,30 +345,29 @@ export default function RaidDetailPage() {
 
         {/* ── Roster (primary) ── */}
         <div className="mt-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="card p-3">
-              <SectionHeader
-                label="탱커"
-                count={derived.counts.tank}
-                cap={caps.tank}
-                adminMode={adminView}
-                onAdd={() => setReserveRole('tank')}
-              />
-              <div className="grid grid-cols-2 gap-1.5">
-                {renderCards(derived.tanks, (a) => `T${derived.tanks.indexOf(a) + 1}`)}
-              </div>
+          <div className="card p-3">
+            <SectionHeader
+              label="탱커"
+              count={derived.counts.tank}
+              cap={caps.tank}
+              adminMode={adminView}
+              onAdd={() => setReserveRole('tank')}
+            />
+            <div className="grid grid-cols-2 gap-1.5">
+              {renderCards(derived.tanks, (a) => `T${derived.tanks.indexOf(a) + 1}`)}
             </div>
-            <div className="card p-3">
-              <SectionHeader
-                label="힐러"
-                count={derived.counts.healer}
-                cap={caps.healer}
-                adminMode={adminView}
-                onAdd={() => setReserveRole('healer')}
-              />
-              <div className="grid grid-cols-2 gap-1.5">
-                {renderCards(derived.healers, (a) => `H${derived.healers.indexOf(a) + 1}`)}
-              </div>
+          </div>
+
+          <div className="card p-3">
+            <SectionHeader
+              label="힐러"
+              count={derived.counts.healer}
+              cap={caps.healer}
+              adminMode={adminView}
+              onAdd={() => setReserveRole('healer')}
+            />
+            <div className="grid grid-cols-2 gap-1.5">
+              {renderCards(derived.healers, (a) => `H${derived.healers.indexOf(a) + 1}`)}
             </div>
           </div>
 
@@ -380,7 +379,7 @@ export default function RaidDetailPage() {
               adminMode={adminView}
               onAdd={() => setReserveRole('dps')}
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-x-3">
+            <div className="grid grid-cols-2 gap-1.5">
               {renderCards(derived.dps, (a) => `D${derived.dps.indexOf(a) + 1}`)}
             </div>
           </div>
