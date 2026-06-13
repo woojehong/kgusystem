@@ -3,11 +3,12 @@ import { buildCalendarWeeks, toDateKey, WEEKDAYS_KO } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 /**
- * Admin 4-week calendar (starting on the Sunday of the current week).
- * Clicking an empty area of a cell opens the raid creation form;
- * clicking an existing raid chip navigates to its detail page.
+ * 4-week calendar grid.
+ * - Admin: shows a + button per non-past cell to open the raid creation form.
+ * - All users: clicking a raid chip navigates to its detail page.
+ * - Date format: M/D (e.g. 6/13).
  */
-export default function CalendarGrid({ raids, onCreate }) {
+export default function CalendarGrid({ raids, onCreate, isAdmin }) {
   const navigate = useNavigate();
   const weeks = buildCalendarWeeks();
   const todayKey = toDateKey(new Date());
@@ -22,6 +23,7 @@ export default function CalendarGrid({ raids, onCreate }) {
 
   return (
     <div className="card overflow-hidden">
+      {/* Day-of-week header */}
       <div className="grid grid-cols-7 border-b border-base-700">
         {WEEKDAYS_KO.map((d, i) => (
           <div
@@ -34,30 +36,48 @@ export default function CalendarGrid({ raids, onCreate }) {
           </div>
         ))}
       </div>
+
+      {/* Weeks */}
       {weeks.map((week) => (
-        <div key={toDateKey(week[0])} className="grid grid-cols-7 border-b border-base-700 last:border-b-0">
+        <div
+          key={toDateKey(week[0])}
+          className="grid grid-cols-7 border-b border-base-700 last:border-b-0"
+        >
           {week.map((day) => {
             const key = toDateKey(day);
             const isToday = key === todayKey;
             const isPast = key < todayKey;
             const dayRaids = byDate[key] || [];
+
             return (
-              <button
+              <div
                 key={key}
-                type="button"
-                onClick={() => !isPast && onCreate(key)}
-                disabled={isPast}
-                className={`relative min-h-[72px] sm:min-h-[96px] p-1 sm:p-1.5 text-left border-r border-base-700 last:border-r-0 align-top transition ${
-                  isPast ? 'opacity-35 cursor-default' : 'hover:bg-base-700/40'
+                className={`relative min-h-[72px] sm:min-h-[96px] p-1 sm:p-1.5 border-r border-base-700 last:border-r-0 ${
+                  isPast ? 'opacity-35' : ''
                 }`}
               >
-                <span
-                  className={`inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded-full ${
-                    isToday ? 'bg-indigo-500 text-white' : 'text-base-300'
-                  }`}
-                >
-                  {day.getDate()}
-                </span>
+                {/* Date row */}
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`inline-flex items-center justify-center h-6 px-1 text-xs font-bold rounded-full ${
+                      isToday ? 'bg-indigo-500 text-white px-2' : 'text-base-300'
+                    }`}
+                  >
+                    {day.getMonth() + 1}/{day.getDate()}
+                  </span>
+                  {isAdmin && !isPast && (
+                    <button
+                      type="button"
+                      onClick={() => onCreate(key)}
+                      className="w-5 h-5 rounded-md bg-base-700 hover:bg-indigo-500/50 text-base-300 hover:text-white font-bold text-xs transition leading-none"
+                      title="레이드 추가"
+                    >
+                      +
+                    </button>
+                  )}
+                </div>
+
+                {/* Raid chips */}
                 <div className="mt-0.5 space-y-1">
                   {dayRaids.map((r) => {
                     const diff = DIFFICULTIES[r.difficulty] || DIFFICULTIES.normal;
@@ -67,15 +87,9 @@ export default function CalendarGrid({ raids, onCreate }) {
                         key={r.id}
                         role="link"
                         tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/raid/${r.id}`);
-                        }}
+                        onClick={() => navigate(`/raid/${r.id}`)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.stopPropagation();
-                            navigate(`/raid/${r.id}`);
-                          }
+                          if (e.key === 'Enter') navigate(`/raid/${r.id}`);
                         }}
                         className="block w-full truncate text-[10px] sm:text-xs font-semibold px-1 sm:px-1.5 py-0.5 rounded-md cursor-pointer hover:opacity-80 transition"
                         style={{ color: diff.color, backgroundColor: `${diff.color}1f` }}
@@ -86,7 +100,7 @@ export default function CalendarGrid({ raids, onCreate }) {
                     );
                   })}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>

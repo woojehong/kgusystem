@@ -16,7 +16,7 @@ import {
   changeNickname,
   resetPinBySuper,
 } from '../lib/auth';
-import { seedInitialData, isSeeded, saveGuild, deleteGuild, deleteRaid } from '../lib/db';
+import { seedInitialData, isSeeded, saveGuild, deleteGuild, softDeleteRaid, restoreRaid, hardDeleteRaid } from '../lib/db';
 import { DIFFICULTIES, PIN_RULE } from '../lib/constants';
 import {
   formatDateLabel,
@@ -156,6 +156,7 @@ function UsersTab({ guilds, gamedata }) {
               className="w-full flex items-center gap-2 p-3 card hover:border-base-500 text-left transition"
             >
               <span className="font-bold">{u.nickname}</span>
+              {u.isGuildMaster && <span className="text-base leading-none">👑</span>}
               {u.role === 'admin' && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
                   관리자
@@ -195,6 +196,7 @@ function UserEditModal({ user, guilds, gamedata, onClose }) {
   const [guildId, setGuildId] = useState(user.guildId);
   const [leaderCapable, setLeaderCapable] = useState(!!user.leaderCapable);
   const [isAdmin, setIsAdmin] = useState(user.role === 'admin');
+  const [isGuildMaster, setIsGuildMaster] = useState(!!user.isGuildMaster);
   const [tempPin, setTempPin] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -211,6 +213,7 @@ function UserEditModal({ user, guilds, gamedata, onClose }) {
       await updateDoc(doc(db, 'users', user.id), {
         guildId,
         leaderCapable,
+        isGuildMaster,
         role: isAdmin ? 'admin' : 'user',
       });
       onClose(true, '저장되었습니다.');
@@ -274,6 +277,17 @@ function UserEditModal({ user, guilds, gamedata, onClose }) {
             className="w-4 h-4 accent-indigo-500"
             checked={leaderCapable}
             onChange={(e) => setLeaderCapable(e.target.checked)}
+          />
+        </label>
+        <label className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-amber-500/30 cursor-pointer">
+          <span className="text-sm font-medium flex items-center gap-1.5">
+            <span className="text-base">👑</span> 길드장
+          </span>
+          <input
+            type="checkbox"
+            className="w-4 h-4 accent-amber-500"
+            checked={isGuildMaster}
+            onChange={(e) => setIsGuildMaster(e.target.checked)}
           />
         </label>
         <label className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700 cursor-pointer">
@@ -388,6 +402,8 @@ function GuildEditModal({ guild, onClose }) {
   const [name, setName] = useState(guild.name);
   const [color, setColor] = useState(guild.color);
   const [logoPath, setLogoPath] = useState(guild.logoPath || '');
+  // showInFilter: whether this guild appears in the main page category filter
+  const [showInFilter, setShowInFilter] = useState(guild.showInFilter !== false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -406,6 +422,7 @@ function GuildEditModal({ guild, onClose }) {
         color,
         logoPath: logoPath.trim(),
         isNone: !!guild.isNone,
+        showInFilter,
       });
       onClose(true);
     } catch {
@@ -457,6 +474,24 @@ function GuildEditModal({ guild, onClose }) {
           </p>
         </div>
 
+        {/* showInFilter toggle (소속 없음 제외) */}
+        {!guild.isNone && (
+          <label className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700 cursor-pointer">
+            <div>
+              <p className="text-sm font-medium">메인 화면 필터에 표시</p>
+              <p className="text-[11px] text-base-400 mt-0.5">
+                카테고리 필터에 이 길드를 노출합니다
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              className="w-4 h-4 accent-indigo-500"
+              checked={showInFilter}
+              onChange={(e) => setShowInFilter(e.target.checked)}
+            />
+          </label>
+        )}
+
         {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
         <div className="flex gap-2">
@@ -496,13 +531,37 @@ function RaidsTab() {
   }, []);
 
   const now = Date.now();
+
   const list = raids
-    .filter((r) => (view === 'upcoming' ? r.endAt.toMillis() >= now : r.endAt.toMillis() < now))
+    .filter((r) => {
+      if (view === 'deleted') return !!r.deleted;
+      if (r.deleted) return false;
+      if (view === 'upcoming') return r.endAt.toMillis() >= now;
+      return r.endAt.toMillis() < now; // archive
+    })
     .sort((a, b) =>
       view === 'upcoming'
         ? a.startAt.toMillis() - b.startAt.toMillis()
         : b.startAt.toMillis() - a.startAt.toMillis()
     );
+
+  const handleSoftDelete = async (raidId) => {
+    await softDeleteRaid(raidId).catch(() => {});
+    load();
+  };
+
+  const handleRestore = async (raidId) => {
+    await restoreRaid(raidId).catch(() => {});
+    load();
+  };
+
+  const handleHardDelete = async (raidId) => {
+    // eslint-disable-next-line no-alert
+    if (window.confirm('영구 삭제하면 복구할 수 없습니다. 계속할까요?')) {
+      await hardDeleteRaid(raidId).catch(() => {});
+      load();
+    }
+  };
 
   return (
     <div>
@@ -510,13 +569,18 @@ function RaidsTab() {
         {[
           ['upcoming', '진행 / 예정'],
           ['archive', '아카이브'],
+          ['deleted', '삭제됨'],
         ].map(([key, label]) => (
           <button
             key={key}
             type="button"
             onClick={() => setView(key)}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${
-              view === key ? 'bg-base-700 text-white' : 'text-base-400 hover:text-base-200'
+              view === key
+                ? key === 'deleted'
+                  ? 'bg-red-500/20 text-red-300'
+                  : 'bg-base-700 text-white'
+                : 'text-base-400 hover:text-base-200'
             }`}
           >
             {label}
@@ -528,7 +592,10 @@ function RaidsTab() {
         {list.map((r) => {
           const diff = DIFFICULTIES[r.difficulty] || DIFFICULTIES.normal;
           return (
-            <div key={r.id} className="flex items-center gap-3 p-3 card">
+            <div
+              key={r.id}
+              className={`flex items-center gap-3 p-3 card ${r.deleted ? 'opacity-60' : ''}`}
+            >
               <span
                 className="text-xs font-bold px-2 py-0.5 rounded-md shrink-0"
                 style={{ color: diff.color, backgroundColor: `${diff.color}22` }}
@@ -543,33 +610,52 @@ function RaidsTab() {
                 <p className="text-xs text-base-400 truncate">공격대장 {r.leader}</p>
               </div>
               <div className="ml-auto flex gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  className="text-xs px-2.5 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 font-semibold transition"
-                  onClick={() => setRosterTarget(r)}
-                >
-                  명단
-                </button>
-                <button
-                  type="button"
-                  className="text-xs px-2.5 py-1.5 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 font-semibold transition"
-                  onClick={async () => {
-                    // eslint-disable-next-line no-alert
-                    if (window.confirm('레이드와 신청 명단을 모두 삭제합니다. 계속할까요?')) {
-                      await deleteRaid(r.id).catch(() => {});
-                      load();
-                    }
-                  }}
-                >
-                  삭제
-                </button>
+                {view !== 'deleted' ? (
+                  <>
+                    <button
+                      type="button"
+                      className="text-xs px-2.5 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 font-semibold transition"
+                      onClick={() => setRosterTarget(r)}
+                    >
+                      명단
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs px-2.5 py-1.5 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 font-semibold transition"
+                      onClick={() => handleSoftDelete(r.id)}
+                    >
+                      삭제
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="text-xs px-2.5 py-1.5 rounded-lg bg-green-500/15 text-green-300 hover:bg-green-500/25 font-semibold transition"
+                      onClick={() => handleRestore(r.id)}
+                    >
+                      복구
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs px-2.5 py-1.5 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/30 font-semibold transition"
+                      onClick={() => handleHardDelete(r.id)}
+                    >
+                      영구삭제
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           );
         })}
         {list.length === 0 && (
           <p className="text-center text-base-400 py-8 text-sm">
-            {view === 'upcoming' ? '예정된 레이드가 없습니다.' : '아카이브가 비어 있습니다.'}
+            {view === 'upcoming'
+              ? '예정된 레이드가 없습니다.'
+              : view === 'archive'
+              ? '아카이브가 비어 있습니다.'
+              : '삭제된 레이드가 없습니다.'}
           </p>
         )}
       </div>
@@ -713,15 +799,25 @@ export default function SuperAdminPage() {
       <header className="sticky top-0 z-40 bg-base-900/90 backdrop-blur border-b border-base-800">
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
           <p className="font-black">
-            KGU <span className="text-indigo-400 text-sm font-bold">시스템 관리</span>
+            KWGU <span className="text-indigo-400 text-sm font-bold">시스템 관리</span>
           </p>
-          <button
-            type="button"
-            className="text-xs text-base-400 hover:text-base-200 transition"
-            onClick={() => signOutUser()}
-          >
-            로그아웃
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href="/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-base-400 hover:text-base-200 transition"
+            >
+              메인 화면 ↗
+            </a>
+            <button
+              type="button"
+              className="text-xs text-base-400 hover:text-base-200 transition"
+              onClick={() => signOutUser()}
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
       </header>
 

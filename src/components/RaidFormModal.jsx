@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { DIFFICULTIES, UNION_LEADER_LABEL, TANK_CAP } from '../lib/constants';
-import { buildRaidTimes, formatDateLabel, toDateKey } from '../lib/utils';
-import { createRaid, updateRaid, deleteRaid } from '../lib/db';
+import { buildRaidTimes, toDateKey, sortGuilds } from '../lib/utils';
+import { createRaid, updateRaid, softDeleteRaid } from '../lib/db';
 import Modal from './Modal';
 
 const TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function normalizeTime(value) {
   const compact = value.replace(/[^\d:]/g, '');
@@ -18,13 +19,20 @@ function normalizeTime(value) {
 }
 
 /**
- * Raid create/edit form. `applicants` (optional) supplies leader-capable
- * applicant nicknames for the leader dropdown when editing.
+ * Raid create/edit form.
+ * - Create mode: date picker at top, partyType selector, allowedGuilds multi-select.
+ * - Edit mode: date is fixed (dateKey shown read-only), partyType editable.
+ * - `applicants` (optional) supplies leader-capable nicknames for the leader dropdown.
  */
 export default function RaidFormModal({ open, onClose, dateKey, raid, applicants = [] }) {
-  const { guilds } = useApp();
+  const { guilds, profile } = useApp();
   const isEdit = !!raid;
 
+  // Sorted guilds excluding '소속 없음'
+  const sortedGuilds = useMemo(() => sortGuilds(guilds).filter((g) => !g.isNone), [guilds]);
+
+  // ── Form state ──
+  const [localDateKey, setLocalDateKey] = useState('');
   const [title, setTitle] = useState('');
   const [difficulty, setDifficulty] = useState('normal');
   const [startTime, setStartTime] = useState('20:00');
@@ -34,15 +42,24 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const [noIlvlLimit, setNoIlvlLimit] = useState(true);
   const [minIlvl, setMinIlvl] = useState('');
   const [description, setDescription] = useState('');
+  // partyType: 'union' | guildId
+  const [partyType, setPartyType] = useState('union');
+  // allowedGuilds: 'all' | string[]
+  const [allowedGuilds, setAllowedGuilds] = useState('all');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Default dateKey for create mode
+  const defaultDateKey = dateKey || toDateKey(new Date());
 
   useEffect(() => {
     if (!open) return;
     setError('');
     setConfirmDelete(false);
-    if (raid) {
+
+    if (isEdit) {
+      setLocalDateKey(raid.dateKey);
       setTitle(raid.title || '');
       setDifficulty(raid.difficulty);
       const s = raid.startAt.toDate();
@@ -56,7 +73,10 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setNoIlvlLimit(raid.minIlvl == null);
       setMinIlvl(raid.minIlvl == null ? '' : String(raid.minIlvl));
       setDescription(raid.description || '');
+      setPartyType(raid.partyType || 'union');
+      setAllowedGuilds(raid.allowedGuilds ?? 'all');
     } else {
+      setLocalDateKey(defaultDateKey);
       setTitle('');
       setDifficulty('normal');
       setStartTime('20:00');
@@ -66,23 +86,60 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setNoIlvlLimit(true);
       setMinIlvl('');
       setDescription('');
+      // Default party type: union
+      setPartyType('union');
+      setAllowedGuilds('all');
     }
-  }, [open, raid]);
+  }, [open, raid]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When partyType changes, sync allowedGuilds defaults
+  const handlePartyTypeChange = (val) => {
+    setPartyType(val);
+    if (val === 'union') {
+      setAllowedGuilds('all');
+    } else {
+      // Default to own guild only
+      setAllowedGuilds([val]);
+    }
+  };
+
+  // Toggle a guild in allowedGuilds list
+  const toggleAllowedGuild = (guildId) => {
+    if (allowedGuilds === 'all') {
+      // Switch from 'all' to specific list
+      setAllowedGuilds([guildId]);
+      return;
+    }
+    const current = Array.isArray(allowedGuilds) ? allowedGuilds : [];
+    if (current.includes(guildId)) {
+      const next = current.filter((id) => id !== guildId);
+      setAllowedGuilds(next.length === 0 ? [partyType] : next);
+    } else {
+      setAllowedGuilds([...current, guildId]);
+    }
+  };
+
+  const isAllAllowed = allowedGuilds === 'all';
+  const allowedList = isAllAllowed ? [] : (Array.isArray(allowedGuilds) ? allowedGuilds : []);
 
   const leaderOptions = useMemo(() => {
-    const guildLeaders = guilds.filter((g) => !g.isNone).map((g) => `${g.name} 길드장`);
+    const guildLeaders = sortedGuilds.map((g) => `${g.name} 길드장`);
     const capable = applicants
       .filter((a) => a.leaderCapable && !a.isReservation)
       .map((a) => a.nickname);
     return [UNION_LEADER_LABEL, ...guildLeaders, ...capable.filter((n) => !guildLeaders.includes(n))];
-  }, [guilds, applicants]);
+  }, [sortedGuilds, applicants]);
 
-  const effectiveDateKey = raid ? raid.dateKey : dateKey || toDateKey(new Date());
+  const effectiveDateKey = isEdit ? raid.dateKey : (localDateKey || defaultDateKey);
   const diff = DIFFICULTIES[difficulty];
   const dpsCap = diff.totalCap - TANK_CAP - healerCap;
 
   const submit = async () => {
     setError('');
+    if (!isEdit && !DATE_PATTERN.test(localDateKey)) {
+      setError('날짜를 올바르게 입력해주세요.');
+      return;
+    }
     if (!title.trim()) {
       setError('레이드 파티 제목을 입력해주세요.');
       return;
@@ -102,6 +159,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
     setBusy(true);
     try {
       const { startAt, endAt } = buildRaidTimes(effectiveDateKey, startTime, endTime);
+      const finalAllowedGuilds = partyType === 'union' ? 'all' : allowedGuilds;
       const payload = {
         title: title.trim(),
         dateKey: effectiveDateKey,
@@ -112,6 +170,8 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
         leader,
         minIlvl: noIlvlLimit ? null : Number(minIlvl),
         description: description.trim(),
+        partyType,
+        allowedGuilds: finalAllowedGuilds,
       };
       if (isEdit) {
         await updateRaid(raid.id, payload);
@@ -129,7 +189,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const handleDelete = async () => {
     setBusy(true);
     try {
-      await deleteRaid(raid.id);
+      await softDeleteRaid(raid.id);
       onClose(true);
     } catch {
       setError('삭제에 실패했습니다.');
@@ -137,13 +197,33 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
     }
   };
 
+  // Profile's own guild (for partyType selector)
+  const myGuild = useMemo(
+    () => sortedGuilds.find((g) => g.id === profile?.guildId),
+    [sortedGuilds, profile]
+  );
+
   return (
     <Modal
       open={open}
       onClose={() => onClose(false)}
-      title={`레이드 ${isEdit ? '수정' : '추가'} · ${formatDateLabel(effectiveDateKey)}`}
+      title={`레이드 ${isEdit ? '수정' : '추가'}`}
     >
       <div className="space-y-4">
+        {/* Date (create mode only — editable) */}
+        {!isEdit && (
+          <div>
+            <label className="label-sm">날짜</label>
+            <input
+              type="date"
+              className="input-base"
+              value={localDateKey}
+              onChange={(e) => setLocalDateKey(e.target.value)}
+            />
+          </div>
+        )}
+
+        {/* Title */}
         <div>
           <label className="label-sm">레이드 파티 제목</label>
           <input
@@ -155,6 +235,72 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           />
         </div>
 
+        {/* Party type */}
+        <div>
+          <label className="label-sm">파티 성격</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handlePartyTypeChange('union')}
+              className={`py-2.5 rounded-xl font-semibold text-sm border transition ${
+                partyType === 'union'
+                  ? 'border-indigo-400 bg-indigo-500/15 text-indigo-200'
+                  : 'border-base-700 text-base-400 hover:text-base-200'
+              }`}
+            >
+              연합 길드 레이드
+            </button>
+            <button
+              type="button"
+              disabled={!myGuild}
+              onClick={() => myGuild && handlePartyTypeChange(myGuild.id)}
+              className={`py-2.5 rounded-xl font-semibold text-sm border transition ${
+                partyType !== 'union'
+                  ? 'border-indigo-400 bg-indigo-500/15 text-indigo-200'
+                  : 'border-base-700 text-base-400 hover:text-base-200'
+              } ${!myGuild ? 'opacity-40 cursor-not-allowed' : ''}`}
+            >
+              {myGuild ? `${myGuild.name} 레이드` : '길드 레이드'}
+            </button>
+          </div>
+        </div>
+
+        {/* Allowed guilds (guild raids only) */}
+        {partyType !== 'union' && (
+          <div>
+            <label className="label-sm">신청 가능 길드</label>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 p-2.5 rounded-xl bg-base-850 border border-base-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-indigo-500"
+                  checked={isAllAllowed}
+                  onChange={(e) => setAllowedGuilds(e.target.checked ? 'all' : [partyType])}
+                />
+                <span className="text-sm font-medium">모두 (연합 전체)</span>
+              </label>
+              {!isAllAllowed && sortedGuilds.map((g) => (
+                <label
+                  key={g.id}
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-base-850 border border-base-700 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 accent-indigo-500"
+                    checked={allowedList.includes(g.id)}
+                    onChange={() => toggleAllowedGuild(g.id)}
+                  />
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                  <span className="text-sm font-medium" style={{ color: g.color }}>
+                    {g.name}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Difficulty */}
         <div>
           <label className="label-sm">난이도</label>
           <div className="grid grid-cols-3 gap-2">
@@ -178,6 +324,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           </div>
         </div>
 
+        {/* Times */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label-sm">시작 시간</label>
@@ -204,6 +351,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           </div>
         </div>
 
+        {/* Healer cap */}
         <div>
           <label className="label-sm">힐러 수</label>
           <div className="flex items-center gap-3">
@@ -228,6 +376,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           </div>
         </div>
 
+        {/* Leader */}
         <div>
           <label className="label-sm">공대장</label>
           <select className="input-base" value={leader} onChange={(e) => setLeader(e.target.value)}>
@@ -239,6 +388,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           </select>
         </div>
 
+        {/* Min ilvl */}
         <div>
           <label className="label-sm">최소 아이템레벨</label>
           <div className="flex items-center gap-3">
@@ -263,6 +413,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           </div>
         </div>
 
+        {/* Description */}
         <div>
           <label className="label-sm">레이드 설명 (신청자 전체 공개)</label>
           <textarea

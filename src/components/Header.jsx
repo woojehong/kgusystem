@@ -41,6 +41,7 @@ export default function Header() {
       onClick={() => setProfileOpen(true)}
       className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-base-800 border border-base-700 hover:border-base-600 transition"
     >
+      {profile?.isGuildMaster && <span className="text-sm leading-none">👑</span>}
       <span className="font-semibold text-sm">{profile?.nickname}</span>
       <GuildBadge guildId={profile?.guildId} size="xs" />
     </button>
@@ -51,11 +52,16 @@ export default function Header() {
       <header className="sticky top-0 z-40 bg-base-900/90 backdrop-blur border-b border-base-800">
         {/* Desktop */}
         <div className="hidden sm:flex items-center justify-between max-w-6xl mx-auto px-4 h-16">
-          <Link to="/" className="flex items-baseline gap-2 group">
-            <span className="text-2xl font-black tracking-tight bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent group-hover:to-indigo-300 transition">
-              KGU
+          <Link to="/" className="flex flex-col group">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black tracking-tight bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent group-hover:to-indigo-300 transition">
+                KWGU
+              </span>
+              <span className="text-sm text-base-400 font-semibold tracking-[0.25em]">한길련</span>
+            </div>
+            <span className="text-[10px] text-base-500 tracking-wider leading-none">
+              Korean Wow Guild Union · 한국길드연합
             </span>
-            <span className="text-sm text-base-400 font-semibold tracking-[0.25em]">한길련</span>
           </Link>
           <div className="flex items-center gap-2">
             {profileButton}
@@ -72,11 +78,16 @@ export default function Header() {
 
         {/* Mobile */}
         <div className="sm:hidden flex flex-col items-center px-4 py-3 gap-2">
-          <Link to="/" className="flex items-baseline gap-2">
-            <span className="text-2xl font-black tracking-tight bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">
-              KGU
+          <Link to="/" className="flex flex-col items-center">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black tracking-tight bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">
+                KWGU
+              </span>
+              <span className="text-xs text-base-400 font-semibold tracking-[0.25em]">한길련</span>
+            </div>
+            <span className="text-[9px] text-base-500 tracking-wider leading-none">
+              Korean Wow Guild Union · 한국길드연합
             </span>
-            <span className="text-xs text-base-400 font-semibold tracking-[0.25em]">한길련</span>
           </Link>
           <div className="flex items-center gap-2">
             {profileButton}

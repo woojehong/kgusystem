@@ -1,8 +1,25 @@
 import { Link } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
-import { formatDateLabel, formatTimeRange, getCaps, countFillColor } from '../lib/utils';
+import { formatTimeRange, getCaps, countFillColor } from '../lib/utils';
+
+/** Returns the display label for a raid's party type. */
+function partyTypeLabel(partyType, guilds) {
+  if (!partyType || partyType === 'union') return '연합 길드 레이드';
+  const g = guilds.find((guild) => guild.id === partyType);
+  return g ? `${g.name} 길드 레이드` : '길드 레이드';
+}
+
+/** Short date string: 6/19 (금) */
+function shortDate(dateKey) {
+  const [, m, d] = dateKey.split('-').map(Number);
+  const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+  const date = new Date(Number(dateKey.split('-')[0]), m - 1, d);
+  return `${m}/${d} (${weekdays[date.getDay()]})`;
+}
 
 export default function RaidCard({ raid, counts }) {
+  const { guilds } = useApp();
   const diff = DIFFICULTIES[raid.difficulty] || DIFFICULTIES.normal;
   const caps = getCaps(raid);
   const startAt = raid.startAt.toDate();
@@ -22,26 +39,38 @@ export default function RaidCard({ raid, counts }) {
     >
       <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
       <div className="p-4 pl-5">
+        {/* Category */}
+        <p className="text-[10px] font-bold tracking-wide text-base-400 uppercase mb-1">
+          {partyTypeLabel(raid.partyType, guilds)}
+        </p>
+
+        {/* Title */}
         <p className="font-bold text-base leading-snug break-keep">
           {raid.title || `${diff.label} 공격대`}
         </p>
 
-        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+        {/* Difficulty + Date (same weight/size) */}
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
           <span
-            className="text-xs font-bold px-2 py-0.5 rounded-md shrink-0"
+            className="text-sm font-bold px-2 py-0.5 rounded-md shrink-0"
             style={{ color: diff.color, backgroundColor: `${diff.color}22` }}
           >
             {diff.label}
           </span>
-          <span className="text-lg font-bold text-white">{formatDateLabel(raid.dateKey)}</span>
+          <span className="text-sm font-bold text-white">{shortDate(raid.dateKey)}</span>
         </div>
 
-        <p className="mt-0.5 font-semibold text-base-200">{formatTimeRange(startAt, endAt)}</p>
+        {/* Time */}
+        <p className="mt-1 text-sm font-semibold text-base-200">
+          {formatTimeRange(startAt, endAt)}
+        </p>
 
+        {/* Leader */}
         <p className="mt-2 pt-2 border-t border-base-700/60 text-sm text-base-300">
           공격대장 : <span className="font-semibold text-base-100">{raid.leader}</span>
         </p>
 
+        {/* Headcounts */}
         <div className="mt-2.5 grid grid-cols-3 gap-1 text-center">
           {rows.map(([label, cur, cap]) => (
             <div key={label} className="rounded-lg bg-base-900/50 py-1.5">

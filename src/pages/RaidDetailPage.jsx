@@ -44,9 +44,26 @@ function SectionHeader({ label, count, cap, adminMode, onAdd }) {
   );
 }
 
+/**
+ * Determines whether the current user can edit/delete this raid.
+ * - SuperAdmin: always yes.
+ * - Union raid (partyType === 'union' or missing): any admin.
+ * - Guild raid: only admins whose guildId matches raid.partyType.
+ */
+function useCanEdit(raid, profile, isAdmin, isSuper, adminMode) {
+  return useMemo(() => {
+    if (!adminMode) return false;
+    if (isSuper) return true;
+    if (!isAdmin) return false;
+    if (!raid) return false;
+    if (!raid.partyType || raid.partyType === 'union') return true;
+    return raid.partyType === profile?.guildId;
+  }, [raid, profile, isAdmin, isSuper, adminMode]);
+}
+
 export default function RaidDetailPage() {
   const { raidId } = useParams();
-  const { userId, isAdmin, adminMode } = useApp();
+  const { userId, isAdmin, isSuper, adminMode, profile } = useApp();
   const adminView = isAdmin && adminMode;
 
   const [raid, setRaid] = useState(null);
@@ -59,6 +76,7 @@ export default function RaidDetailPage() {
   const [adminTarget, setAdminTarget] = useState(null);
   const [raidEditOpen, setRaidEditOpen] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const unsubRaid = onSnapshot(doc(db, 'raids', raidId), (snap) => {
@@ -103,6 +121,21 @@ export default function RaidDetailPage() {
       counts: { tank: tanks.length, healer: healers.length, dps: dps.length },
     };
   }, [apps]);
+
+  const canEdit = useCanEdit(raid, profile, isAdmin, isSuper, adminMode);
+
+  const copyInvite = async () => {
+    const active = [...derived.tanks, ...derived.healers, ...derived.dps];
+    if (active.length === 0) return;
+    const text = active.map((a) => `${a.charName}-${a.server}`).join(';');
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard not available — silently ignore
+    }
+  };
 
   if (raidMissing) {
     return (
@@ -168,7 +201,14 @@ export default function RaidDetailPage() {
   return (
     <div className="min-h-screen pb-20">
       <Header />
-      <main className="max-w-6xl mx-auto px-4 mt-6">
+      <main className="max-w-6xl mx-auto px-4 mt-4">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-sm text-base-400 hover:text-base-200 transition mb-4"
+        >
+          ← 메인으로
+        </Link>
+
         {/* ── Raid header ── */}
         <div className="card relative overflow-hidden p-5" style={{ backgroundColor: diff.soft }}>
           <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
@@ -177,14 +217,29 @@ export default function RaidDetailPage() {
               <h1 className="text-2xl font-black leading-tight break-keep">
                 {raid.title || `${diff.label} 공격대`}
               </h1>
-              {adminView && (
-                <button
-                  type="button"
-                  onClick={() => setRaidEditOpen(true)}
-                  className="ml-auto shrink-0 text-xs px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 font-semibold transition"
-                >
-                  레이드 수정
-                </button>
+
+              {/* Edit + invite buttons (canEdit only) */}
+              {canEdit && (
+                <div className="ml-auto shrink-0 flex flex-col gap-1.5 items-end">
+                  <button
+                    type="button"
+                    onClick={() => setRaidEditOpen(true)}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 font-semibold transition whitespace-nowrap"
+                  >
+                    레이드 수정
+                  </button>
+                  <button
+                    type="button"
+                    onClick={copyInvite}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition whitespace-nowrap ${
+                      copied
+                        ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                        : 'bg-base-700 hover:bg-base-600'
+                    }`}
+                  >
+                    {copied ? '복사됨 ✓' : '구성원 초대'}
+                  </button>
+                </div>
               )}
             </div>
 
@@ -213,19 +268,23 @@ export default function RaidDetailPage() {
               </span>
               <span className="flex items-center gap-1.5">
                 힐러 정원 : <b className="text-base-100">{caps.healer}</b>
-                {adminView && (
+                {canEdit && (
                   <span className="inline-flex gap-1 ml-1">
                     <button
                       type="button"
                       className="w-6 h-6 rounded-md bg-base-700 hover:bg-base-600 font-bold transition"
-                      onClick={() => updateRaid(raid.id, { healerCap: Math.max(0, raid.healerCap - 1) })}
+                      onClick={() =>
+                        updateRaid(raid.id, { healerCap: Math.max(0, (raid.healerCap ?? caps.healer) - 1) })
+                      }
                     >
                       −
                     </button>
                     <button
                       type="button"
                       className="w-6 h-6 rounded-md bg-base-700 hover:bg-base-600 font-bold transition"
-                      onClick={() => updateRaid(raid.id, { healerCap: raid.healerCap + 1 })}
+                      onClick={() =>
+                        updateRaid(raid.id, { healerCap: (raid.healerCap ?? caps.healer) + 1 })
+                      }
                     >
                       +
                     </button>
@@ -326,13 +385,13 @@ export default function RaidDetailPage() {
             </div>
           </div>
 
-          {/* ── Secondary panels (compact) ── */}
+          {/* Secondary panels */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <SynergyBoard apps={apps} />
             <SwapList apps={apps} />
           </div>
 
-          {/* ── Waitlist ── */}
+          {/* Waitlist */}
           <div className="card p-3 sm:max-w-2xl sm:mx-auto sm:w-full">
             <p className="font-bold text-sm mb-2 text-center">대기 목록</p>
             {waitGroups.every(([, list]) => list.length === 0) ? (

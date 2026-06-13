@@ -97,6 +97,13 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
 
   if (!profile) return null;
 
+  // Check if this user's guild is allowed to apply
+  const guildAllowed = (() => {
+    if (!raid.allowedGuilds || raid.allowedGuilds === 'all') return true;
+    if (Array.isArray(raid.allowedGuilds)) return raid.allowedGuilds.includes(profile.guildId || '');
+    return true;
+  })();
+
   const selectCharacter = (idx) => {
     setCharIndex(idx);
     const c = characters[idx];
@@ -105,6 +112,9 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
 
   const buildAppData = (status, resetSeq) => {
     const guild = guilds.find((g) => g.id === profile.guildId);
+    const allSpecNames = (character.specs || [])
+      .map((sId) => getSpec(gamedata.classes, character.classId, sId)?.name)
+      .filter(Boolean);
     return {
       userId,
       nickname: profile.nickname,
@@ -119,10 +129,12 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
       classColor: cls.color,
       specId: spec.id,
       specName: spec.name,
+      allSpecNames,
       role: spec.role,
       range: spec.role === 'dps' ? spec.range : null,
       ilvl: Number(ilvl),
       leaderCapable,
+      isGuildMaster: !!profile.isGuildMaster,
       swap: swapRoles.length > 0 ? swap : false,
       swapRoles,
       status,
@@ -198,7 +210,20 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
       onClose={() => onClose(false)}
       title={isEdit ? '신청 정보 수정' : '파티 참가 신청'}
     >
-      {waitConfirm ? (
+      {!guildAllowed ? (
+        <div className="text-center py-6 space-y-3">
+          <div className="text-4xl">🔒</div>
+          <p className="font-semibold">신청 가능 길드가 아닙니다</p>
+          <p className="text-sm text-base-400 leading-relaxed">
+            이 레이드는 특정 길드 소속 인원만 신청할 수 있습니다.
+            <br />
+            소속 길드가 다르게 설정되어 있다면 관리자에게 문의해주세요.
+          </p>
+          <button type="button" className="btn-ghost" onClick={() => onClose(false)}>
+            닫기
+          </button>
+        </div>
+      ) : waitConfirm ? (
         <div className="text-center py-2 space-y-4">
           <div className="text-4xl">⚠️</div>
           <p className="font-semibold leading-relaxed">

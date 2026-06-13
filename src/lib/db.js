@@ -82,7 +82,24 @@ export function updateRaid(raidId, data) {
   return updateDoc(doc(db, 'raids', raidId), payload);
 }
 
-export async function deleteRaid(raidId) {
+/** Soft-delete: marks the raid as deleted without removing data. */
+export function softDeleteRaid(raidId) {
+  return updateDoc(doc(db, 'raids', raidId), {
+    deleted: true,
+    deletedAt: serverTimestamp(),
+  });
+}
+
+/** Restore a soft-deleted raid. */
+export function restoreRaid(raidId) {
+  return updateDoc(doc(db, 'raids', raidId), {
+    deleted: false,
+    deletedAt: null,
+  });
+}
+
+/** Hard-delete: permanently removes raid, apps, and memos. Super-admin only. */
+export async function hardDeleteRaid(raidId) {
   const apps = await getDocs(collection(db, 'raids', raidId, 'apps'));
   const memos = await getDocs(collection(db, 'raids', raidId, 'memos'));
   const batch = writeBatch(db);
