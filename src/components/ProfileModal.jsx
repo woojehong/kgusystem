@@ -9,7 +9,7 @@ import GuildBadge from './GuildBadge';
 import CharacterEditor, { emptyCharacter, validateCharacter } from './CharacterEditor';
 import { badgeTextStyle, getClass, getSpec } from '../lib/utils';
 
-const MAX_CHARACTERS = 5;
+const MAX_CHARACTERS = 10;
 
 function BasicTab({ onClose }) {
   const { userId, profile, guilds } = useApp();

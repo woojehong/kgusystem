@@ -1,4 +1,4 @@
-import { CLASSES, DIFFICULTIES, TANK_CAP } from './constants';
+import { CLASSES, DIFFICULTIES, TANK_CAP, SERVERS } from './constants';
 
 // ── Class / spec lookups ────────────────────────────────────────────
 
@@ -97,14 +97,27 @@ export function countFillColor(current, cap) {
   return 'text-white';
 }
 
-// ── WCL ─────────────────────────────────────────────────────────────
+// ── External character links ─────────────────────────────────────────
 
-/**
- * Warcraft Logs character URL. KR realm pages resolve with the Korean
- * realm name in the path, so the localized name is used directly.
- */
+/** Map Korean server name → English realm slug. Falls back to the Korean name. */
+function realmSlug(serverKo) {
+  const found = SERVERS.find((s) => s.ko === serverKo);
+  return found ? found.slug : encodeURIComponent(serverKo);
+}
+
+/** Warcraft Logs character URL. */
 export function wclUrl(serverKo, characterName) {
-  return `https://www.warcraftlogs.com/character/kr/${encodeURIComponent(serverKo)}/${encodeURIComponent(characterName)}`;
+  return `https://www.warcraftlogs.com/character/kr/${realmSlug(serverKo)}/${encodeURIComponent(characterName)}`;
+}
+
+/** Raider.io character URL. */
+export function raiderUrl(serverKo, characterName) {
+  return `https://raider.io/characters/kr/${realmSlug(serverKo)}/${encodeURIComponent(characterName)}`;
+}
+
+/** Blizzard Armory (전투정보실) character URL. */
+export function armoryUrl(serverKo, characterName) {
+  return `https://worldofwarcraft.blizzard.com/ko-kr/character/kr/${realmSlug(serverKo)}/${encodeURIComponent(characterName)}`;
 }
 
 // ── Guild sorting: English first, then 가나다, '소속 없음' last ──────

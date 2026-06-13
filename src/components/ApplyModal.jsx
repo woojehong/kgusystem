@@ -66,7 +66,7 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
       setCharIndex(main < characters.length ? main : 0);
       const mainChar = characters[main < characters.length ? main : 0];
       setSpecId(mainChar?.specs?.[0] || '');
-      setIlvl('');
+      setIlvl(mainChar?.ilvl ? String(mainChar.ilvl) : '');
       setLeaderCapable(!!profile?.leaderCapable);
       setSwap(false);
       setMemoText('');
@@ -108,6 +108,8 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
     setCharIndex(idx);
     const c = characters[idx];
     setSpecId(c?.specs?.[0] || '');
+    // Auto-fill ilvl from the character's saved current item level
+    setIlvl(c?.ilvl ? String(c.ilvl) : '');
   };
 
   const buildAppData = (status, resetSeq) => {

@@ -355,7 +355,7 @@ export default function RaidDetailPage() {
                 onAdd={() => setReserveRole('tank')}
               />
               <div className="space-y-1.5">
-                {renderCards(derived.tanks, (a) => derived.tanks.indexOf(a) + 1)}
+                {renderCards(derived.tanks, (a) => `T${derived.tanks.indexOf(a) + 1}`)}
               </div>
             </div>
             <div className="card p-3">
@@ -367,7 +367,7 @@ export default function RaidDetailPage() {
                 onAdd={() => setReserveRole('healer')}
               />
               <div className="space-y-1.5">
-                {renderCards(derived.healers, (a) => derived.healers.indexOf(a) + 1)}
+                {renderCards(derived.healers, (a) => `H${derived.healers.indexOf(a) + 1}`)}
               </div>
             </div>
           </div>
@@ -381,7 +381,7 @@ export default function RaidDetailPage() {
               onAdd={() => setReserveRole('dps')}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-x-3">
-              {renderCards(derived.dps, (a) => derived.dps.indexOf(a) + 1)}
+              {renderCards(derived.dps, (a) => `D${derived.dps.indexOf(a) + 1}`)}
             </div>
           </div>
 

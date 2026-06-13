@@ -74,21 +74,12 @@ export default function LoginPage() {
     return <Navigate to={profile.role === 'super' ? '/kga_adminnn' : '/'} replace />;
   }
 
-  // Nickname input handler: silently block numbers/symbols and mixing
+  // Nickname input handler: strip numbers/symbols only.
+  // Korean jamo (ㄱ-ㅎ, ㅏ-ㅣ) must be preserved for IME mid-composition.
+  // Mixing / length validation happens on submit only.
   const handleNicknameChange = (e) => {
-    const raw = e.target.value;
-    // Strip anything that's not Korean or English
-    const stripped = raw.replace(/[^가-힣A-Za-z]/g, '');
-    // Prevent mixing: detect language of first character and enforce it
-    if (stripped.length === 0) {
-      setNickname('');
-      return;
-    }
-    const firstIsKo = /[가-힣]/.test(stripped[0]);
-    const filtered = firstIsKo
-      ? stripped.replace(/[A-Za-z]/g, '')
-      : stripped.replace(/[가-힣]/g, '');
-    setNickname(filtered);
+    const val = e.target.value.replace(/[^가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, '');
+    setNickname(val);
   };
 
   const handleNicknameNext = async () => {
@@ -183,7 +174,7 @@ export default function LoginPage() {
       {/* Logo */}
       <div className="text-center mb-8">
         <h1 className="text-5xl font-black tracking-tight bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">
-          KGU
+          KWGU
         </h1>
         <p className="text-base-300 mt-1 font-semibold tracking-[0.3em]">한길련</p>
       </div>

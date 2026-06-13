@@ -1,15 +1,17 @@
-import { badgeTextStyle, wclUrl } from '../lib/utils';
+import { badgeTextStyle, wclUrl, raiderUrl, armoryUrl } from '../lib/utils';
 
 /**
  * One applicant row.
  * - First line : guild badge · [crown] · char name · reservation tag · ilvl · rank
  * - Second line: all registered spec names (colour-tinted) · 스왑가능
- * - Admin section (adminView only): nickname · WCL link · memo
+ * - Admin section (adminView only): 로그인ID · WCL / Raider.io / 전투정보실 links · memo
  */
 export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick, highlight }) {
   const specDisplay = app.isReservation && !app.classId
     ? null
     : (app.allSpecNames?.length ? app.allSpecNames : [app.specName]).filter(Boolean).join(' · ');
+
+  const hasCharInfo = !app.isReservation && app.charName && app.server;
 
   return (
     <div
@@ -58,7 +60,7 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
             <span className="text-lg font-semibold text-base-200">{app.ilvl}</span>
           )}
           {rank != null && (
-            <span className="text-sm w-7 h-7 inline-flex items-center justify-center rounded-full bg-base-700 text-base-300 font-bold shrink-0">
+            <span className="text-xs min-w-[2rem] px-1.5 h-7 inline-flex items-center justify-center rounded-full bg-base-700 text-base-200 font-bold shrink-0">
               {rank}
             </span>
           )}
@@ -66,7 +68,7 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
       </div>
 
       {/* ── Second line ── */}
-      <p className="mt-1.5 text-sm text-base-400 truncate">
+      <p className="mt-1.5 text-sm text-base-300 truncate">
         {app.isReservation && !app.classId ? (
           '클래스 미지정'
         ) : (
@@ -79,23 +81,46 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
 
       {/* ── Admin section ── */}
       {adminView && (
-        <div className="mt-2 pt-2 border-t border-base-700/60 space-y-1">
+        <div className="mt-2 pt-2 border-t border-base-700/60 space-y-1.5">
           {app.nickname && (
             <p className="text-xs text-base-400">
-              닉네임 <span className="text-base-200 font-semibold">{app.nickname}</span>
+              로그인ID{' '}
+              <span className="text-base-100 font-semibold">{app.nickname}</span>
             </p>
           )}
-          {!app.isReservation && app.charName && app.server && (
-            <a
-              href={wclUrl(app.server, app.charName)}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="block text-xs text-sky-400 hover:text-sky-300 truncate transition"
-            >
-              🔗 WCL 바로가기
-            </a>
+
+          {hasCharInfo && (
+            <div className="flex gap-3 flex-wrap">
+              <a
+                href={wclUrl(app.server, app.charName)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs text-sky-400 hover:text-sky-200 transition font-medium"
+              >
+                🔗 WCL
+              </a>
+              <a
+                href={raiderUrl(app.server, app.charName)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs text-emerald-400 hover:text-emerald-200 transition font-medium"
+              >
+                🔗 Raider.io
+              </a>
+              <a
+                href={armoryUrl(app.server, app.charName)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs text-amber-400 hover:text-amber-200 transition font-medium"
+              >
+                🔗 전투정보실
+              </a>
+            </div>
           )}
+
           {memo && <p className="text-xs text-base-300 break-words">📝 {memo}</p>}
         </div>
       )}

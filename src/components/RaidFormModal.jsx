@@ -5,30 +5,79 @@ import { buildRaidTimes, toDateKey, sortGuilds } from '../lib/utils';
 import { createRaid, updateRaid, softDeleteRaid } from '../lib/db';
 import Modal from './Modal';
 
-const TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-function normalizeTime(value) {
-  const compact = value.replace(/[^\d:]/g, '');
-  if (/^\d{3,4}$/.test(compact)) {
-    const h = compact.length === 3 ? compact.slice(0, 1) : compact.slice(0, 2);
-    const m = compact.slice(-2);
-    return `${h.padStart(2, '0')}:${m}`;
-  }
-  return compact;
+// ── 시/분 분리 입력 컴포넌트 ─────────────────────────────────────────
+
+function TimeInput({ label, value, onChange, hint }) {
+  const parts = (value || '').split(':');
+  const hStr = parts[0] || '';
+  const mStr = parts[1] || '';
+
+  const update = (h, m) => onChange(`${h}:${m}`);
+
+  const handleHour = (e) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+    update(v, mStr);
+  };
+
+  const handleMin = (e) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+    update(hStr, v);
+  };
+
+  const blurHour = () => {
+    const h = Math.min(23, Math.max(0, parseInt(hStr, 10) || 0));
+    update(String(h).padStart(2, '0'), mStr || '00');
+  };
+
+  const blurMin = () => {
+    const m = Math.min(59, Math.max(0, parseInt(mStr, 10) || 0));
+    update(hStr || '00', String(m).padStart(2, '0'));
+  };
+
+  return (
+    <div>
+      <label className="label-sm">{label}</label>
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <input
+            className="input-base text-center font-bold text-xl tabular-nums"
+            value={hStr}
+            onChange={handleHour}
+            onBlur={blurHour}
+            placeholder="21"
+            inputMode="numeric"
+            maxLength={2}
+          />
+          <p className="text-[10px] text-center text-base-400 mt-0.5">시</p>
+        </div>
+        <span className="text-2xl font-bold text-base-300 mb-4 select-none">:</span>
+        <div className="flex-1">
+          <input
+            className="input-base text-center font-bold text-xl tabular-nums"
+            value={mStr}
+            onChange={handleMin}
+            onBlur={blurMin}
+            placeholder="00"
+            inputMode="numeric"
+            maxLength={2}
+          />
+          <p className="text-[10px] text-center text-base-400 mt-0.5">분</p>
+        </div>
+      </div>
+      {hint && <p className="text-[11px] text-base-400 mt-1">{hint}</p>}
+    </div>
+  );
 }
 
-/**
- * Raid create/edit form.
- * - Create mode: date picker at top, partyType selector, allowedGuilds multi-select.
- * - Edit mode: date is fixed (dateKey shown read-only), partyType editable.
- * - `applicants` (optional) supplies leader-capable nicknames for the leader dropdown.
- */
+// ── Modal ────────────────────────────────────────────────────────────
+
 export default function RaidFormModal({ open, onClose, dateKey, raid, applicants = [] }) {
   const { guilds, profile } = useApp();
   const isEdit = !!raid;
 
-  // Sorted guilds excluding '소속 없음'
   const sortedGuilds = useMemo(() => sortGuilds(guilds).filter((g) => !g.isNone), [guilds]);
 
   // ── Form state ──
@@ -42,15 +91,12 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const [noIlvlLimit, setNoIlvlLimit] = useState(true);
   const [minIlvl, setMinIlvl] = useState('');
   const [description, setDescription] = useState('');
-  // partyType: 'union' | guildId
   const [partyType, setPartyType] = useState('union');
-  // allowedGuilds: 'all' | string[]
   const [allowedGuilds, setAllowedGuilds] = useState('all');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Default dateKey for create mode
   const defaultDateKey = dateKey || toDateKey(new Date());
 
   useEffect(() => {
@@ -86,30 +132,18 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setNoIlvlLimit(true);
       setMinIlvl('');
       setDescription('');
-      // Default party type: union
       setPartyType('union');
       setAllowedGuilds('all');
     }
   }, [open, raid]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When partyType changes, sync allowedGuilds defaults
   const handlePartyTypeChange = (val) => {
     setPartyType(val);
-    if (val === 'union') {
-      setAllowedGuilds('all');
-    } else {
-      // Default to own guild only
-      setAllowedGuilds([val]);
-    }
+    setAllowedGuilds(val === 'union' ? 'all' : [val]);
   };
 
-  // Toggle a guild in allowedGuilds list
   const toggleAllowedGuild = (guildId) => {
-    if (allowedGuilds === 'all') {
-      // Switch from 'all' to specific list
-      setAllowedGuilds([guildId]);
-      return;
-    }
+    if (allowedGuilds === 'all') { setAllowedGuilds([guildId]); return; }
     const current = Array.isArray(allowedGuilds) ? allowedGuilds : [];
     if (current.includes(guildId)) {
       const next = current.filter((id) => id !== guildId);
@@ -134,6 +168,14 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const diff = DIFFICULTIES[difficulty];
   const dpsCap = diff.totalCap - TANK_CAP - healerCap;
 
+  // Normalize "시:분" string before validation
+  const normalizeTimeStr = (t) => {
+    const [h, m] = (t || '').split(':');
+    const hh = String(Math.min(23, Math.max(0, parseInt(h, 10) || 0))).padStart(2, '0');
+    const mm = String(Math.min(59, Math.max(0, parseInt(m, 10) || 0))).padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
   const submit = async () => {
     setError('');
     if (!isEdit && !DATE_PATTERN.test(localDateKey)) {
@@ -144,8 +186,10 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setError('레이드 파티 제목을 입력해주세요.');
       return;
     }
-    if (!TIME_PATTERN.test(startTime) || !TIME_PATTERN.test(endTime)) {
-      setError('시간은 HH:MM 형식으로 입력해주세요. (예: 20:30)');
+    const normStart = normalizeTimeStr(startTime);
+    const normEnd = normalizeTimeStr(endTime);
+    if (!TIME_PATTERN.test(normStart) || !TIME_PATTERN.test(normEnd)) {
+      setError('시간을 올바르게 입력해주세요. (0~23시, 0~59분)');
       return;
     }
     if (!noIlvlLimit && !/^\d+$/.test(minIlvl)) {
@@ -158,7 +202,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
     }
     setBusy(true);
     try {
-      const { startAt, endAt } = buildRaidTimes(effectiveDateKey, startTime, endTime);
+      const { startAt, endAt } = buildRaidTimes(effectiveDateKey, normStart, normEnd);
       const finalAllowedGuilds = partyType === 'union' ? 'all' : allowedGuilds;
       const payload = {
         title: title.trim(),
@@ -197,7 +241,6 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
     }
   };
 
-  // Profile's own guild (for partyType selector)
   const myGuild = useMemo(
     () => sortedGuilds.find((g) => g.id === profile?.guildId),
     [sortedGuilds, profile]
@@ -210,7 +253,8 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       title={`레이드 ${isEdit ? '수정' : '추가'}`}
     >
       <div className="space-y-4">
-        {/* Date (create mode only — editable) */}
+
+        {/* 날짜 (create mode only) */}
         {!isEdit && (
           <div>
             <label className="label-sm">날짜</label>
@@ -223,19 +267,19 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           </div>
         )}
 
-        {/* Title */}
+        {/* 제목 */}
         <div>
           <label className="label-sm">레이드 파티 제목</label>
           <input
             className="input-base"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="예: 한길련 정기 공대 1팟"
+            placeholder="예: 한길련 연합 길드 레이드 신화 학원파티"
             maxLength={30}
           />
         </div>
 
-        {/* Party type */}
+        {/* 파티 성격 */}
         <div>
           <label className="label-sm">파티 성격</label>
           <div className="grid grid-cols-2 gap-2">
@@ -265,7 +309,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           </div>
         </div>
 
-        {/* Allowed guilds (guild raids only) */}
+        {/* 신청 가능 길드 */}
         {partyType !== 'union' && (
           <div>
             <label className="label-sm">신청 가능 길드</label>
@@ -291,16 +335,14 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
                     onChange={() => toggleAllowedGuild(g.id)}
                   />
                   <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
-                  <span className="text-sm font-medium" style={{ color: g.color }}>
-                    {g.name}
-                  </span>
+                  <span className="text-sm font-medium" style={{ color: g.color }}>{g.name}</span>
                 </label>
               ))}
             </div>
           </div>
         )}
 
-        {/* Difficulty */}
+        {/* 난이도 */}
         <div>
           <label className="label-sm">난이도</label>
           <div className="grid grid-cols-3 gap-2">
@@ -308,10 +350,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
               <button
                 key={d.id}
                 type="button"
-                onClick={() => {
-                  setDifficulty(d.id);
-                  setHealerCap(d.defaultHealers);
-                }}
+                onClick={() => { setDifficulty(d.id); setHealerCap(d.defaultHealers); }}
                 className={`py-2.5 rounded-xl font-bold text-sm border transition ${
                   difficulty === d.id ? 'border-current' : 'border-base-700 opacity-50 hover:opacity-80'
                 }`}
@@ -324,34 +363,22 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           </div>
         </div>
 
-        {/* Times */}
+        {/* 시작/종료 시간 — 시·분 분리 입력 */}
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label-sm">시작 시간</label>
-            <input
-              className="input-base"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              onBlur={(e) => setStartTime(normalizeTime(e.target.value))}
-              placeholder="20:00"
-              inputMode="numeric"
-            />
-          </div>
-          <div>
-            <label className="label-sm">종료 시간</label>
-            <input
-              className="input-base"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              onBlur={(e) => setEndTime(normalizeTime(e.target.value))}
-              placeholder="23:00"
-              inputMode="numeric"
-            />
-            <p className="text-[11px] text-base-400 mt-1">시작보다 이르면 다음날 새벽으로 처리</p>
-          </div>
+          <TimeInput
+            label="시작 시간"
+            value={startTime}
+            onChange={setStartTime}
+          />
+          <TimeInput
+            label="종료 시간"
+            value={endTime}
+            onChange={setEndTime}
+            hint="시작보다 이르면 다음날 새벽으로 처리"
+          />
         </div>
 
-        {/* Healer cap */}
+        {/* 힐러 수 */}
         <div>
           <label className="label-sm">힐러 수</label>
           <div className="flex items-center gap-3">
@@ -370,25 +397,23 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
             >
               +
             </button>
-            <span className="text-sm text-base-400 ml-2">
+            <span className="text-sm text-base-300 ml-2">
               탱 {TANK_CAP} · 힐 {healerCap} · 딜 {dpsCap} = 총 {diff.totalCap}인
             </span>
           </div>
         </div>
 
-        {/* Leader */}
+        {/* 공대장 */}
         <div>
           <label className="label-sm">공대장</label>
           <select className="input-base" value={leader} onChange={(e) => setLeader(e.target.value)}>
             {leaderOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
+              <option key={opt} value={opt}>{opt}</option>
             ))}
           </select>
         </div>
 
-        {/* Min ilvl */}
+        {/* 최소 아이템레벨 */}
         <div>
           <label className="label-sm">최소 아이템레벨</label>
           <div className="flex items-center gap-3">
@@ -406,14 +431,14 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
                 className="input-base flex-1"
                 value={minIlvl}
                 onChange={(e) => setMinIlvl(e.target.value.replace(/\D/g, ''))}
-                placeholder="예: 480"
+                placeholder="예: 280"
                 inputMode="numeric"
               />
             )}
           </div>
         </div>
 
-        {/* Description */}
+        {/* 레이드 설명 */}
         <div>
           <label className="label-sm">레이드 설명 (신청자 전체 공개)</label>
           <textarea

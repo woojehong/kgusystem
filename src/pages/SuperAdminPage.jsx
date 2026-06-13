@@ -74,7 +74,7 @@ function SuperLogin() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
-      <h1 className="text-2xl font-black mb-1">KGU 시스템 관리</h1>
+      <h1 className="text-2xl font-black mb-1">KWGU 시스템 관리</h1>
       <p className="text-sm text-base-400 mb-6">
         {bootstrap ? '최초 실행 — 슈퍼관리자 계정을 생성합니다' : '슈퍼관리자 인증'}
       </p>

@@ -2,7 +2,7 @@ import { useApp } from '../context/AppContext';
 import { badgeTextStyle } from '../lib/utils';
 
 /**
- * Character form: in-game name / realm / class / spec priorities.
+ * Character form: in-game name / realm / class / spec priorities / current ilvl.
  * Spec priority follows click order (1 → 4); re-clicking removes the
  * spec and later priorities shift up automatically.
  */
@@ -50,6 +50,22 @@ export default function CharacterEditor({ value, onChange }) {
         </select>
       </div>
 
+      {/* 현재 아이템 레벨 */}
+      <div>
+        <label className="label-sm">
+          현재 아이템 레벨{' '}
+          <span className="text-base-400 font-normal text-xs">(레이드 신청 시 자동 입력)</span>
+        </label>
+        <input
+          className="input-base"
+          value={value.ilvl || ''}
+          onChange={(e) => set({ ilvl: e.target.value.replace(/\D/g, '') })}
+          placeholder="예: 639"
+          inputMode="numeric"
+          maxLength={5}
+        />
+      </div>
+
       <div>
         <label className="label-sm">클래스</label>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
@@ -74,7 +90,10 @@ export default function CharacterEditor({ value, onChange }) {
       {selectedClass && (
         <div>
           <label className="label-sm">
-            특성 <span className="text-base-400 font-normal">(클릭 순서대로 우선순위 부여, 최대 4개)</span>
+            특성{' '}
+            <span className="text-base-400 font-normal text-xs">
+              (클릭 순서대로 우선순위 부여, 최대 4개)
+            </span>
           </label>
           <div className="flex flex-wrap gap-1.5">
             {selectedClass.specs.map((spec) => {
@@ -118,6 +137,7 @@ export function emptyCharacter(servers) {
     server: defaultServer ? defaultServer.ko : '아즈샤라',
     classId: '',
     specs: [],
+    ilvl: '',
   };
 }
 
