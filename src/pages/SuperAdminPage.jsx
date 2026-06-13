@@ -582,6 +582,7 @@ function GuildEditModal({ guild, onClose }) {
 
   // ── 기본정보 tab state ─────────────────────────────────────────
   const [name, setName] = useState(guild.name);
+  const [shortName, setShortName] = useState(guild.shortName || '');
   const [color, setColor] = useState(guild.color || '#7dd3fc');
   const [logoPath, setLogoPath] = useState(guild.logoPath || '');
   const [showInFilter, setShowInFilter] = useState(guild.showInFilter !== false);
@@ -624,11 +625,15 @@ function GuildEditModal({ guild, onClose }) {
   const save = async () => {
     setError('');
     if (!name.trim()) { setError('길드명을 입력해주세요.'); return; }
+    const sn = shortName.trim();
+    const snLen = [...sn].length;
+    if (sn && snLen > 4) { setError('약식명은 한글/영문 4자 이하로 입력해주세요.'); return; }
     setBusy(true);
     try {
       const id = guild.id || randomId('guild_');
       await saveGuild(id, {
         name: name.trim(),
+        shortName: sn,
         color,
         logoPath: logoPath.trim(),
         isNone: !!guild.isNone,
@@ -678,6 +683,16 @@ function GuildEditModal({ guild, onClose }) {
           <div>
             <label className="label-sm">길드명</label>
             <input className="input-base" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="label-sm">약식명 <span className="text-base-500 font-normal">(한글/영문 4자 이하 · 달력 표시용)</span></label>
+            <input
+              className="input-base"
+              value={shortName}
+              onChange={(e) => setShortName(e.target.value)}
+              placeholder="예: 스타폴, Star"
+              maxLength={8}
+            />
           </div>
           <div>
             <label className="label-sm">시그니처 컬러</label>

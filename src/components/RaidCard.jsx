@@ -3,6 +3,8 @@ import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
 import { formatTimeRange, getCaps, countFillColor } from '../lib/utils';
 
+const ROLE_COLORS_CARD = { '탱커': '#38bdf8', '힐러': '#34d399', '딜러': '#fb7185' };
+
 /** Returns the display label for a raid's party type. */
 function partyTypeLabel(partyType, guilds) {
   if (!partyType || partyType === 'union') return '연합 길드 레이드';
@@ -40,7 +42,7 @@ export default function RaidCard({ raid, counts }) {
       <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
       <div className="p-4 pl-5">
         {/* Category */}
-        <p className="text-[10px] font-bold tracking-wide text-base-400 uppercase mb-1">
+        <p className="text-xs font-bold tracking-wide text-base-400 uppercase mb-1">
           {partyTypeLabel(raid.partyType, guilds)}
         </p>
 
@@ -74,7 +76,7 @@ export default function RaidCard({ raid, counts }) {
         <div className="mt-2.5 grid grid-cols-3 gap-1 text-center">
           {rows.map(([label, cur, cap]) => (
             <div key={label} className="rounded-lg bg-base-900/50 py-1.5">
-              <p className="text-[10px] text-base-400 font-medium">{label}</p>
+              <p className="text-[10px] font-semibold" style={{ color: ROLE_COLORS_CARD[label] || '#94a3b8' }}>{label}</p>
               <p className={`text-sm font-bold ${countFillColor(cur, cap)}`}>
                 {cur}/{cap}
               </p>

@@ -25,11 +25,15 @@ function sortBySeq(list) {
   return [...list].sort((a, b) => (a.seq || 0) - (b.seq || 0));
 }
 
-function SectionHeader({ label, count, cap, adminMode, onAdd }) {
+const ROLE_COLORS = { tank: '#38bdf8', healer: '#34d399', dps: '#fb7185' };
+
+function SectionHeader({ label, role, count, cap, adminMode, onAdd }) {
+  const roleColor = ROLE_COLORS[role] || '#94a3b8';
   return (
     <div className="flex items-center justify-between mb-2">
-      <p className="font-bold text-sm">
-        {label} <span className={countFillColor(count, cap)}>{count}/{cap}</span>
+      <p className="font-bold text-sm" style={{ color: roleColor }}>
+        {label}{' '}
+        <span className={countFillColor(count, cap)}>{count}/{cap}</span>
       </p>
       {adminMode && (
         <button
@@ -352,6 +356,7 @@ export default function RaidDetailPage() {
           <div className="card p-3">
             <SectionHeader
               label="탱커"
+              role="tank"
               count={derived.counts.tank}
               cap={caps.tank}
               adminMode={adminView}
@@ -365,6 +370,7 @@ export default function RaidDetailPage() {
           <div className="card p-3">
             <SectionHeader
               label="힐러"
+              role="healer"
               count={derived.counts.healer}
               cap={caps.healer}
               adminMode={adminView}
@@ -378,6 +384,7 @@ export default function RaidDetailPage() {
           <div className="card p-3">
             <SectionHeader
               label="딜러"
+              role="dps"
               count={derived.counts.dps}
               cap={caps.dps}
               adminMode={adminView}

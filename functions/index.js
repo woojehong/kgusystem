@@ -50,6 +50,29 @@ function formatDate(dateKey) {
   return dateKey.replace(/(\d{4})(\d{2})(\d{2})/, '$1년 $2월 $3일');
 }
 
+// ── 채널 1: 레이드 삭제 (소프트 삭제 감지) ──────────────────────
+exports.notifyRaidDeleted = onDocumentUpdated(
+  { document: 'raids/{raidId}', secrets: [WEBHOOK_ANNOUNCE] },
+  async (event) => {
+    const before = event.data.before.data();
+    const after  = event.data.after.data();
+    if (before.deleted || !after.deleted) return;
+
+    await sendEmbed(WEBHOOK_ANNOUNCE.value(), {
+      title: `🗑️ 레이드 삭제 — ${after.title || '공격대'}`,
+      url: SITE_URL,
+      description: `**${after.title || '공격대'}** (${formatDate(after.dateKey)}) 레이드가 삭제됐습니다.`,
+      color: 0xef4444,
+      fields: [
+        { name: '공격대장', value: after.leader || '미정', inline: true },
+        { name: '일정', value: formatDate(after.dateKey) || '미정', inline: true },
+      ],
+      footer: { text: FOOTER },
+      timestamp: new Date().toISOString(),
+    });
+  }
+);
+
 // ── 채널 1: 레이드 생성 ──────────────────────────────────────────
 exports.notifyRaidCreated = onDocumentCreated(
   { document: 'raids/{raidId}', secrets: [WEBHOOK_ANNOUNCE] },
@@ -182,6 +205,9 @@ exports.scheduledRaidAlerts = onSchedule(
     const now = new Date();
 
     const THRESHOLDS = [
+      { hours: 72, label: '72시간' },
+      { hours: 48, label: '48시간' },
+      { hours: 24, label: '24시간' },
       { hours: 12, label: '12시간' },
       { hours: 6,  label: '6시간'  },
       { hours: 3,  label: '3시간'  },

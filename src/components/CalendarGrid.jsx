@@ -1,3 +1,4 @@
+import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
 import { buildCalendarWeeks, toDateKey, WEEKDAYS_KO } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -6,10 +7,19 @@ import { useNavigate } from 'react-router-dom';
  * 4-week calendar grid.
  * - Admin: shows a + button per non-past cell to open the raid creation form.
  * - All users: clicking a raid chip navigates to its detail page.
- * - Date format: M/D (e.g. 6/13).
+ * - Chip format: HH:MM [연합|shortName|guildName] 레이드제목
  */
+
+function chipPrefix(partyType, guilds) {
+  if (!partyType || partyType === 'union') return '연합';
+  const g = guilds.find((guild) => guild.id === partyType);
+  if (!g) return '';
+  return g.shortName || g.name;
+}
+
 export default function CalendarGrid({ raids, onCreate, isAdmin }) {
   const navigate = useNavigate();
+  const { guilds } = useApp();
   const weeks = buildCalendarWeeks();
   const todayKey = toDateKey(new Date());
 
@@ -28,8 +38,8 @@ export default function CalendarGrid({ raids, onCreate, isAdmin }) {
         {WEEKDAYS_KO.map((d, i) => (
           <div
             key={d}
-            className={`py-2 text-center text-xs font-bold ${
-              i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-base-400'
+            className={`py-2 text-center text-sm font-bold ${
+              i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-base-300'
             }`}
           >
             {d}
@@ -82,6 +92,8 @@ export default function CalendarGrid({ raids, onCreate, isAdmin }) {
                   {dayRaids.map((r) => {
                     const diff = DIFFICULTIES[r.difficulty] || DIFFICULTIES.normal;
                     const s = r.startAt.toDate();
+                    const time = `${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`;
+                    const prefix = chipPrefix(r.partyType, guilds);
                     return (
                       <span
                         key={r.id}
@@ -94,7 +106,8 @@ export default function CalendarGrid({ raids, onCreate, isAdmin }) {
                         className="block w-full truncate text-[10px] sm:text-xs font-semibold px-1 sm:px-1.5 py-0.5 rounded-md cursor-pointer hover:opacity-80 transition"
                         style={{ color: diff.color, backgroundColor: `${diff.color}1f` }}
                       >
-                        {String(s.getHours()).padStart(2, '0')}:{String(s.getMinutes()).padStart(2, '0')}{' '}
+                        {time}{' '}
+                        {prefix && <span className="opacity-75">[{prefix}]</span>}{' '}
                         {r.title || diff.label}
                       </span>
                     );

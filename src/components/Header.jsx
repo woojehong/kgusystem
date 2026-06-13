@@ -57,7 +57,7 @@ export default function Header() {
               <span className="text-2xl font-black tracking-tight bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent group-hover:to-indigo-300 transition">
                 KWGU
               </span>
-              <span className="text-sm text-base-400 font-semibold tracking-[0.25em]">한길련</span>
+              <span className="text-sm font-semibold tracking-[0.25em] bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent group-hover:to-indigo-300 transition">한.길.련</span>
             </div>
             <span className="text-[10px] text-base-500 tracking-wider leading-none">
               Korean Wow Guild Union · 한국길드연합
@@ -83,7 +83,7 @@ export default function Header() {
               <span className="text-2xl font-black tracking-tight bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">
                 KWGU
               </span>
-              <span className="text-xs text-base-400 font-semibold tracking-[0.25em]">한길련</span>
+              <span className="text-xs font-semibold tracking-[0.25em] bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">한.길.련</span>
             </div>
             <span className="text-[9px] text-base-500 tracking-wider leading-none">
               Korean Wow Guild Union · 한국길드연합

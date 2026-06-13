@@ -1,4 +1,5 @@
 import { badgeTextStyle, wclUrl, raiderUrl, armoryUrl } from '../lib/utils';
+import GuildBadge from './GuildBadge';
 
 /**
  * Applicant card — 3-row vertical layout (4 cards per row in parent grid).
@@ -50,16 +51,7 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
     >
       {/* ── 줄 1: 길드 뱃지 (중앙) ── */}
       <div className="flex justify-center mb-1">
-        <span
-          className="text-xs px-2 py-0.5 rounded-full font-semibold max-w-full truncate"
-          style={{
-            color: guildColor,
-            backgroundColor: `${guildColor}1a`,
-            border: `1px solid ${guildColor}55`,
-          }}
-        >
-          {app.guildName || '無'}
-        </span>
+        <GuildBadge guildId={app.guildId} guildName={app.guildName || '無'} guildColor={guildColor} size="xs" />
       </div>
 
       {/* ── 줄 2: 👑 + 이름 (중앙) ── */}

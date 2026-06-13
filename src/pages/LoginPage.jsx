@@ -176,7 +176,7 @@ export default function LoginPage() {
         <h1 className="text-5xl font-black tracking-tight bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">
           KWGU
         </h1>
-        <p className="text-base-300 mt-1 font-semibold tracking-[0.3em]">한길련</p>
+        <p className="mt-1 font-semibold tracking-[0.3em] bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">한.길.련</p>
       </div>
 
       <div className="w-full max-w-md card p-6">
