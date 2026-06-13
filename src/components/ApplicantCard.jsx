@@ -51,7 +51,7 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
       {/* ── 줄 1: 길드 뱃지 (중앙) ── */}
       <div className="flex justify-center mb-1">
         <span
-          className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold max-w-full truncate"
+          className="text-xs px-2 py-0.5 rounded-full font-semibold max-w-full truncate"
           style={{
             color: guildColor,
             backgroundColor: `${guildColor}1a`,
@@ -63,32 +63,34 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
       </div>
 
       {/* ── 줄 2: 👑 + 이름 (중앙) ── */}
-      <div className="flex items-center justify-center gap-0.5 min-w-0 mb-1">
+      <div className="flex items-center justify-center gap-1 min-w-0 mb-1.5">
         {app.isGuildMaster && (
-          <span className="text-xs leading-none shrink-0" title="길드장">👑</span>
+          <span className="text-sm leading-none shrink-0" title="길드장">👑</span>
         )}
         <span
-          className="font-bold text-xs truncate"
+          className="font-extrabold text-base truncate"
           style={badgeTextStyle(app.classColor)}
         >
           {app.charName}
         </span>
         {app.isReservation && (
-          <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold shrink-0">
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold shrink-0">
             예약
           </span>
         )}
       </div>
 
-      {/* ── 줄 3: 특성(좌) / 아이템레벨+순번(우) ── */}
-      <div className="flex items-center justify-between gap-1 min-w-0">
-        <span className="text-[10px] truncate" style={badgeTextStyle(app.classColor)}>
+      {/* ── 줄 3: 특성(좌) / 템렙(중앙) / 순번(우) ── */}
+      <div className="flex items-center min-w-0">
+        <span className="text-xs truncate flex-1" style={badgeTextStyle(app.classColor)}>
           {specDisplay}
         </span>
-        <div className="flex items-center gap-0.5 shrink-0">
-          {app.ilvl != null && (
-            <span className="text-[10px] text-base-200 font-medium">{app.ilvl}</span>
-          )}
+        {app.ilvl != null && (
+          <span className="text-sm font-bold text-base-100 mx-auto shrink-0">
+            {app.ilvl}
+          </span>
+        )}
+        <div className="flex justify-end shrink-0 ml-auto">
           {rank != null && <RankBadge rank={rank} />}
         </div>
       </div>
