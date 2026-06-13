@@ -236,9 +236,9 @@ export const SEED_GUILDS = [
 // ── Nickname policy ─────────────────────────────────────────────────
 
 export const NICKNAME_RULE = {
-  korean: /^[가-힣]{2,8}$/,
-  english: /^[A-Za-z]{2,12}$/,
-  hint: '한글만 2~8자 또는 영문만 2~12자 (혼용·숫자·특수문자 불가)',
+  korean: /^[가-힣]{2,7}$/,
+  english: /^[A-Za-z]{2,11}$/,
+  hint: '한글만 2~7자 또는 영문만 2~11자 (혼용·숫자·특수문자 불가)',
 };
 
 export function validateNickname(nickname) {

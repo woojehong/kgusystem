@@ -10,21 +10,61 @@ import RaidFormModal from '../components/RaidFormModal';
 
 const VIEW_MODE_KEY = 'kwgu_view_mode';
 
+// ── Filter pill helpers ──────────────────────────────────────────────
+
+/**
+ * Returns inline style for an ACTIVE category pill.
+ * - 전체 (all)  : plain white
+ * - 연합 (union): KWGU-logo gradient (white → base-400)
+ * - guild        : guild signature color
+ */
+function categoryActiveStyle(key, guilds) {
+  if (key === 'all') {
+    return { backgroundColor: '#ffffff', color: '#0f172a' };
+  }
+  if (key === 'union') {
+    return {
+      background: 'linear-gradient(135deg, #ffffff 0%, #94a3b8 100%)',
+      color: '#0f172a',
+    };
+  }
+  const guild = guilds.find((g) => g.id === key);
+  return guild
+    ? { backgroundColor: guild.color, color: '#ffffff' }
+    : { backgroundColor: '#6366f1', color: '#ffffff' };
+}
+
+/**
+ * Returns inline style for an ACTIVE difficulty pill.
+ * - 전체 (all): plain white
+ * - others    : difficulty color
+ */
+function diffActiveStyle(key) {
+  if (key === 'all') {
+    return { backgroundColor: '#ffffff', color: '#0f172a' };
+  }
+  const diff = DIFFICULTIES[key];
+  return diff
+    ? { backgroundColor: diff.color, color: '#0f172a' }
+    : { backgroundColor: '#6366f1', color: '#ffffff' };
+}
+
+// ── Page ─────────────────────────────────────────────────────────────
+
 export default function IndexPage() {
   const { isAdmin, adminMode, guilds, authReady } = useApp();
 
   const [raids, setRaids] = useState([]);
   const [counts, setCounts] = useState({});
   const [formOpen, setFormOpen] = useState(false);
-  const [formDateKey, setFormDateKey] = useState(null); // null = today default in modal
+  const [formDateKey, setFormDateKey] = useState(null);
   const [now, setNow] = useState(() => Date.now());
 
-  // View mode: 'calendar' | 'card' — persists in localStorage, independent of adminMode.
-  // Initialises from localStorage. If no stored value AND auth just resolved as admin → calendar.
+  // View mode: 'calendar' | 'card' — persists in localStorage
   const [viewMode, setViewMode] = useState(() => {
     const stored = localStorage.getItem(VIEW_MODE_KEY);
     if (stored === 'calendar' || stored === 'card') return stored;
-    return 'card'; // safe default; corrected below once auth resolves
+    return 'card'; // corrected below once auth resolves
   });
   const viewInitialized = useRef(false);
   useEffect(() => {
@@ -69,7 +109,7 @@ export default function IndexPage() {
     [guilds]
   );
 
-  // Apply category + difficulty filters (card view only)
+  // Category + difficulty filters — applied to BOTH calendar and card views
   const filteredRaids = useMemo(
     () =>
       activeRaids
@@ -106,9 +146,7 @@ export default function IndexPage() {
       );
       if (!cancelled) setCounts(Object.fromEntries(entries));
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [raids.length, now]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const switchView = (mode) => {
@@ -122,91 +160,111 @@ export default function IndexPage() {
   };
 
   const openFormNew = () => {
-    setFormDateKey(null); // modal defaults to today
+    setFormDateKey(null);
     setFormOpen(true);
   };
 
   const showAdmin = isAdmin && adminMode;
   const isCalendar = viewMode === 'calendar';
 
+  // Category pill definitions
+  const categoryPills = [
+    { key: 'all', label: '전체' },
+    { key: 'union', label: '연합' },
+    ...filterGuilds.map((g) => ({ key: g.id, label: g.name })),
+  ];
+
+  // Difficulty pill definitions
+  const diffPills = [
+    { key: 'all', label: '전체' },
+    ...Object.values(DIFFICULTIES).map((d) => ({ key: d.id, label: d.label })),
+  ];
+
   return (
     <div className="min-h-screen pb-16">
       <Header />
-      <main className="max-w-6xl mx-auto px-4 mt-6">
+      <main className="max-w-6xl mx-auto px-4 mt-5">
 
-        {/* ── Filter bar + view toggle ── */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* ── Filter rows ── */}
+        <div className="space-y-2 mb-5">
 
-          {/* Category filter */}
-          <div className="flex items-center gap-1 flex-wrap">
-            {[
-              { key: 'all', label: '전체' },
-              { key: 'union', label: '연합' },
-              ...filterGuilds.map((g) => ({ key: g.id, label: g.name })),
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setCategoryFilter(key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                  categoryFilter === key
-                    ? 'bg-indigo-500 text-white'
-                    : 'bg-base-800 text-base-400 hover:text-base-200 border border-base-700'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          {/* Row 1: 구분 */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-base-400 w-8 shrink-0">구분</span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {categoryPills.map(({ key, label }) => {
+                const isActive = categoryFilter === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setCategoryFilter(key)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all border"
+                    style={
+                      isActive
+                        ? { ...categoryActiveStyle(key, filterGuilds), borderColor: 'transparent' }
+                        : { backgroundColor: 'transparent', color: '#94a3b8', borderColor: '#334155' }
+                    }
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Difficulty filter */}
-          <div className="flex items-center gap-1">
-            {[
-              { key: 'all', label: '전체' },
-              ...Object.values(DIFFICULTIES).map((d) => ({ key: d.id, label: d.label })),
-            ].map(({ key, label }) => (
+          {/* Row 2: 난이도 */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-base-400 w-8 shrink-0">난이도</span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {diffPills.map(({ key, label }) => {
+                const isActive = diffFilter === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setDiffFilter(key)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all border"
+                    style={
+                      isActive
+                        ? { ...diffActiveStyle(key), borderColor: 'transparent' }
+                        : { backgroundColor: 'transparent', color: '#94a3b8', borderColor: '#334155' }
+                    }
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* View toggle — right end of 난이도 row */}
+            <div className="ml-auto flex items-center gap-1 p-0.5 rounded-xl bg-base-850 border border-base-700">
               <button
-                key={key}
                 type="button"
-                onClick={() => setDiffFilter(key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                  diffFilter === key
-                    ? 'bg-base-600 text-white'
-                    : 'bg-base-800 text-base-400 hover:text-base-200 border border-base-700'
+                onClick={() => switchView('calendar')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  isCalendar ? 'bg-base-700 text-white' : 'text-base-400 hover:text-base-200'
                 }`}
               >
-                {label}
+                달력뷰
               </button>
-            ))}
-          </div>
-
-          {/* View toggle — right-aligned */}
-          <div className="ml-auto flex items-center gap-1 p-1 rounded-xl bg-base-850 border border-base-700">
-            <button
-              type="button"
-              onClick={() => switchView('calendar')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                isCalendar ? 'bg-base-700 text-white' : 'text-base-400 hover:text-base-200'
-              }`}
-            >
-              달력뷰
-            </button>
-            <button
-              type="button"
-              onClick={() => switchView('card')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                !isCalendar ? 'bg-base-700 text-white' : 'text-base-400 hover:text-base-200'
-              }`}
-            >
-              카드뷰
-            </button>
+              <button
+                type="button"
+                onClick={() => switchView('card')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  !isCalendar ? 'bg-base-700 text-white' : 'text-base-400 hover:text-base-200'
+                }`}
+              >
+                카드뷰
+              </button>
+            </div>
           </div>
         </div>
 
         {/* ── Content ── */}
         {isCalendar ? (
           <CalendarGrid
-            raids={activeRaids}
+            raids={filteredRaids}
             onCreate={openFormForDate}
             isAdmin={showAdmin}
           />
@@ -219,7 +277,7 @@ export default function IndexPage() {
                   onClick={openFormNew}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/35 border border-indigo-500/40 text-indigo-200 text-sm font-semibold transition"
                 >
-                  + 레이드 추가
+                  + 일정 추가
                 </button>
               </div>
             )}

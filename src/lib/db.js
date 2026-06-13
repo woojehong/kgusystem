@@ -37,7 +37,8 @@ export async function seedInitialData() {
   batch.set(doc(db, 'gamedata', 'servers'), { list: SERVERS });
   SEED_GUILDS.forEach((g) => {
     const { id, ...rest } = g;
-    batch.set(doc(db, 'guilds', id), { ...rest, createdAt: serverTimestamp() });
+    // merge: true preserves any edits (name, color, showInFilter, etc.) made after seeding
+    batch.set(doc(db, 'guilds', id), { ...rest, createdAt: serverTimestamp() }, { merge: true });
   });
   batch.set(doc(db, 'meta', 'seed'), { done: true, at: serverTimestamp() });
   await batch.commit();

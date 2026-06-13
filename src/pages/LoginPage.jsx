@@ -2,9 +2,39 @@ import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { signIn, signUp, lookupNickname } from '../lib/auth';
-import { validateNickname, NICKNAME_RULE, PIN_RULE } from '../lib/constants';
+import { PIN_RULE } from '../lib/constants';
 import CharacterEditor, { emptyCharacter, validateCharacter } from '../components/CharacterEditor';
 import GuildBadge from '../components/GuildBadge';
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
+const KOREAN_ONLY = /^[가-힣]+$/;
+const ENGLISH_ONLY = /^[A-Za-z]+$/;
+
+/**
+ * Returns a specific error string, or null if valid.
+ * Korean: 2–7 chars. English: 2–11 chars. No mixing, numbers, or symbols.
+ */
+function validateNicknameDetailed(name) {
+  if (!name || name.length === 0) return '닉네임을 입력해주세요.';
+  if (name.length === 1) return '닉네임이 너무 짧습니다. (최소 2자)';
+
+  const isKo = KOREAN_ONLY.test(name);
+  const isEn = ENGLISH_ONLY.test(name);
+
+  if (!isKo && !isEn) {
+    return '한글만 또는 영문만 사용 가능합니다. (혼용·숫자·특수문자 불가)';
+  }
+  if (isKo && name.length >= 8) {
+    return '닉네임이 너무 깁니다. (한글 최대 7자)';
+  }
+  if (isEn && name.length >= 12) {
+    return '닉네임이 너무 깁니다. (영문 최대 11자)';
+  }
+  return null;
+}
+
+// ── Sub-components ───────────────────────────────────────────────────
 
 function PinInput({ value, onChange, autoFocus }) {
   return (
@@ -21,6 +51,8 @@ function PinInput({ value, onChange, autoFocus }) {
     />
   );
 }
+
+// ── Page ─────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -42,11 +74,29 @@ export default function LoginPage() {
     return <Navigate to={profile.role === 'super' ? '/kga_adminnn' : '/'} replace />;
   }
 
+  // Nickname input handler: silently block numbers/symbols and mixing
+  const handleNicknameChange = (e) => {
+    const raw = e.target.value;
+    // Strip anything that's not Korean or English
+    const stripped = raw.replace(/[^가-힣A-Za-z]/g, '');
+    // Prevent mixing: detect language of first character and enforce it
+    if (stripped.length === 0) {
+      setNickname('');
+      return;
+    }
+    const firstIsKo = /[가-힣]/.test(stripped[0]);
+    const filtered = firstIsKo
+      ? stripped.replace(/[A-Za-z]/g, '')
+      : stripped.replace(/[가-힣]/g, '');
+    setNickname(filtered);
+  };
+
   const handleNicknameNext = async () => {
     setError('');
     const name = nickname.trim();
-    if (!validateNickname(name)) {
-      setError(NICKNAME_RULE.hint);
+    const validationError = validateNicknameDetailed(name);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setBusy(true);
@@ -130,14 +180,17 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10">
+      {/* Logo */}
       <div className="text-center mb-8">
         <h1 className="text-5xl font-black tracking-tight bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">
           KGU
         </h1>
-        <p className="text-base-400 mt-1 font-medium tracking-[0.3em]">한길련</p>
+        <p className="text-base-300 mt-1 font-semibold tracking-[0.3em]">한길련</p>
       </div>
 
       <div className="w-full max-w-md card p-6">
+
+        {/* ── 닉네임 입력 ── */}
         {mode === 'nickname' && (
           <div className="space-y-4">
             <div>
@@ -146,32 +199,56 @@ export default function LoginPage() {
                 className="input-base"
                 value={nickname}
                 autoFocus
-                onChange={(e) => setNickname(e.target.value)}
+                onChange={handleNicknameChange}
                 onKeyDown={(e) => e.key === 'Enter' && handleNicknameNext()}
-                placeholder={NICKNAME_RULE.hint}
+                placeholder="한글 2~7자 또는 영문 2~11자"
               />
+              <p className="mt-1.5 text-xs text-base-400">
+                한글만 또는 영문만 사용 가능 · 혼용·숫자·특수문자 불가
+              </p>
             </div>
-            <button type="button" className="btn-primary w-full" disabled={busy} onClick={handleNicknameNext}>
+
+            <button
+              type="button"
+              className="btn-primary w-full"
+              disabled={busy}
+              onClick={handleNicknameNext}
+            >
               {busy ? '확인 중...' : '다음'}
             </button>
-            <p className="text-xs text-base-400 text-center">
-              처음이라면 닉네임 입력 후 바로 가입이 시작됩니다.
-            </p>
+
+            {/* 닉네임 안내 */}
+            <div className="p-4 rounded-xl bg-base-850 border border-base-600 space-y-2">
+              <p className="text-sm font-bold text-base-100">💡 닉네임 안내</p>
+              <p className="text-sm text-base-200 leading-relaxed">
+                앞으로 로그인할 때 사용할 닉네임입니다. 편한 걸 사용하셔도 됩니다.
+                인게임 아이디와 동일할 필요는 없습니다.
+              </p>
+              <p className="text-sm font-semibold text-amber-300">
+                ⚠ 한번 정한 닉네임은 꼭 기억해주세요. 찾을 방법이 없습니다.
+              </p>
+            </div>
           </div>
         )}
 
+        {/* ── PIN 로그인 ── */}
         {mode === 'pin' && (
           <div className="space-y-4">
             <p className="text-center text-base-200">
               <span className="font-bold text-white">{nickname}</span> 님, PIN을 입력해주세요
             </p>
             <PinInput value={pin} onChange={setPin} autoFocus />
-            <button type="button" className="btn-primary w-full" disabled={busy} onClick={handleLogin}>
+            <button
+              type="button"
+              className="btn-primary w-full"
+              disabled={busy}
+              onClick={handleLogin}
+            >
               {busy ? '로그인 중...' : '로그인'}
             </button>
             <button
               type="button"
-              className="w-full text-sm text-base-400 hover:text-base-200 transition"
+              className="w-full text-sm text-base-300 hover:text-base-100 transition"
               onClick={() => {
                 setMode('nickname');
                 setPin('');
@@ -183,13 +260,15 @@ export default function LoginPage() {
           </div>
         )}
 
+        {/* ── 회원가입 ── */}
         {mode === 'signup' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="font-bold">
-                회원가입 <span className="text-indigo-400">{nickname}</span>
+              <p className="font-bold text-base-100">
+                회원가입{' '}
+                <span className="text-indigo-300">{nickname}</span>
               </p>
-              <span className="text-xs text-base-400">{signupStep + 1} / 3</span>
+              <span className="text-xs text-base-300 font-semibold">{signupStep + 1} / 3</span>
             </div>
 
             {signupStep === 0 && (
@@ -217,11 +296,13 @@ export default function LoginPage() {
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition ${
                         guildId === g.id
                           ? 'border-indigo-400 bg-indigo-500/10'
-                          : 'border-base-700 bg-base-800 hover:bg-base-700'
+                          : 'border-base-600 bg-base-800 hover:bg-base-700'
                       }`}
                     >
                       <GuildBadge guildId={g.id} />
-                      {guildId === g.id && <span className="text-indigo-400 text-sm">✓</span>}
+                      {guildId === g.id && (
+                        <span className="text-indigo-300 text-sm font-bold">✓</span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -230,7 +311,7 @@ export default function LoginPage() {
 
             {signupStep === 2 && (
               <>
-                <p className="text-sm text-base-400">대표 캐릭터를 등록해주세요.</p>
+                <p className="text-sm text-base-200">대표 캐릭터를 등록해주세요.</p>
                 <CharacterEditor value={character} onChange={setCharacter} />
               </>
             )}
@@ -253,14 +334,20 @@ export default function LoginPage() {
                   다음
                 </button>
               ) : (
-                <button type="button" className="btn-primary flex-1" disabled={busy} onClick={handleSignup}>
+                <button
+                  type="button"
+                  className="btn-primary flex-1"
+                  disabled={busy}
+                  onClick={handleSignup}
+                >
                   {busy ? '가입 중...' : '가입 완료'}
                 </button>
               )}
             </div>
+
             <button
               type="button"
-              className="w-full text-sm text-base-400 hover:text-base-200 transition"
+              className="w-full text-sm text-base-300 hover:text-base-100 transition"
               onClick={() => {
                 setMode('nickname');
                 setError('');
@@ -271,7 +358,9 @@ export default function LoginPage() {
           </div>
         )}
 
-        {error && <p className="mt-3 text-sm text-red-400 text-center">{error}</p>}
+        {error && (
+          <p className="mt-3 text-sm text-red-400 text-center font-medium">{error}</p>
+        )}
       </div>
     </div>
   );

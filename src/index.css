@@ -38,6 +38,6 @@ body {
     @apply bg-base-800 border border-base-700 rounded-2xl;
   }
   .label-sm {
-    @apply block text-sm font-medium text-base-200 mb-1.5;
+    @apply block text-sm font-semibold text-base-100 mb-1.5;
   }
 }

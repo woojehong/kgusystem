@@ -749,10 +749,18 @@ function SeedTab() {
     <div className="card p-5 space-y-3">
       <p className="font-bold">초기 데이터 설치</p>
       <p className="text-sm text-base-400 leading-relaxed">
-        길드 5개(소속 없음 포함), 클래스 13종·특성 39종(한밤 기준, 포식 포함), 공격대 시너지
-        14종, 한국 서버 목록을 Firestore에 설치합니다. 최초 1회만 실행하면 됩니다.
-        {seeded && ' 다시 실행하면 기본값으로 덮어씁니다.'}
+        클래스 13종·특성 39종(한밤 기준, 포식 포함), 공격대 시너지 14종, 한국 서버 목록을
+        Firestore에 설치합니다. 최초 1회만 실행하면 됩니다.
       </p>
+      {seeded && (
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-sm text-amber-300 space-y-1">
+          <p className="font-bold">⚠️ 재설치 주의사항</p>
+          <p className="text-amber-200/80">
+            길드 데이터는 <b>기존 편집 내용을 보존</b>합니다 (이름·색상·필터 설정 유지).
+            클래스·시너지·서버 목록은 기본값으로 초기화됩니다.
+          </p>
+        </div>
+      )}
       <button type="button" className="btn-primary" disabled={busy || seeded === null} onClick={run}>
         {busy ? '설치 중...' : seeded ? '재설치 (덮어쓰기)' : '초기 데이터 설치'}
       </button>
@@ -769,8 +777,16 @@ export default function SuperAdminPage() {
   const [guildList, setGuildList] = useState([]);
 
   const reloadGuilds = async () => {
-    const snap = await getDocs(collection(db, 'guilds'));
-    setGuildList(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    try {
+      const snap = await getDocs(collection(db, 'guilds'));
+      // Only update state when the query actually returns data to avoid
+      // replacing the list with an empty array on transient failures.
+      if (!snap.empty) {
+        setGuildList(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      }
+    } catch {
+      // Silently ignore — effectiveGuilds will fall back to context guilds
+    }
   };
 
   useEffect(() => {
