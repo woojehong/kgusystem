@@ -68,7 +68,7 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
           <span className="text-sm leading-none shrink-0" title="길드장">👑</span>
         )}
         <span
-          className="font-extrabold text-base truncate"
+          className="font-extrabold text-2xl truncate"
           style={badgeTextStyle(app.classColor)}
         >
           {app.charName}
@@ -81,16 +81,14 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
       </div>
 
       {/* ── 줄 3: 특성(좌) / 템렙(중앙) / 순번(우) ── */}
-      <div className="flex items-center min-w-0">
-        <span className="text-xs truncate flex-1" style={badgeTextStyle(app.classColor)}>
+      <div className="grid items-center min-w-0" style={{ gridTemplateColumns: '1fr auto 1fr' }}>
+        <span className="text-xs truncate" style={badgeTextStyle(app.classColor)}>
           {specDisplay}
         </span>
-        {app.ilvl != null && (
-          <span className="text-sm font-bold text-base-100 mx-auto shrink-0">
-            {app.ilvl}
-          </span>
-        )}
-        <div className="flex justify-end shrink-0 ml-auto">
+        <span className="text-sm font-bold text-base-100 text-center px-1">
+          {app.ilvl != null ? app.ilvl : ''}
+        </span>
+        <div className="flex justify-end">
           {rank != null && <RankBadge rank={rank} />}
         </div>
       </div>
