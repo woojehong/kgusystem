@@ -9,7 +9,6 @@ import {
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, collection } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { resolveUserId } from '../lib/auth';
 import { loadGamedata } from '../lib/db';
 import { sortGuilds } from '../lib/utils';
 import { CLASSES, SYNERGIES, SERVERS, SEED_GUILDS } from '../lib/constants';
@@ -38,20 +37,42 @@ export function AppProvider({ children }) {
     localStorage.setItem(ADMIN_MODE_KEY, on ? 'on' : 'off');
   }, []);
 
-  // Auth session → internal userId
+  // Auth session → internal userId.
+  // We subscribe to the authlinks/{uid} document instead of reading it once,
+  // so that sign-up (which writes the link a moment after the auth account is
+  // created) resolves the very instant the link is committed. This removes the
+  // race that could otherwise leave a freshly registered user stuck on the
+  // loading screen until a manual refresh.
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    let unsubLink = null;
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
       setAuthUser(user);
+      if (unsubLink) {
+        unsubLink();
+        unsubLink = null;
+      }
       if (user) {
-        const uid = await resolveUserId(user.uid).catch(() => null);
-        setUserId(uid);
+        unsubLink = onSnapshot(
+          doc(db, 'authlinks', user.uid),
+          (snap) => {
+            setUserId(snap.exists() ? snap.data().userId : null);
+            setAuthReady(true);
+          },
+          () => {
+            setUserId(null);
+            setAuthReady(true);
+          }
+        );
       } else {
         setUserId(null);
         setProfile(null);
+        setAuthReady(true);
       }
-      setAuthReady(true);
     });
-    return unsub;
+    return () => {
+      if (unsubLink) unsubLink();
+      unsubAuth();
+    };
   }, []);
 
   // Live profile subscription

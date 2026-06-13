@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { getCaps, getClass, getSpec, badgeTextStyle } from '../lib/utils';
 import { submitApplication, updateApplication, fetchMemo } from '../lib/db';
+import { useToast } from './Toast';
 import Modal from './Modal';
 
 function Toggle({ on, onChange, disabled }) {
@@ -33,6 +34,7 @@ function Toggle({ on, onChange, disabled }) {
  */
 export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
   const { userId, profile, gamedata, guilds } = useApp();
+  const toast = useToast();
   const isEdit = !!existingApp;
 
   const characters = profile?.characters || [];
@@ -151,8 +153,10 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
       const data = buildAppData(status, resetSeq);
       if (isEdit) {
         await updateApplication(raid.id, existingApp.id, data, memoText);
+        toast('신청 정보가 수정되었습니다 ✓');
       } else {
         await submitApplication(raid.id, userId, data, memoText);
+        toast(status === 'wait' ? '대기 목록에 등록되었습니다' : '파티 참가 신청이 완료되었습니다 ✓');
       }
       onClose(true);
     } catch {

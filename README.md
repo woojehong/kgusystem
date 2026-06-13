@@ -1,10 +1,9 @@
-# KGU System — Korean Guild Union (한길련)
+# KWGU System — Korean Wow Guild Union (한길련)
 
 World of Warcraft 길드 연합 레이드 신청/관리 플랫폼.
 
-- **Stack**: React (Vite) · Tailwind CSS · Firebase Auth · Firestore
+- **Stack**: React (Vite) · Tailwind CSS · Firebase Auth · Firestore · Cloud Functions
 - **Deploy**: GitHub Pages (GitHub Actions 자동 배포)
-- **Docs**: [SETUP_GUIDE.md](./SETUP_GUIDE.md) — 최초 설치 가이드
 
 ## Scripts
 

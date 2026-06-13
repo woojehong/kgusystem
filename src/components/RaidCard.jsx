@@ -1,9 +1,15 @@
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
-import { formatTimeRange, getCaps, countFillColor } from '../lib/utils';
+import { formatTimeRange, getCaps } from '../lib/utils';
 
-const ROLE_COLORS_CARD = { '탱커': '#38bdf8', '힐러': '#34d399', '딜러': '#fb7185' };
+// Role colours shared across the app (tank / healer / dps).
+const ROLE_META = [
+  { key: 'tank', label: 'T', color: '#38bdf8' },
+  { key: 'healer', label: 'H', color: '#34d399' },
+  { key: 'dps', label: 'D', color: '#fb7185' },
+];
+const GOLD = '#fbbf24';
 
 /** Returns the display label for a raid's party type. */
 function partyTypeLabel(partyType, guilds) {
@@ -20,38 +26,89 @@ function shortDate(dateKey) {
   return `${m}/${d} (${weekdays[date.getDay()]})`;
 }
 
-export default function RaidCard({ raid, counts }) {
+/**
+ * Position capacity bar — no numbers, colour-coded by role.
+ * Fills proportionally; once the position is full the whole bar turns gold.
+ */
+function CapacityBar({ label, current, cap, color }) {
+  const full = cap > 0 && current >= cap;
+  const pct = cap > 0 ? Math.min(100, Math.round((current / cap) * 100)) : 0;
+  return (
+    <div className="flex items-center gap-1.5" title={`${label} ${current}/${cap}`}>
+      <span
+        className="text-[10px] font-black w-3 text-center shrink-0"
+        style={{ color: full ? GOLD : color }}
+      >
+        {label}
+      </span>
+      <div className="flex-1 h-2 rounded-full bg-base-900/70 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{
+            width: full ? '100%' : `${pct}%`,
+            backgroundColor: full ? GOLD : color,
+            boxShadow: full ? `0 0 6px ${GOLD}aa` : 'none',
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default function RaidCard({ raid, counts, mine }) {
   const { guilds } = useApp();
   const diff = DIFFICULTIES[raid.difficulty] || DIFFICULTIES.normal;
   const caps = getCaps(raid);
   const startAt = raid.startAt.toDate();
   const endAt = raid.endAt.toDate();
 
-  const rows = [
-    ['탱커', counts?.tank ?? 0, caps.tank],
-    ['힐러', counts?.healer ?? 0, caps.healer],
-    ['딜러', counts?.dps ?? 0, caps.dps],
-  ];
+  const allFull = ROLE_META.every((r) => (counts?.[r.key] ?? 0) >= caps[r.key]);
 
   return (
     <Link
       to={`/raid/${raid.id}`}
-      className="relative block card overflow-hidden hover:border-base-600 hover:-translate-y-0.5 transition-all"
+      className={`relative block card overflow-hidden hover:border-base-600 hover:-translate-y-0.5 transition-all ${
+        mine ? 'ring-1 ring-indigo-400/60' : ''
+      }`}
       style={{ backgroundColor: diff.soft }}
     >
       <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
+
+      {/* 마감 리본 (전체 정원 충족 시) */}
+      {allFull && (
+        <span
+          className="absolute -right-9 top-3 rotate-45 px-9 py-0.5 text-[10px] font-black text-base-900 shadow"
+          style={{ backgroundColor: GOLD }}
+        >
+          마감
+        </span>
+      )}
+
       <div className="p-4 pl-5">
-        {/* Category */}
-        <p className="text-xs font-bold tracking-wide text-base-400 uppercase mb-1">
-          {partyTypeLabel(raid.partyType, guilds)}
-        </p>
+        {/* Category + 내 신청 표시 */}
+        <div className="flex items-center gap-1.5 mb-1">
+          <p className="text-xs font-bold tracking-wide text-base-400 uppercase">
+            {partyTypeLabel(raid.partyType, guilds)}
+          </p>
+          {mine && (
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ${
+                mine === 'active'
+                  ? 'bg-indigo-500/20 text-indigo-300'
+                  : 'bg-amber-500/20 text-amber-300'
+              }`}
+            >
+              {mine === 'active' ? '신청함' : '대기중'}
+            </span>
+          )}
+        </div>
 
         {/* Title */}
         <p className="font-bold text-base leading-snug break-keep">
           {raid.title || `${diff.label} 공격대`}
         </p>
 
-        {/* Difficulty + Date (same weight/size) */}
+        {/* Difficulty + Date */}
         <div className="mt-2 flex items-center gap-2 flex-wrap">
           <span
             className="text-sm font-bold px-2 py-0.5 rounded-md shrink-0"
@@ -72,15 +129,16 @@ export default function RaidCard({ raid, counts }) {
           공격대장 : <span className="font-semibold text-base-100">{raid.leader}</span>
         </p>
 
-        {/* Headcounts */}
-        <div className="mt-2.5 grid grid-cols-3 gap-1 text-center">
-          {rows.map(([label, cur, cap]) => (
-            <div key={label} className="rounded-lg bg-base-900/50 py-1.5">
-              <p className="text-[10px] font-semibold" style={{ color: ROLE_COLORS_CARD[label] || '#94a3b8' }}>{label}</p>
-              <p className={`text-sm font-bold ${countFillColor(cur, cap)}`}>
-                {cur}/{cap}
-              </p>
-            </div>
+        {/* 정원 진행바 */}
+        <div className="mt-3 space-y-1.5">
+          {ROLE_META.map((r) => (
+            <CapacityBar
+              key={r.key}
+              label={r.label}
+              current={counts?.[r.key] ?? 0}
+              cap={caps[r.key]}
+              color={r.color}
+            />
           ))}
         </div>
       </div>

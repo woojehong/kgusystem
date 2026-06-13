@@ -12,7 +12,7 @@ function chipPrefix(partyType, guilds) {
 
 const ROLE_COLORS = { tank: '#38bdf8', healer: '#34d399', dps: '#fb7185' };
 
-export default function CalendarGrid({ raids, counts = {}, onCreate, isAdmin }) {
+export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreate, isAdmin }) {
   const navigate = useNavigate();
   const { guilds } = useApp();
   const weeks = buildCalendarWeeks();
@@ -75,7 +75,7 @@ export default function CalendarGrid({ raids, counts = {}, onCreate, isAdmin }) 
                     <button
                       type="button"
                       onClick={() => onCreate(key)}
-                      className="w-5 h-5 rounded-md bg-base-700 hover:bg-indigo-500/50 text-base-300 hover:text-white font-bold text-xs transition leading-none"
+                      className="w-7 h-7 sm:w-5 sm:h-5 rounded-md bg-base-700 hover:bg-indigo-500/50 text-base-300 hover:text-white font-bold text-sm sm:text-xs transition leading-none flex items-center justify-center"
                       title="레이드 추가"
                     >
                       +
@@ -90,6 +90,7 @@ export default function CalendarGrid({ raids, counts = {}, onCreate, isAdmin }) 
                     const s = r.startAt.toDate();
                     const time = `${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`;
                     const prefix = chipPrefix(r.partyType, guilds);
+                    const mine = mineMap[r.id];
                     return (
                       <div
                         key={r.id}
@@ -97,11 +98,19 @@ export default function CalendarGrid({ raids, counts = {}, onCreate, isAdmin }) 
                         tabIndex={0}
                         onClick={() => navigate(`/raid/${r.id}`)}
                         onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/raid/${r.id}`); }}
-                        className="w-full text-[10px] sm:text-xs font-semibold px-1 sm:px-1.5 py-1 rounded-md cursor-pointer hover:opacity-80 transition leading-tight"
+                        className={`w-full text-[10px] sm:text-xs font-semibold px-1.5 py-1.5 sm:py-1 rounded-md cursor-pointer hover:opacity-80 transition leading-tight min-h-[44px] sm:min-h-0 flex flex-col justify-center ${
+                          mine ? 'ring-1 ring-indigo-400/70' : ''
+                        }`}
                         style={{ color: diff.color, backgroundColor: `${diff.color}1f` }}
                       >
-                        {/* 줄 1: 시간 + [bracket] */}
+                        {/* 줄 1: 시간 + [bracket] (+ 내 신청 표시) */}
                         <div className="truncate opacity-80">
+                          {mine && (
+                            <span
+                              className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400 mr-1 align-middle"
+                              title={mine === 'active' ? '신청함' : '대기중'}
+                            />
+                          )}
                           {time}{prefix && ` [${prefix}]`}
                         </div>
                         {/* 줄 2: 레이드 제목 */}

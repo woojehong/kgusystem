@@ -1,4 +1,4 @@
-import { CLASSES, DIFFICULTIES, TANK_CAP, SERVERS } from './constants';
+import { DIFFICULTIES, TANK_CAP, SERVERS } from './constants';
 
 // ── Class / spec lookups ────────────────────────────────────────────
 
@@ -11,8 +11,6 @@ export function getSpec(classes, classId, specId) {
   if (!cls) return null;
   return cls.specs.find((s) => s.id === specId) || null;
 }
-
-export const FALLBACK_CLASSES = CLASSES;
 
 // ── Date helpers (KST local time) ───────────────────────────────────
 

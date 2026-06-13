@@ -28,6 +28,7 @@ import {
 } from '../lib/utils';
 import Modal from '../components/Modal';
 import GuildBadge, { buildBadgeStyles } from '../components/GuildBadge';
+import { validateEnglishName } from '../lib/guildPage';
 
 // ── Login / bootstrap ───────────────────────────────────────────────
 
@@ -75,7 +76,9 @@ function SuperLogin() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
-      <h1 className="text-2xl font-black mb-1">KWGU 시스템 관리</h1>
+      <h1 className="text-2xl font-black mb-1">
+        <span className="bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">KWGU</span> 시스템 관리
+      </h1>
       <p className="text-sm text-base-400 mb-6">
         {bootstrap ? '최초 실행 — 슈퍼관리자 계정을 생성합니다' : '슈퍼관리자 인증'}
       </p>
@@ -583,6 +586,7 @@ function GuildEditModal({ guild, onClose }) {
   // ── 기본정보 tab state ─────────────────────────────────────────
   const [name, setName] = useState(guild.name);
   const [shortName, setShortName] = useState(guild.shortName || '');
+  const [englishName, setEnglishName] = useState(guild.englishName || '');
   const [color, setColor] = useState(guild.color || '#7dd3fc');
   const [logoPath, setLogoPath] = useState(guild.logoPath || '');
   const [showInFilter, setShowInFilter] = useState(guild.showInFilter !== false);
@@ -628,12 +632,18 @@ function GuildEditModal({ guild, onClose }) {
     const sn = shortName.trim();
     const snLen = [...sn].length;
     if (sn && snLen > 4) { setError('약식명은 한글/영문 4자 이하로 입력해주세요.'); return; }
+    const en = englishName.trim();
+    if (en) {
+      const enErr = validateEnglishName(en);
+      if (enErr) { setError(enErr); return; }
+    }
     setBusy(true);
     try {
       const id = guild.id || randomId('guild_');
       await saveGuild(id, {
         name: name.trim(),
         shortName: sn,
+        englishName: en,
         color,
         logoPath: logoPath.trim(),
         isNone: !!guild.isNone,
@@ -693,6 +703,18 @@ function GuildEditModal({ guild, onClose }) {
               placeholder="예: 스타폴, Star"
               maxLength={8}
             />
+          </div>
+          <div>
+            <label className="label-sm">영문명 <span className="text-base-500 font-normal">(로고 파일명 · 페이지 주소 · 슈퍼관리자만 변경)</span></label>
+            <input
+              className="input-base"
+              value={englishName}
+              onChange={(e) => setEnglishName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              placeholder="예: starfall"
+            />
+            <p className="text-[11px] text-base-400 mt-1">
+              영문 소문자·숫자·하이픈(-)만. 로고는 <code className="text-base-300">public/guildflag/영문명.png</code>, 주소는 <code className="text-base-300">/guild/영문명</code>.
+            </p>
           </div>
           <div>
             <label className="label-sm">시그니처 컬러</label>
@@ -1217,7 +1239,11 @@ export default function SuperAdminPage() {
   );
 
   if (!authReady) {
-    return <div className="min-h-screen flex items-center justify-center text-base-400 animate-pulse">KGU</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="animate-pulse text-lg font-black bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">KWGU</span>
+      </div>
+    );
   }
 
   if (!authUser || (profile && !isSuper)) {
@@ -1233,11 +1259,12 @@ export default function SuperAdminPage() {
       <header className="sticky top-0 z-40 bg-base-900/90 backdrop-blur border-b border-base-800">
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
           <p className="font-black">
-            KWGU <span className="text-indigo-400 text-sm font-bold">시스템 관리</span>
+            <span className="bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">KWGU</span>{' '}
+            <span className="text-indigo-400 text-sm font-bold">시스템 관리</span>
           </p>
           <div className="flex items-center gap-3">
             <a
-              href="/"
+              href={import.meta.env.BASE_URL}
               target="_blank"
               rel="noreferrer"
               className="text-xs text-base-400 hover:text-base-200 transition"

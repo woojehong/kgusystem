@@ -15,6 +15,7 @@ import Header from '../components/Header';
 import SynergyBoard from '../components/SynergyBoard';
 import SwapList from '../components/SwapList';
 import ApplicantCard from '../components/ApplicantCard';
+import { useToast } from '../components/Toast';
 import ApplyModal from '../components/ApplyModal';
 import ReservationModal from '../components/ReservationModal';
 import AdminAppEditModal from '../components/AdminAppEditModal';
@@ -68,6 +69,7 @@ function useCanEdit(raid, profile, isAdmin, isSuper, adminMode) {
 export default function RaidDetailPage() {
   const { raidId } = useParams();
   const { userId, isAdmin, isSuper, adminMode, profile } = useApp();
+  const toast = useToast();
   const adminView = isAdmin && adminMode;
 
   const [raid, setRaid] = useState(null);
@@ -462,7 +464,12 @@ export default function RaidDetailPage() {
               type="button"
               className="btn-danger flex-1"
               onClick={async () => {
-                await cancelApplication(raid.id, userId).catch(() => {});
+                try {
+                  await cancelApplication(raid.id, userId);
+                  toast('신청이 취소되었습니다');
+                } catch {
+                  toast('취소에 실패했습니다', 'error');
+                }
                 setCancelConfirm(false);
               }}
             >

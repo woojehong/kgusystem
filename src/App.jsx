@@ -4,13 +4,14 @@ import { SUPER_ADMIN_PATH } from './lib/constants';
 import LoginPage from './pages/LoginPage';
 import IndexPage from './pages/IndexPage';
 import RaidDetailPage from './pages/RaidDetailPage';
+import GuildPage from './pages/GuildPage';
 import SuperAdminPage from './pages/SuperAdminPage';
 import NoticePopup from './components/NoticePopup';
 
 function Loading() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="text-base-400 animate-pulse text-lg font-medium">KWGU</div>
+      <div className="animate-pulse text-lg font-black bg-gradient-to-b from-white to-base-400 bg-clip-text text-transparent">KWGU</div>
     </div>
   );
 }
@@ -44,6 +45,14 @@ export default function App() {
           element={
             <RequireAuth>
               <RaidDetailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/guild/:slug"
+          element={
+            <RequireAuth>
+              <GuildPage />
             </RequireAuth>
           }
         />

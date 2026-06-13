@@ -7,8 +7,10 @@ import { saveGuild } from '../lib/db';
 import { PIN_RULE, NICKNAME_RULE } from '../lib/constants';
 import Modal from './Modal';
 import GuildBadge, { buildBadgeStyles } from './GuildBadge';
+import GuildPageEditor from './GuildPageEditor';
 import CharacterEditor, { emptyCharacter, validateCharacter } from './CharacterEditor';
 import { badgeTextStyle, getClass, getSpec } from '../lib/utils';
+import { validateEnglishName, normalizePage } from '../lib/guildPage';
 
 const MAX_CHARACTERS = 10;
 
@@ -414,6 +416,9 @@ function GuildTab({ onClose }) {
   const [name, setName] = useState(guild?.name || '');
   const [shortName, setShortName] = useState(guild?.shortName || '');
   const [color, setColor] = useState(guild?.color || '#7dd3fc');
+  const englishLocked = !!guild?.englishName;
+  const [englishName, setEnglishName] = useState(guild?.englishName || '');
+  const [page, setPage] = useState(normalizePage(guild?.page));
 
   const eb = guild?.badge || {};
   const [badgeShape,           setBadgeShape]           = useState(eb.shape           || 'pill');
@@ -450,13 +455,19 @@ function GuildTab({ onClose }) {
     if (!name.trim()) { setMsg({ ok: false, text: '길드명을 입력해주세요.' }); return; }
     const sn = shortName.trim();
     if (sn && [...sn].length > 4) { setMsg({ ok: false, text: '약식명은 한글/영문 4자 이하로 입력해주세요.' }); return; }
+    const en = englishName.trim();
+    if (!englishLocked && en) {
+      const enErr = validateEnglishName(en);
+      if (enErr) { setMsg({ ok: false, text: enErr }); return; }
+    }
     setBusy(true);
     try {
-      await saveGuild(profile.guildId, {
+      const payload = {
         ...guild,
         name: name.trim(),
         shortName: sn,
         color,
+        page,
         badge: {
           shape: badgeShape, bgType: badgeBgType,
           color2: badgeColor2, color3: badgeColor3,
@@ -464,7 +475,10 @@ function GuildTab({ onClose }) {
           effect: badgeEffect, textColor: badgeTextColor,
           textCustomColor: badgeTextCustomColor, textStyle: badgeTextStyle_,
         },
-      });
+      };
+      // 영문명은 최초 1회만 길드장이 설정 가능 (이후 잠김 · 슈퍼관리자만 변경).
+      if (!englishLocked && en) payload.englishName = en;
+      await saveGuild(profile.guildId, payload);
       setMsg({ ok: true, text: '저장되었습니다.' });
       setTimeout(onClose, 600);
     } catch {
@@ -482,7 +496,7 @@ function GuildTab({ onClose }) {
     <div className="space-y-4">
       {/* 서브 탭 */}
       <div className="flex gap-1 p-1 rounded-xl bg-base-850 border border-base-700">
-        {[['info', '기본 정보'], ['badge', '뱃지 수정']].map(([key, label]) => (
+        {[['info', '기본 정보'], ['badge', '뱃지 수정'], ['page', '소개글']].map(([key, label]) => (
           <button
             key={key}
             type="button"
@@ -512,6 +526,26 @@ function GuildTab({ onClose }) {
               placeholder="예: 스타폴, Star"
               maxLength={8}
             />
+          </div>
+          <div>
+            <label className="label-sm">영문명 <span className="text-base-500 font-normal">(로고 파일명 · 페이지 주소)</span></label>
+            <input
+              className="input-base"
+              value={englishName}
+              onChange={(e) => setEnglishName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              placeholder="예: starfall"
+              disabled={englishLocked}
+            />
+            {englishLocked ? (
+              <p className="text-[11px] text-base-500 mt-1">
+                최초 설정 후에는 변경할 수 없습니다. 변경이 필요하면 슈퍼관리자에게 문의하세요.
+              </p>
+            ) : (
+              <p className="text-[11px] text-amber-300/90 mt-1 leading-relaxed">
+                ⚠ 영문 소문자·숫자·하이픈(-)만, 띄어쓰기 불가. <b>최초 1회 설정 후 수정 불가</b>하니 신중히 입력하세요.
+                로고는 <code className="text-base-300">public/guildflag/영문명.png</code> 로 넣습니다.
+              </p>
+            )}
           </div>
           <div>
             <label className="label-sm">시그니처 컬러</label>
@@ -638,6 +672,9 @@ function GuildTab({ onClose }) {
           </BadgeSection>
         </div>
       )}
+
+      {/* 소개글 */}
+      {badgeTab === 'page' && <GuildPageEditor value={page} onChange={setPage} />}
 
       {msg && (
         <p className={`text-sm text-center ${msg.ok ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>

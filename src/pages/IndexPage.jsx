@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { collection, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
 import Header from '../components/Header';
 import RaidCard from '../components/RaidCard';
 import CalendarGrid from '../components/CalendarGrid';
+import GuildFlags from '../components/GuildFlags';
 import RaidFormModal from '../components/RaidFormModal';
 
 const VIEW_MODE_KEY = 'kwgu_view_mode';
@@ -52,10 +53,11 @@ function diffActiveStyle(key) {
 // ── Page ─────────────────────────────────────────────────────────────
 
 export default function IndexPage() {
-  const { isAdmin, adminMode, guilds, authReady } = useApp();
+  const { isAdmin, adminMode, guilds, authReady, userId } = useApp();
 
   const [raids, setRaids] = useState([]);
   const [counts, setCounts] = useState({});
+  const [myStatus, setMyStatus] = useState({});
   const [formOpen, setFormOpen] = useState(false);
   const [formDateKey, setFormDateKey] = useState(null);
   const [now, setNow] = useState(() => Date.now());
@@ -125,29 +127,40 @@ export default function IndexPage() {
     [activeRaids, categoryFilter, diffFilter]
   );
 
-  // Headcounts per raid for the cards
+  // Live headcounts per raid for the cards. One realtime listener per active
+  // raid keeps the 탱/힐/딜 numbers in sync the instant an application changes,
+  // and only reads the documents that actually change (cheaper than polling).
+  const activeIdsKey = useMemo(
+    () => activeRaids.map((r) => r.id).join(','),
+    [activeRaids]
+  );
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const entries = await Promise.all(
-        activeRaids.map(async (raid) => {
-          try {
-            const snap = await getDocs(collection(db, 'raids', raid.id, 'apps'));
-            const c = { tank: 0, healer: 0, dps: 0 };
-            snap.docs.forEach((d) => {
-              const a = d.data();
-              if (a.status === 'active' && c[a.role] !== undefined) c[a.role] += 1;
-            });
-            return [raid.id, c];
-          } catch {
-            return [raid.id, { tank: 0, healer: 0, dps: 0 }];
-          }
-        })
-      );
-      if (!cancelled) setCounts(Object.fromEntries(entries));
-    })();
-    return () => { cancelled = true; };
-  }, [raids.length, now]); // eslint-disable-line react-hooks/exhaustive-deps
+    const ids = activeIdsKey ? activeIdsKey.split(',') : [];
+    if (ids.length === 0) {
+      setCounts({});
+      return undefined;
+    }
+    const unsubs = ids.map((id) =>
+      onSnapshot(
+        collection(db, 'raids', id, 'apps'),
+        (snap) => {
+          const c = { tank: 0, healer: 0, dps: 0 };
+          snap.docs.forEach((d) => {
+            const a = d.data();
+            if (a.status === 'active' && c[a.role] !== undefined) c[a.role] += 1;
+          });
+          setCounts((prev) => ({ ...prev, [id]: c }));
+
+          // Whether the current user has an application on this raid.
+          const myDoc = userId ? snap.docs.find((d) => d.id === userId) : null;
+          setMyStatus((prev) => ({ ...prev, [id]: myDoc ? myDoc.data().status : undefined }));
+        },
+        () => {}
+      )
+    );
+    return () => unsubs.forEach((u) => u());
+  }, [activeIdsKey, userId]);
 
   const switchView = (mode) => {
     setViewMode(mode);
@@ -266,6 +279,7 @@ export default function IndexPage() {
           <CalendarGrid
             raids={filteredRaids}
             counts={counts}
+            mineMap={myStatus}
             onCreate={openFormForDate}
             isAdmin={showAdmin}
           />
@@ -292,13 +306,16 @@ export default function IndexPage() {
                     key={raid.id}
                     className="w-[calc(50%-0.375rem)] sm:w-[calc(25%-0.75rem)] min-w-[150px]"
                   >
-                    <RaidCard raid={raid} counts={counts[raid.id]} />
+                    <RaidCard raid={raid} counts={counts[raid.id]} mine={myStatus[raid.id]} />
                   </div>
                 ))}
               </div>
             )}
           </>
         )}
+
+        {/* ── 길드 깃발 (달력/카드 아래) ── */}
+        <GuildFlags />
       </main>
 
       <RaidFormModal

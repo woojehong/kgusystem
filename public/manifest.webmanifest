@@ -1,0 +1,19 @@
+{
+  "name": "KWGU · 한길련",
+  "short_name": "KWGU",
+  "description": "World of Warcraft 길드 연합 레이드 신청/관리 플랫폼",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0e13",
+  "theme_color": "#0b0e13",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -7,11 +7,6 @@ export const ROLES = {
   dps: { id: 'dps', label: '딜러' },
 };
 
-export const RANGES = {
-  melee: { id: 'melee', label: '근거리' },
-  ranged: { id: 'ranged', label: '원거리' },
-};
-
 export const DIFFICULTIES = {
   normal: {
     id: 'normal',

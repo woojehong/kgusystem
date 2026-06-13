@@ -9,7 +9,6 @@ import {
 import {
   doc,
   getDoc,
-  setDoc,
   writeBatch,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -166,13 +165,4 @@ export async function createSuperAccount(nickname, pin) {
   batch.set(doc(db, 'meta', 'super'), { userId, createdAt: serverTimestamp() });
   await batch.commit();
   return userId;
-}
-
-export async function resolveUserId(authUid) {
-  const snap = await getDoc(doc(db, 'authlinks', authUid));
-  return snap.exists() ? snap.data().userId : null;
-}
-
-export async function ensureAuthlink(authUid, userId) {
-  await setDoc(doc(db, 'authlinks', authUid), { userId });
 }

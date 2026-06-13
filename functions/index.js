@@ -23,10 +23,20 @@ async function sendEmbed(webhookUrl, embed) {
   if (!res.ok) throw new Error(`Discord webhook error: ${res.status}`);
 }
 
+// Difficulty caps mirror the frontend (src/lib/constants.js).
+// normal/heroic = 30-person raids, mythic = 20-person raids.
+const DIFF_CAPS = {
+  normal: { totalCap: 30, defaultHealers: 6 },
+  heroic: { totalCap: 30, defaultHealers: 6 },
+  mythic: { totalCap: 20, defaultHealers: 4 },
+};
+const TANK_CAP = 2;
+
 function getCaps(raid) {
-  const healerCap = raid.healerCap ?? 4;
-  const tankCap   = 2;
-  const dpsCap    = 20 - tankCap - healerCap;
+  const diff      = DIFF_CAPS[raid.difficulty] || DIFF_CAPS.normal;
+  const tankCap   = TANK_CAP;
+  const healerCap = raid.healerCap ?? diff.defaultHealers;
+  const dpsCap    = Math.max(0, diff.totalCap - tankCap - healerCap);
   return { tankCap, healerCap, dpsCap };
 }
 
@@ -47,7 +57,9 @@ async function getRaid(raidId) {
 
 function formatDate(dateKey) {
   if (!dateKey) return '';
-  return dateKey.replace(/(\d{4})(\d{2})(\d{2})/, '$1년 $2월 $3일');
+  // Accept both 'YYYY-MM-DD' (current storage format) and 'YYYYMMDD'.
+  const m = String(dateKey).match(/^(\d{4})\D?(\d{2})\D?(\d{2})$/);
+  return m ? `${m[1]}년 ${m[2]}월 ${m[3]}일` : String(dateKey);
 }
 
 // ── 채널 1: 레이드 삭제 (소프트 삭제 감지) ──────────────────────
@@ -126,9 +138,15 @@ exports.notifyAppCreated = onDocumentCreated(
       timestamp: new Date().toISOString(),
     });
 
-    // 채널 1: 탱/힐/딜 모두 마감 체크
-    const allFull = counts.tank >= tankCap && counts.healer >= healerCap && counts.dps >= dpsCap;
-    if (allFull) {
+    // 채널 1: 탱/힐/딜 모두 마감 체크.
+    // 미마감 → 마감으로 "전환"되는 순간에만 1회 발송한다. (중복 발송 방지)
+    // 이번 신청 문서가 확정(active)이면 그 인원을 빼서 직전 상태를 재구성하고,
+    // 직전엔 미마감이었는데 지금은 마감이면 그때만 공지한다.
+    const before = { ...counts };
+    if (app.status === 'active' && before[role] !== undefined) before[role] -= 1;
+    const fullBefore = before.tank >= tankCap && before.healer >= healerCap && before.dps >= dpsCap;
+    const fullAfter  = counts.tank >= tankCap && counts.healer >= healerCap && counts.dps >= dpsCap;
+    if (fullAfter && !fullBefore) {
       await sendEmbed(WEBHOOK_ANNOUNCE.value(), {
         title: `🎉 인원 마감 — ${raid.title || '공격대'}`,
         url: SITE_URL,
@@ -197,7 +215,7 @@ exports.notifyAppConfirmed = onDocumentUpdated(
   }
 );
 
-// ── 채널 2: 12h / 6h / 3h / 1h 전 미마감 알림 (30분마다 실행) ──
+// ── 채널 2: 72h/48h/24h/12h/6h/3h/1h 전 미마감 알림 (30분마다 실행) ──
 exports.scheduledRaidAlerts = onSchedule(
   { schedule: 'every 30 minutes', timeZone: 'Asia/Seoul', secrets: [WEBHOOK_NOTIFY] },
   async () => {

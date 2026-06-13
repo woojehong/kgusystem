@@ -131,7 +131,19 @@ service cloud.firestore {
             && request.resource.data.userId == myUserId()
             && request.resource.data.isReservation == false
           );
-        allow update, delete: if isAdmin() || (isSignedIn() && appId == myUserId());
+        // Owners may edit their own application (item level, spec, memo, and
+        // moving themselves down to the waitlist) but may NOT promote
+        // themselves from the waitlist to active — promotion is an admin-only
+        // action — nor disguise their entry as an admin reservation.
+        allow update: if isAdmin()
+          || (
+            isSignedIn()
+            && appId == myUserId()
+            && request.resource.data.userId == myUserId()
+            && request.resource.data.isReservation == false
+            && !(resource.data.status == 'wait' && request.resource.data.status == 'active')
+          );
+        allow delete: if isAdmin() || (isSignedIn() && appId == myUserId());
       }
 
       // Memos: visible to admins and the author only.
