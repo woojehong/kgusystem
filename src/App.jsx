@@ -10,7 +10,7 @@ import NoticePopup from './components/NoticePopup';
 function Loading() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="text-base-400 animate-pulse text-lg font-medium">KGU</div>
+      <div className="text-base-400 animate-pulse text-lg font-medium">KWGU</div>
     </div>
   );
 }
