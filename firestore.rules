@@ -21,8 +21,12 @@ service cloud.firestore {
       return getAfter(/databases/$(database)/documents/authlinks/$(request.auth.uid)).data.userId;
     }
 
+    function myUserDoc() {
+      return get(/databases/$(database)/documents/users/$(myUserId())).data;
+    }
+
     function myRole() {
-      return get(/databases/$(database)/documents/users/$(myUserId())).data.role;
+      return myUserDoc().role;
     }
 
     function isAdmin() {
@@ -31,6 +35,13 @@ service cloud.firestore {
 
     function isSuper() {
       return isSignedIn() && myRole() == 'super';
+    }
+
+    // Guild master of the specific guild
+    function isGuildMasterOf(guildId) {
+      return isSignedIn()
+        && myUserDoc().isGuildMaster == true
+        && myUserDoc().guildId == guildId;
     }
 
     // ── Nickname → account mapping (public lookup for login) ───────
@@ -100,7 +111,7 @@ service cloud.firestore {
 
     match /guilds/{guildId} {
       allow read: if true;
-      allow write: if isSuper();
+      allow write: if isSuper() || isGuildMasterOf(guildId);
     }
 
     // ── Raids ───────────────────────────────────────────────────────
