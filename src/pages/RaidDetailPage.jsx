@@ -354,7 +354,7 @@ export default function RaidDetailPage() {
                 adminMode={adminView}
                 onAdd={() => setReserveRole('tank')}
               />
-              <div className="space-y-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 {renderCards(derived.tanks, (a) => `T${derived.tanks.indexOf(a) + 1}`)}
               </div>
             </div>
@@ -366,7 +366,7 @@ export default function RaidDetailPage() {
                 adminMode={adminView}
                 onAdd={() => setReserveRole('healer')}
               />
-              <div className="space-y-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 {renderCards(derived.healers, (a) => `H${derived.healers.indexOf(a) + 1}`)}
               </div>
             </div>

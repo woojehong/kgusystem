@@ -27,6 +27,7 @@ import {
   randomId,
 } from '../lib/utils';
 import Modal from '../components/Modal';
+import GuildBadge, { buildBadgeStyles } from '../components/GuildBadge';
 
 // ── Login / bootstrap ───────────────────────────────────────────────
 
@@ -119,6 +120,7 @@ function SuperLogin() {
 function UsersTab({ guilds, gamedata }) {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
+  const [guildFilter, setGuildFilter] = useState('all');
   const [target, setTarget] = useState(null);
   const [msg, setMsg] = useState('');
 
@@ -131,13 +133,49 @@ function UsersTab({ guilds, gamedata }) {
     load();
   }, []);
 
+  // Guild filter tabs: 전체 + real guilds (not isNone) + 소속없음
+  const noneGuild = guilds.find((g) => g.isNone);
+  const filterTabs = [
+    { id: 'all', name: '전체' },
+    ...sortGuilds(guilds.filter((g) => !g.isNone)).map((g) => ({ id: g.id, name: g.name })),
+    { id: '__none', name: '소속없음' },
+  ];
+
   const filtered = users
     .filter((u) => u.role !== 'super')
     .filter((u) => !search || u.nickname.includes(search))
-    .sort((a, b) => a.nickname.localeCompare(b.nickname, 'ko'));
+    .filter((u) => {
+      if (guildFilter === 'all') return true;
+      if (guildFilter === '__none') return u.guildId === noneGuild?.id || !u.guildId;
+      return u.guildId === guildFilter;
+    })
+    .sort((a, b) => {
+      const aT = a.createdAt?.toMillis?.() ?? 0;
+      const bT = b.createdAt?.toMillis?.() ?? 0;
+      if (aT !== bT) return aT - bT;
+      return (a.nickname || '').localeCompare(b.nickname || '', 'ko');
+    });
 
   return (
     <div>
+      {/* Guild filter tabs */}
+      <div className="flex gap-1 flex-wrap mb-3">
+        {filterTabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setGuildFilter(t.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              guildFilter === t.id
+                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                : 'bg-base-800 border border-base-700 text-base-400 hover:text-base-200'
+            }`}
+          >
+            {t.name}
+          </button>
+        ))}
+      </div>
+
       <input
         className="input-base mb-3"
         placeholder="닉네임 검색"
@@ -169,7 +207,9 @@ function UsersTab({ guilds, gamedata }) {
             </button>
           );
         })}
-        {filtered.length === 0 && <p className="text-center text-base-400 py-8 text-sm">유저가 없습니다.</p>}
+        {filtered.length === 0 && (
+          <p className="text-center text-base-400 py-8 text-sm">유저가 없습니다.</p>
+        )}
       </div>
 
       {target && (
@@ -397,23 +437,147 @@ function GuildsTab({ guilds, reload }) {
   );
 }
 
+// ── Badge tab option definitions ────────────────────────────────────
+
+const SHAPE_OPTIONS = [
+  { key: 'pill',        label: '알약',    clip: null, radius: '9999px' },
+  { key: 'rounded-sm',  label: '소원각',  clip: null, radius: '4px' },
+  { key: 'rounded-md',  label: '중원각',  clip: null, radius: '8px' },
+  { key: 'rounded-lg',  label: '대원각',  clip: null, radius: '14px' },
+  { key: 'square',      label: '직각',    clip: null, radius: '2px' },
+  { key: 'leaf',        label: '잎사귀',  clip: null, radius: '50% 0% 50% 0%' },
+  { key: 'hexagon',     label: '육각형',  clip: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)', radius: null },
+  { key: 'diamond',     label: '다이아',  clip: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',                    radius: null },
+  { key: 'shield',      label: '방패',    clip: 'polygon(0% 0%, 100% 0%, 100% 65%, 50% 100%, 0% 65%)',           radius: null },
+  { key: 'octagon',     label: '팔각형',  clip: 'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)', radius: null },
+  { key: 'star',        label: '별',      clip: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)', radius: null },
+  { key: 'tag',         label: '태그',    clip: 'polygon(0% 0%, 85% 0%, 100% 50%, 85% 100%, 0% 100%)',           radius: null },
+];
+
+const BG_OPTIONS = [
+  { key: 'solid',            label: '단색' },
+  { key: 'gradient-h',       label: '가로 그라디언트' },
+  { key: 'gradient-v',       label: '세로 그라디언트' },
+  { key: 'gradient-diagonal',label: '대각선 그라디언트' },
+  { key: 'gradient-3',       label: '3색 그라디언트' },
+  { key: 'radial',           label: '방사형' },
+  { key: 'conic',            label: '코닉' },
+  { key: 'glass',            label: '유리' },
+  { key: 'mesh',             label: '메시' },
+  { key: 'neon',             label: '네온' },
+  { key: 'stripe',           label: '스트라이프' },
+  { key: 'outline',          label: '테두리만' },
+];
+
+const BORDER_OPTIONS = [
+  { key: 'none',         label: '없음' },
+  { key: 'thin',         label: '얇게' },
+  { key: 'medium',       label: '보통' },
+  { key: 'thick',        label: '굵게' },
+  { key: 'dashed',       label: '파선' },
+  { key: 'dotted',       label: '점선' },
+  { key: 'double',       label: '이중선' },
+  { key: 'gradient',     label: '그라디언트' },
+  { key: 'outline-only', label: '아웃라인' },
+  { key: 'glow',         label: '글로우' },
+  { key: 'neon-glow',    label: '네온 글로우' },
+  { key: 'inner',        label: '안쪽선' },
+];
+
+const EFFECT_OPTIONS = [
+  { key: 'none',       label: '없음' },
+  { key: 'glow-sm',   label: '글로우(소)' },
+  { key: 'glow-lg',   label: '글로우(대)' },
+  { key: 'shimmer',   label: '쉬머 ✦' },
+  { key: 'pulse',     label: '펄스 ✦' },
+  { key: 'inner-glow',label: '내부 글로우' },
+  { key: 'shadow',    label: '그림자' },
+  { key: 'emboss',    label: '엠보스' },
+  { key: 'holo',      label: '홀로그램' },
+];
+
+const TEXT_COLOR_OPTIONS = [
+  { key: 'auto',  label: '자동' },
+  { key: 'white', label: '흰색' },
+  { key: 'dark',  label: '어두운색' },
+];
+
+const TEXT_STYLE_OPTIONS = [
+  { key: 'normal',   label: '보통' },
+  { key: 'bold',     label: '굵게' },
+  { key: 'outlined', label: '외곽선' },
+  { key: 'shadow',   label: '그림자' },
+  { key: 'glow',     label: '글로우' },
+];
+
+// Helper: small option button
+function OptBtn({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-2 py-1 rounded-lg text-[11px] font-semibold border transition ${
+        active
+          ? 'border-indigo-400 bg-indigo-500/15 text-indigo-200'
+          : 'border-base-700 bg-base-800 text-base-400 hover:text-base-200 hover:border-base-500'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Helper: section label inside badge tab
+function BadgeSection({ label, children }) {
+  return (
+    <div>
+      <p className="text-[11px] font-bold text-base-400 uppercase tracking-wider mb-1.5">{label}</p>
+      <div className="flex flex-wrap gap-1">{children}</div>
+    </div>
+  );
+}
+
 function GuildEditModal({ guild, onClose }) {
   const isNew = !guild.id;
+  const [activeTab, setActiveTab] = useState('info');
+
+  // ── 기본정보 tab state ─────────────────────────────────────────
   const [name, setName] = useState(guild.name);
-  const [color, setColor] = useState(guild.color);
+  const [color, setColor] = useState(guild.color || '#7dd3fc');
   const [logoPath, setLogoPath] = useState(guild.logoPath || '');
-  // showInFilter: whether this guild appears in the main page category filter
   const [showInFilter, setShowInFilter] = useState(guild.showInFilter !== false);
+
+  // ── 뱃지수정 tab state ─────────────────────────────────────────
+  const eb = guild.badge || {};
+  const [badgeShape,       setBadgeShape]       = useState(eb.shape       || 'pill');
+  const [badgeBgType,      setBadgeBgType]      = useState(eb.bgType      || 'solid');
+  const [badgeColor2,      setBadgeColor2]      = useState(eb.color2      || guild.color || '#7dd3fc');
+  const [badgeColor3,      setBadgeColor3]      = useState(eb.color3      || guild.color || '#7dd3fc');
+  const [badgeBorder,      setBadgeBorder]      = useState(eb.border      || 'thin');
+  const [badgeBorderColor, setBadgeBorderColor] = useState(eb.borderColor || guild.color || '#7dd3fc');
+  const [badgeEffect,      setBadgeEffect]      = useState(eb.effect      || 'none');
+  const [badgeTextColor,   setBadgeTextColor]   = useState(eb.textColor   || 'auto');
+  const [badgeTextStyle_,  setBadgeTextStyle_]  = useState(eb.textStyle   || 'normal');
+
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const needsColor2 = ['gradient-h','gradient-v','gradient-diagonal','gradient-3','radial','conic','glass','mesh','stripe'].includes(badgeBgType);
+  const needsColor3 = ['gradient-3','conic','mesh'].includes(badgeBgType);
+
+  // Current badge config for live preview
+  const previewBadgeConfig = {
+    shape: badgeShape, bgType: badgeBgType,
+    color2: badgeColor2, color3: badgeColor3,
+    border: badgeBorder, borderColor: badgeBorderColor,
+    effect: badgeEffect, textColor: badgeTextColor, textStyle: badgeTextStyle_,
+  };
+  const { style: pvStyle, animClass: pvAnim, isClipPath: pvClip } = buildBadgeStyles(previewBadgeConfig, color);
+
   const save = async () => {
     setError('');
-    if (!name.trim()) {
-      setError('길드명을 입력해주세요.');
-      return;
-    }
+    if (!name.trim()) { setError('길드명을 입력해주세요.'); return; }
     setBusy(true);
     try {
       const id = guild.id || randomId('guild_');
@@ -423,6 +587,12 @@ function GuildEditModal({ guild, onClose }) {
         logoPath: logoPath.trim(),
         isNone: !!guild.isNone,
         showInFilter,
+        badge: {
+          shape: badgeShape, bgType: badgeBgType,
+          color2: badgeColor2, color3: badgeColor3,
+          border: badgeBorder, borderColor: badgeBorderColor,
+          effect: badgeEffect, textColor: badgeTextColor, textStyle: badgeTextStyle_,
+        },
       });
       onClose(true);
     } catch {
@@ -433,67 +603,236 @@ function GuildEditModal({ guild, onClose }) {
 
   const remove = async () => {
     setBusy(true);
-    try {
-      await deleteGuild(guild.id);
-      onClose(true);
-    } catch {
-      setError('삭제에 실패했습니다.');
-      setBusy(false);
-    }
+    try { await deleteGuild(guild.id); onClose(true); }
+    catch { setError('삭제에 실패했습니다.'); setBusy(false); }
   };
 
   return (
     <Modal open onClose={() => onClose(false)} title={isNew ? '길드 추가' : `길드 수정 · ${guild.name}`}>
-      <div className="space-y-4">
-        <div>
-          <label className="label-sm">길드명</label>
-          <input className="input-base" value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <div>
-          <label className="label-sm">시그니처 컬러</label>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="w-12 h-10 rounded-lg bg-base-800 border border-base-600 cursor-pointer"
-            />
-            <input className="input-base flex-1" value={color} onChange={(e) => setColor(e.target.value)} />
+      {/* ── Tab selector ── */}
+      <div className="flex gap-1 p-1 rounded-xl bg-base-850 border border-base-700 mb-4">
+        {[['info', '기본 정보'], ['badge', '뱃지 수정']].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveTab(key)}
+            className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition ${
+              activeTab === key ? 'bg-base-700 text-white' : 'text-base-400 hover:text-base-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── 기본정보 Tab ── */}
+      {activeTab === 'info' && (
+        <div className="space-y-4">
+          <div>
+            <label className="label-sm">길드명</label>
+            <input className="input-base" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-        </div>
-        <div>
-          <label className="label-sm">로고 경로 (repo 내 정적 파일)</label>
-          <input
-            className="input-base"
-            value={logoPath}
-            onChange={(e) => setLogoPath(e.target.value)}
-            placeholder="예: logos/starfall.png"
-          />
-          <p className="text-[11px] text-base-400 mt-1">
-            PNG 파일을 프로젝트 public/logos/ 폴더에 추가하고 커밋·배포한 뒤 경로를 입력하세요.
-          </p>
-        </div>
-
-        {/* showInFilter toggle (소속 없음 제외) */}
-        {!guild.isNone && (
-          <label className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700 cursor-pointer">
-            <div>
-              <p className="text-sm font-medium">메인 화면 필터에 표시</p>
-              <p className="text-[11px] text-base-400 mt-0.5">
-                카테고리 필터에 이 길드를 노출합니다
-              </p>
+          <div>
+            <label className="label-sm">시그니처 컬러</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="w-12 h-10 rounded-lg bg-base-800 border border-base-600 cursor-pointer"
+              />
+              <input className="input-base flex-1" value={color} onChange={(e) => setColor(e.target.value)} />
             </div>
+          </div>
+          <div>
+            <label className="label-sm">로고 경로 (repo 내 정적 파일)</label>
             <input
-              type="checkbox"
-              className="w-4 h-4 accent-indigo-500"
-              checked={showInFilter}
-              onChange={(e) => setShowInFilter(e.target.checked)}
+              className="input-base"
+              value={logoPath}
+              onChange={(e) => setLogoPath(e.target.value)}
+              placeholder="예: logos/starfall.png"
             />
-          </label>
-        )}
+            <p className="text-[11px] text-base-400 mt-1">
+              PNG 파일을 프로젝트 public/logos/ 폴더에 추가·커밋·배포 후 경로를 입력하세요.
+            </p>
+          </div>
+          {!guild.isNone && (
+            <label className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700 cursor-pointer">
+              <div>
+                <p className="text-sm font-medium">메인 화면 필터에 표시</p>
+                <p className="text-[11px] text-base-400 mt-0.5">카테고리 필터에 이 길드를 노출합니다</p>
+              </div>
+              <input
+                type="checkbox"
+                className="w-4 h-4 accent-indigo-500"
+                checked={showInFilter}
+                onChange={(e) => setShowInFilter(e.target.checked)}
+              />
+            </label>
+          )}
+        </div>
+      )}
 
+      {/* ── 뱃지수정 Tab ── */}
+      {activeTab === 'badge' && (
+        <div className="space-y-4">
+          {/* Live preview */}
+          <div className="flex flex-col items-center gap-3 py-4 rounded-2xl bg-base-850 border border-base-700">
+            <p className="text-[11px] text-base-500 font-semibold uppercase tracking-wider">미리보기</p>
+            <span
+              className={`inline-flex items-center justify-center text-sm font-semibold px-5 py-2 ${pvAnim}`}
+              style={{
+                ...pvStyle,
+                ...(pvClip ? { minWidth: '6rem', minHeight: '2.4rem' } : { minWidth: '6rem' }),
+              }}
+            >
+              {name || guild.name || '길드명'}
+            </span>
+            <div className="flex gap-3">
+              <span className="text-[11px] text-base-500">sm:</span>
+              <GuildBadge guildName={name || guild.name} guildColor={color} badgeConfig={previewBadgeConfig} size="sm" />
+              <span className="text-[11px] text-base-500">xs:</span>
+              <GuildBadge guildName={name || guild.name} guildColor={color} badgeConfig={previewBadgeConfig} size="xs" />
+            </div>
+          </div>
+
+          {/* Shape */}
+          <BadgeSection label="모양">
+            {SHAPE_OPTIONS.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setBadgeShape(s.key)}
+                className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg border text-[10px] font-semibold transition ${
+                  badgeShape === s.key
+                    ? 'border-indigo-400 bg-indigo-500/10 text-indigo-200'
+                    : 'border-base-700 bg-base-800 text-base-500 hover:text-base-200 hover:border-base-500'
+                }`}
+              >
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: 22, height: 14,
+                    background: `${color}88`,
+                    clipPath: s.clip || undefined,
+                    borderRadius: s.clip ? undefined : s.radius,
+                  }}
+                />
+                {s.label}
+              </button>
+            ))}
+          </BadgeSection>
+
+          {/* Background */}
+          <BadgeSection label="배경 스타일">
+            {BG_OPTIONS.map((b) => (
+              <OptBtn key={b.key} active={badgeBgType === b.key} onClick={() => setBadgeBgType(b.key)}>
+                {b.label}
+              </OptBtn>
+            ))}
+          </BadgeSection>
+
+          {/* Color pickers */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-base-400 w-24 shrink-0">시그니처 컬러</span>
+              <span
+                className="w-6 h-6 rounded border border-base-600"
+                style={{ background: color }}
+              />
+              <span className="text-[11px] text-base-400">{color} <span className="text-base-600">(기본정보 탭에서 변경)</span></span>
+            </div>
+            {needsColor2 && (
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-base-400 w-24 shrink-0">세컨드 컬러</label>
+                <input
+                  type="color"
+                  value={badgeColor2}
+                  onChange={(e) => setBadgeColor2(e.target.value)}
+                  className="w-8 h-8 rounded border border-base-600 cursor-pointer bg-transparent"
+                />
+                <input
+                  className="input-base flex-1 text-xs py-1"
+                  value={badgeColor2}
+                  onChange={(e) => setBadgeColor2(e.target.value)}
+                />
+              </div>
+            )}
+            {needsColor3 && (
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-base-400 w-24 shrink-0">써드 컬러</label>
+                <input
+                  type="color"
+                  value={badgeColor3}
+                  onChange={(e) => setBadgeColor3(e.target.value)}
+                  className="w-8 h-8 rounded border border-base-600 cursor-pointer bg-transparent"
+                />
+                <input
+                  className="input-base flex-1 text-xs py-1"
+                  value={badgeColor3}
+                  onChange={(e) => setBadgeColor3(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Border */}
+          <BadgeSection label="테두리">
+            {BORDER_OPTIONS.map((b) => (
+              <OptBtn key={b.key} active={badgeBorder === b.key} onClick={() => setBadgeBorder(b.key)}>
+                {b.label}
+              </OptBtn>
+            ))}
+          </BadgeSection>
+
+          {badgeBorder !== 'none' && (
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-base-400 w-24 shrink-0">테두리 색</label>
+              <input
+                type="color"
+                value={badgeBorderColor}
+                onChange={(e) => setBadgeBorderColor(e.target.value)}
+                className="w-8 h-8 rounded border border-base-600 cursor-pointer bg-transparent"
+              />
+              <input
+                className="input-base flex-1 text-xs py-1"
+                value={badgeBorderColor}
+                onChange={(e) => setBadgeBorderColor(e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* Effects */}
+          <BadgeSection label="이펙트">
+            {EFFECT_OPTIONS.map((e) => (
+              <OptBtn key={e.key} active={badgeEffect === e.key} onClick={() => setBadgeEffect(e.key)}>
+                {e.label}
+              </OptBtn>
+            ))}
+          </BadgeSection>
+
+          {/* Text */}
+          <BadgeSection label="텍스트 색">
+            {TEXT_COLOR_OPTIONS.map((t) => (
+              <OptBtn key={t.key} active={badgeTextColor === t.key} onClick={() => setBadgeTextColor(t.key)}>
+                {t.label}
+              </OptBtn>
+            ))}
+          </BadgeSection>
+
+          <BadgeSection label="텍스트 스타일">
+            {TEXT_STYLE_OPTIONS.map((t) => (
+              <OptBtn key={t.key} active={badgeTextStyle_ === t.key} onClick={() => setBadgeTextStyle_(t.key)}>
+                {t.label}
+              </OptBtn>
+            ))}
+          </BadgeSection>
+        </div>
+      )}
+
+      {/* ── Footer ── */}
+      <div className="mt-4 space-y-3">
         {error && <p className="text-sm text-red-400 text-center">{error}</p>}
-
         <div className="flex gap-2">
           {!isNew && !guild.isNone &&
             (confirmDelete ? (

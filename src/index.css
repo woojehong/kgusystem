@@ -21,6 +21,17 @@ body {
   @apply bg-base-600 rounded-full;
 }
 
+@keyframes kwgu-shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+@keyframes kwgu-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.kwgu-badge-shimmer { animation: kwgu-shimmer 2s linear infinite; }
+.kwgu-badge-pulse   { animation: kwgu-pulse 1.8s ease-in-out infinite; }
+
 @layer components {
   .btn-primary {
     @apply px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 active:scale-[0.98] text-white font-semibold transition disabled:opacity-40 disabled:pointer-events-none;
