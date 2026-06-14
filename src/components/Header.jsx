@@ -5,24 +5,20 @@ import { signOutUser } from '../lib/auth';
 import GuildBadge from './GuildBadge';
 import ProfileModal from './ProfileModal';
 
+// 헤더 우측 버튼 공통 스타일 (프로필 · 관리자 · 로그아웃 동일)
+const HEADER_BTN =
+  'flex items-center gap-2 px-3 py-1.5 rounded-full bg-base-800 border border-base-600 hover:border-base-500 hover:bg-base-700 transition text-sm font-semibold text-base-100 shadow-sm';
+
 function AdminToggle() {
   const { isAdmin, adminMode, setAdminMode } = useApp();
   if (!isAdmin) return null;
   return (
-    <button
-      type="button"
-      onClick={() => setAdminMode(!adminMode)}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-base-800 border border-base-700 hover:border-base-600 transition"
-      title="관리자 모드"
-    >
-      <span className={`text-xs font-semibold ${adminMode ? 'text-indigo-300' : 'text-base-400'}`}>
-        관리자
-      </span>
-      <span
-        className={`relative w-9 h-5 rounded-full transition ${adminMode ? 'bg-indigo-500' : 'bg-base-600'}`}
-      >
+    <button type="button" onClick={() => setAdminMode(!adminMode)} className={HEADER_BTN} title="관리자 모드">
+      <span>관리자</span>
+      {/* ON일 때 고급스러운 금색 */}
+      <span className={`relative w-9 h-5 rounded-full transition ${adminMode ? 'bg-amber-500' : 'bg-base-600'}`}>
         <span
-          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
             adminMode ? 'left-[18px]' : 'left-0.5'
           }`}
         />
@@ -36,14 +32,19 @@ export default function Header() {
   const [profileOpen, setProfileOpen] = useState(false);
 
   const profileButton = (
-    <button
-      type="button"
-      onClick={() => setProfileOpen(true)}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-base-800 border border-base-700 hover:border-base-600 transition"
-    >
+    <button type="button" onClick={() => setProfileOpen(true)} className={HEADER_BTN}>
       {profile?.isGuildMaster && <span className="text-sm leading-none">👑</span>}
-      <span className="font-semibold text-sm">{profile?.nickname}</span>
-      <GuildBadge guildId={profile?.guildId} size="xs" />
+      <span>{profile?.nickname}</span>
+      {/* 닉네임과 뱃지 사이 간격 */}
+      <span className="ml-1.5">
+        <GuildBadge guildId={profile?.guildId} size="xs" />
+      </span>
+    </button>
+  );
+
+  const logoutButton = (
+    <button type="button" onClick={() => signOutUser()} className={HEADER_BTN}>
+      로그아웃
     </button>
   );
 
@@ -66,13 +67,7 @@ export default function Header() {
           <div className="flex items-center gap-2">
             {profileButton}
             <AdminToggle />
-            <button
-              type="button"
-              onClick={() => signOutUser()}
-              className="text-xs text-base-400 hover:text-base-200 px-2 transition"
-            >
-              로그아웃
-            </button>
+            {logoutButton}
           </div>
         </div>
 
@@ -89,16 +84,10 @@ export default function Header() {
               Korean Wow Guild Union · 한국길드연합
             </span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center flex-wrap gap-2">
             {profileButton}
             <AdminToggle />
-            <button
-              type="button"
-              onClick={() => signOutUser()}
-              className="text-xs text-base-400 hover:text-base-200 px-1 transition"
-            >
-              로그아웃
-            </button>
+            {logoutButton}
           </div>
         </div>
       </header>

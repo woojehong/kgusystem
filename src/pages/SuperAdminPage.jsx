@@ -829,13 +829,13 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
                 ...(pvClip ? { minWidth: '6rem', minHeight: '2.4rem' } : { minWidth: '6rem' }),
               }}
             >
-              {name || guild.name || '길드명'}
+              {badgeName || name || guild.name || '길드명'}
             </span>
             <div className="flex gap-3">
               <span className="text-[11px] text-base-500">sm:</span>
-              <GuildBadge guildName={name || guild.name} guildColor={color} badgeConfig={previewBadgeConfig} size="sm" />
+              <GuildBadge guildName={badgeName || name || guild.name} guildColor={color} badgeConfig={previewBadgeConfig} size="sm" />
               <span className="text-[11px] text-base-500">xs:</span>
-              <GuildBadge guildName={name || guild.name} guildColor={color} badgeConfig={previewBadgeConfig} size="xs" />
+              <GuildBadge guildName={badgeName || name || guild.name} guildColor={color} badgeConfig={previewBadgeConfig} size="xs" />
             </div>
           </div>
 
