@@ -53,6 +53,7 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
             const key = toDateKey(day);
             const isToday = key === todayKey;
             const isPast = key < todayKey;
+            const dow = day.getDay();
             const dayRaids = byDate[key] || [];
 
             return (
@@ -60,16 +61,22 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                 key={key}
                 className={`p-1 sm:p-1.5 border-r border-base-700 last:border-r-0 ${
                   isPast ? 'opacity-35' : ''
-                }`}
+                } ${isToday ? 'bg-amber-400/10 ring-2 ring-inset ring-amber-400/70' : ''}`}
               >
                 {/* Date row */}
                 <div className="flex items-center justify-between mb-0.5">
                   <span
-                    className={`inline-flex items-center justify-center h-6 px-1 text-xs font-bold rounded-full ${
-                      isToday ? 'bg-indigo-500 text-white px-2' : 'text-base-300'
+                    className={`text-[11px] sm:text-sm font-extrabold leading-none text-outline ${
+                      isToday
+                        ? 'text-amber-300'
+                        : dow === 0
+                        ? 'text-red-400'
+                        : dow === 6
+                        ? 'text-blue-400'
+                        : 'text-white'
                     }`}
                   >
-                    {day.getMonth() + 1}/{day.getDate()}
+                    {day.getMonth() + 1}월 {day.getDate()}일
                   </span>
                   {isAdmin && !isPast && (
                     <button

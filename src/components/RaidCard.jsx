@@ -18,12 +18,13 @@ function partyTypeLabel(partyType, guilds) {
   return g ? `${g.name} 길드 레이드` : '길드 레이드';
 }
 
-/** Short date string: 6/19 (금) */
-function shortDate(dateKey) {
-  const [, m, d] = dateKey.split('-').map(Number);
-  const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-  const date = new Date(Number(dateKey.split('-')[0]), m - 1, d);
-  return `${m}/${d} (${weekdays[date.getDay()]})`;
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** Date parts: { label: '6월 19일', wd: '금', dow: 5 } */
+function dateParts(dateKey) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dow = new Date(y, m - 1, d).getDay();
+  return { label: `${m}월 ${d}일`, wd: WEEKDAYS[dow], dow };
 }
 
 /**
@@ -117,7 +118,15 @@ export default function RaidCard({ raid, counts, mine }) {
           >
             {diff.label}
           </span>
-          <span className="text-sm font-bold text-white">{shortDate(raid.dateKey)}</span>
+          {(() => {
+            const { label, wd, dow } = dateParts(raid.dateKey);
+            const wdColor = dow === 0 ? '#f87171' : dow === 6 ? '#60a5fa' : '#ffffff';
+            return (
+              <span className="text-base font-bold text-white text-outline">
+                {label} <span style={{ color: wdColor }}>({wd})</span>
+              </span>
+            );
+          })()}
         </div>
 
         {/* Time */}
