@@ -21,7 +21,7 @@ function Flag({ guild, index }) {
     <Link
       to={to}
       className="group flex flex-col items-center"
-      style={{ width: 'calc(25% - 12px)', maxWidth: 150, minWidth: 64 }}
+      style={{ width: 'calc(25% - 24px)', maxWidth: 150, minWidth: 0 }}
       title={guild.name}
     >
       {/* 가로 깃대 */}
@@ -46,8 +46,16 @@ function Flag({ guild, index }) {
             ? '#0b0e13'
             : `linear-gradient(155deg, ${color} 0%, ${color}cc 45%, ${color}99 100%)`,
           animationDelay: delay,
-          // clip-path 도형엔 border가 안 먹으므로 drop-shadow로 외곽선+그림자+글로우.
-          filter: `drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 5px 10px rgba(0,0,0,0.55)) drop-shadow(0 0 9px ${color}66)`,
+          // clip-path 도형엔 border가 안 먹으므로 drop-shadow를 겹쳐 실루엣을 따라가는
+          // 선명한 은색 외곽선 + 은색 글로우 + 깊이 그림자를 만든다. (배경/로고와 확실히 분리)
+          filter: [
+            'drop-shadow(1.6px 0 0 #d7dde6)',
+            'drop-shadow(-1.6px 0 0 #d7dde6)',
+            'drop-shadow(0 1.6px 0 #d7dde6)',
+            'drop-shadow(0 -1.6px 0 #d7dde6)',
+            'drop-shadow(0 0 6px rgba(215,221,230,0.6))',
+            'drop-shadow(0 6px 12px rgba(0,0,0,0.6))',
+          ].join(' '),
         }}
       >
         {/* 로고(꽉 차게) 또는 길드명 */}
@@ -99,7 +107,7 @@ export default function GuildFlags() {
         <h2 className="text-sm font-bold text-base-400 tracking-wider">한국길드연합 소속 길드 소개</h2>
         <span className="flex-1 h-px bg-base-700/70" />
       </div>
-      <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+      <div className="flex flex-wrap justify-center gap-6 sm:gap-8">
         {list.map((g, i) => (
           <Flag key={g.id} guild={g} index={i} />
         ))}
