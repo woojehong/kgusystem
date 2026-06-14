@@ -12,6 +12,11 @@ function chipPrefix(partyType, guilds) {
 
 const ROLE_COLORS = { tank: '#38bdf8', healer: '#34d399', dps: '#fb7185' };
 
+// 각진 그리드 + 또렷한 구분선(갭 그리드)
+const LINE = '#2b3340';     // 칸 사이 구분선
+const CELL_BG = '#12161d';  // 날짜 칸 배경
+const HEAD_BG = '#171c25';  // 요일 헤더 배경
+
 export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreate, isAdmin }) {
   const navigate = useNavigate();
   const { guilds } = useApp();
@@ -26,13 +31,16 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
     list.sort((a, b) => a.startAt.toMillis() - b.startAt.toMillis())
   );
 
+  const days = weeks.flat();
+
   return (
-    <div className="card overflow-hidden">
-      {/* Day-of-week header */}
-      <div className="grid grid-cols-7 border-b border-base-700">
+    <div style={{ background: LINE, border: `1px solid ${LINE}` }}>
+      <div className="grid grid-cols-7" style={{ gap: '1px', background: LINE }}>
+        {/* 요일 헤더 */}
         {WEEKDAYS_KO.map((d, i) => (
           <div
             key={d}
+            style={{ background: HEAD_BG }}
             className={`py-2 text-center text-sm font-bold ${
               i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-base-300'
             }`}
@@ -40,128 +48,115 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
             {d}
           </div>
         ))}
-      </div>
 
-      {/* Weeks */}
-      {weeks.map((week) => (
-        <div
-          key={toDateKey(week[0])}
-          className="grid grid-cols-7 border-b border-base-700 last:border-b-0"
-          style={{ alignItems: 'stretch' }}
-        >
-          {week.map((day) => {
-            const key = toDateKey(day);
-            const isToday = key === todayKey;
-            const isPast = key < todayKey;
-            const dow = day.getDay();
-            const dayRaids = byDate[key] || [];
+        {/* 날짜 칸 */}
+        {days.map((day) => {
+          const key = toDateKey(day);
+          const isToday = key === todayKey;
+          const isPast = key < todayKey;
+          const dow = day.getDay();
+          const dayRaids = byDate[key] || [];
 
-            return (
-              <div
-                key={key}
-                className={`relative p-1 sm:p-1.5 border-r border-base-700 last:border-r-0 ${
-                  isPast ? 'opacity-35' : ''
-                } ${isToday ? 'bg-amber-400/10 ring-2 ring-inset ring-amber-400/70' : ''}`}
-              >
-                {/* Date — 모바일: 왼쪽 + 버튼 인라인 / 데스크탑: 가운데 + 버튼 절대배치 */}
-                <div className="flex items-center justify-between gap-1 mb-1.5 sm:block">
-                  <span
-                    className={`text-[10px] sm:text-sm font-extrabold leading-tight text-outline break-keep min-w-0 sm:block sm:text-center ${
-                      isToday
-                        ? 'text-amber-300'
-                        : dow === 0
-                        ? 'text-red-400'
-                        : dow === 6
-                        ? 'text-blue-400'
-                        : 'text-white'
-                    }`}
+          return (
+            <div
+              key={key}
+              className="relative flex flex-col p-2 sm:p-2.5 min-h-[88px] sm:min-h-[124px]"
+              style={{
+                background: CELL_BG,
+                opacity: isPast ? 0.4 : 1,
+                ...(isToday ? { boxShadow: 'inset 0 0 0 2px #fbbf24' } : {}),
+              }}
+            >
+              {/* 날짜 — 모바일: 왼쪽+버튼 인라인 / 데스크탑: 가운데+버튼 절대배치 */}
+              <div className="flex items-center justify-between gap-1 mb-2 sm:block">
+                <span
+                  className={`text-[10px] sm:text-sm font-extrabold leading-tight text-outline break-keep min-w-0 sm:block sm:text-center ${
+                    isToday
+                      ? 'text-amber-300'
+                      : dow === 0
+                      ? 'text-red-400'
+                      : dow === 6
+                      ? 'text-blue-400'
+                      : 'text-white'
+                  }`}
+                >
+                  {day.getMonth() + 1}월 {day.getDate()}일
+                </span>
+                {isAdmin && !isPast && (
+                  <button
+                    type="button"
+                    onClick={() => onCreate(key)}
+                    className="shrink-0 w-6 h-6 sm:w-5 sm:h-5 sm:absolute sm:top-1.5 sm:right-1.5 z-10 rounded-md bg-base-700/90 hover:bg-indigo-500/60 text-base-300 hover:text-white font-bold text-sm sm:text-xs transition leading-none flex items-center justify-center"
+                    title="레이드 추가"
                   >
-                    {day.getMonth() + 1}월 {day.getDate()}일
-                  </span>
-                  {isAdmin && !isPast && (
-                    <button
-                      type="button"
-                      onClick={() => onCreate(key)}
-                      className="shrink-0 w-6 h-6 sm:w-5 sm:h-5 sm:absolute sm:top-1 sm:right-1 z-10 rounded-md bg-base-700/90 hover:bg-indigo-500/60 text-base-300 hover:text-white font-bold text-sm sm:text-xs transition leading-none flex items-center justify-center"
-                      title="레이드 추가"
-                    >
-                      +
-                    </button>
-                  )}
-                </div>
-
-                {/* Raid chips — 2줄 레이아웃, 칸 자동 확장 */}
-                <div className="space-y-1">
-                  {dayRaids.map((r) => {
-                    const diff = DIFFICULTIES[r.difficulty] || DIFFICULTIES.normal;
-                    const s = r.startAt.toDate();
-                    const time = `${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`;
-                    const prefix = chipPrefix(r.partyType, guilds);
-                    const mine = mineMap[r.id];
-                    return (
-                      <div
-                        key={r.id}
-                        role="link"
-                        tabIndex={0}
-                        onClick={() => navigate(`/raid/${r.id}`)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/raid/${r.id}`); }}
-                        className="relative w-full text-[10px] sm:text-xs font-semibold px-1.5 py-1.5 sm:py-1 rounded-md cursor-pointer hover:opacity-80 transition leading-tight min-h-[44px] sm:min-h-0 flex flex-col justify-center"
-                        style={{
-                          color: diff.color,
-                          backgroundColor: `${diff.color}1f`,
-                          // 미신청: 같은 색 옅게 / 신청: 같은 색 진하게
-                          border: `1.5px solid ${mine ? diff.color : `${diff.color}22`}`,
-                        }}
-                      >
-                        {/* 신청 표시 — 우측 상단, 신청한 클래스 컬러 */}
-                        {mine && (
-                          <span
-                            className="absolute -top-1.5 -right-1.5 z-10 px-1.5 py-0.5 rounded text-[10px] font-extrabold leading-none shadow text-white text-outline"
-                            style={{ backgroundColor: mine.classColor || '#6366f1' }}
-                          >
-                            {mine.status === 'active' ? '신청함' : '대기중'}
-                          </span>
-                        )}
-                        {/* 줄 1: 시간 + [bracket] */}
-                        <div className="truncate opacity-90 text-[11px] sm:text-sm text-outline">
-                          {time}{prefix && ` [${prefix}]`}
-                        </div>
-                        {/* 줄 2: 레이드 제목 */}
-                        <div className="truncate font-bold mt-0.5 text-[11px] sm:text-sm text-outline">
-                          {r.title || diff.label}
-                        </div>
-                        {/* 줄 3: 탱/힐/딜 카운트 */}
-                        {(() => {
-                          const c = counts[r.id];
-                          const caps = getCaps(r);
-                          if (!c) return null;
-                          return (
-                            <div className="flex items-center justify-center gap-1.5 mt-1 tabular-nums">
-                              {[
-                                { key: 'tank',   label: '탱', cur: c.tank,   cap: caps.tank   },
-                                { key: 'healer', label: '힐', cur: c.healer, cap: caps.healer },
-                                { key: 'dps',    label: '딜', cur: c.dps,    cap: caps.dps    },
-                              ].map(({ key, label, cur, cap }) => (
-                                <span
-                                  key={key}
-                                  className="text-[9px] font-bold leading-none whitespace-nowrap text-outline"
-                                  style={{ color: ROLE_COLORS[key] }}
-                                >
-                                  {label} {cur}/{cap}
-                                </span>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    );
-                  })}
-                </div>
+                    +
+                  </button>
+                )}
               </div>
-            );
-          })}
-        </div>
-      ))}
+
+              {/* 레이드 칩 — 세로 스택, 하루 다건이면 칸 자동 확장 */}
+              <div className="space-y-1.5">
+                {dayRaids.map((r) => {
+                  const diff = DIFFICULTIES[r.difficulty] || DIFFICULTIES.normal;
+                  const s = r.startAt.toDate();
+                  const time = `${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`;
+                  const prefix = chipPrefix(r.partyType, guilds);
+                  const mine = mineMap[r.id];
+                  const c = counts[r.id];
+                  const caps = getCaps(r);
+                  return (
+                    <div
+                      key={r.id}
+                      role="link"
+                      tabIndex={0}
+                      onClick={() => navigate(`/raid/${r.id}`)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/raid/${r.id}`); }}
+                      className="relative cursor-pointer transition hover:brightness-125 px-2 py-1.5 leading-tight"
+                      style={{ background: `${diff.color}1a`, borderLeft: `3px solid ${diff.color}` }}
+                    >
+                      {/* 신청 표시 — 우측 상단, 신청한 클래스 컬러 */}
+                      {mine && (
+                        <span
+                          className="absolute -top-1.5 -right-1.5 z-10 px-1.5 py-0.5 rounded text-[10px] font-extrabold leading-none shadow text-white text-outline"
+                          style={{ backgroundColor: mine.classColor || '#6366f1' }}
+                        >
+                          {mine.status === 'active' ? '신청함' : '대기중'}
+                        </span>
+                      )}
+                      {/* 줄 1: 시간 · [약식] */}
+                      <div className="truncate text-[11px] sm:text-xs font-semibold text-outline" style={{ color: diff.color }}>
+                        {time}{prefix ? ` · [${prefix}]` : ''}
+                      </div>
+                      {/* 줄 2: 제목 */}
+                      <div className="truncate text-[11px] sm:text-sm font-bold text-white text-outline mt-0.5">
+                        {r.title || diff.label}
+                      </div>
+                      {/* 줄 3: 탱/힐/딜 */}
+                      {c && (
+                        <div className="flex items-center justify-center gap-1.5 mt-1.5 tabular-nums">
+                          {[
+                            { k: 'tank', label: '탱', cur: c.tank, cap: caps.tank },
+                            { k: 'healer', label: '힐', cur: c.healer, cap: caps.healer },
+                            { k: 'dps', label: '딜', cur: c.dps, cap: caps.dps },
+                          ].map(({ k, label, cur, cap }) => (
+                            <span
+                              key={k}
+                              className="text-[9px] font-bold leading-none whitespace-nowrap text-outline"
+                              style={{ color: ROLE_COLORS[k] }}
+                            >
+                              {label} {cur}/{cap}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
