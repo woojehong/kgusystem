@@ -136,6 +136,18 @@ export default function RaidDetailPage() {
 
     const bench = sortBySeq(apps.filter((a) => a.status === 'bench'));
 
+    // 순번(번호)은 표시 위치와 무관하게 '신청 순(seq)'으로 매긴다.
+    // → 클래스 가나다순으로 배치돼도 D4가 앞에, D1이 뒤에 올 수 있음.
+    const activeRank = {};
+    const rankRole = (list, letter) => {
+      [...list]
+        .sort((a, b) => (a.seq || 0) - (b.seq || 0))
+        .forEach((a, i) => { activeRank[a.id] = `${letter}${i + 1}`; });
+    };
+    rankRole(tanks, 'T');
+    rankRole(healers, 'H');
+    rankRole(dps, 'D');
+
     return {
       tanks,
       healers,
@@ -144,6 +156,7 @@ export default function RaidDetailPage() {
       waitHealers,
       waitDps,
       bench,
+      activeRank,
       counts: { tank: tanks.length, healer: healers.length, dps: dps.length },
     };
   }, [apps]);
@@ -242,9 +255,7 @@ export default function RaidDetailPage() {
   let myRank = null;
   if (myApp) {
     if (myApp.status === 'active') {
-      const letter = myApp.role === 'tank' ? 'T' : myApp.role === 'healer' ? 'H' : 'D';
-      const list = myApp.role === 'tank' ? derived.tanks : myApp.role === 'healer' ? derived.healers : derived.dps;
-      myRank = `${letter}${list.findIndex((a) => a.id === myApp.id) + 1}`;
+      myRank = derived.activeRank[myApp.id] || null;
     } else if (myApp.status === 'wait') {
       const list = myApp.role === 'tank' ? derived.waitTanks : myApp.role === 'healer' ? derived.waitHealers : derived.waitDps;
       myRank = list.findIndex((a) => a.id === myApp.id) + 1;
@@ -388,7 +399,7 @@ export default function RaidDetailPage() {
             {/* 3행: 신청 정보 수정 (노랑) */}
             <button
               type="button"
-              className="w-full max-w-[220px] py-2.5 rounded-xl font-bold transition hover:brightness-110"
+              className="w-full max-w-[220px] py-1 text-sm rounded-xl font-bold transition hover:brightness-110"
               style={{ backgroundColor: '#eab308', color: '#0b0e13' }}
               onClick={() => { setEditApply(true); setApplyOpen(true); }}
             >
@@ -398,7 +409,7 @@ export default function RaidDetailPage() {
             {/* 4행: 신청 취소 (빨강) */}
             <button
               type="button"
-              className="w-full max-w-[220px] btn-danger py-2.5"
+              className="w-full max-w-[220px] btn-danger py-1 text-sm"
               onClick={() => setCancelConfirm(true)}
             >
               신청 취소
@@ -428,7 +439,7 @@ export default function RaidDetailPage() {
               onAdd={() => setReserveRole('tank')}
             />
             <div className="flex flex-wrap justify-center gap-1.5">
-              {renderCards(derived.tanks, (a) => `T${derived.tanks.indexOf(a) + 1}`)}
+              {renderCards(derived.tanks, (a) => derived.activeRank[a.id])}
             </div>
           </div>
 
@@ -442,7 +453,7 @@ export default function RaidDetailPage() {
               onAdd={() => setReserveRole('healer')}
             />
             <div className="flex flex-wrap justify-center gap-1.5">
-              {renderCards(derived.healers, (a) => `H${derived.healers.indexOf(a) + 1}`)}
+              {renderCards(derived.healers, (a) => derived.activeRank[a.id])}
             </div>
           </div>
 
@@ -456,7 +467,7 @@ export default function RaidDetailPage() {
               onAdd={() => setReserveRole('dps')}
             />
             <div className="flex flex-wrap justify-center gap-1.5">
-              {renderCards(derived.dps, (a) => `D${derived.dps.indexOf(a) + 1}`)}
+              {renderCards(derived.dps, (a) => derived.activeRank[a.id])}
             </div>
           </div>
 
