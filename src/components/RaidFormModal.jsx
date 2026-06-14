@@ -93,6 +93,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const [description, setDescription] = useState('');
   const [partyType, setPartyType] = useState('union');
   const [allowedGuilds, setAllowedGuilds] = useState('all');
+  const [allowNoGuild, setAllowNoGuild] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -121,6 +122,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setDescription(raid.description || '');
       setPartyType(raid.partyType || 'union');
       setAllowedGuilds(raid.allowedGuilds ?? 'all');
+      setAllowNoGuild(raid.allowNoGuild !== false);
     } else {
       setLocalDateKey(defaultDateKey);
       setTitle('');
@@ -216,6 +218,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
         description: description.trim(),
         partyType,
         allowedGuilds: finalAllowedGuilds,
+        allowNoGuild,
       };
       if (isEdit) {
         await updateRaid(raid.id, payload);
@@ -308,6 +311,23 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
             </button>
           </div>
         </div>
+
+        {/* 소속없음 허용 여부 (연합 레이드) */}
+        {partyType === 'union' && (
+          <label className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700 cursor-pointer">
+            <div>
+              <p className="text-sm font-medium">소속 없음 신청 허용</p>
+              <p className="text-[11px] text-base-400 mt-0.5">비활성화 시 길드 소속 인원만 신청 가능</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAllowNoGuild(!allowNoGuild)}
+              className={`relative w-11 h-6 rounded-full transition shrink-0 ${allowNoGuild ? 'bg-indigo-500' : 'bg-base-600'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${allowNoGuild ? 'left-[22px]' : 'left-0.5'}`} />
+            </button>
+          </label>
+        )}
 
         {/* 신청 가능 길드 */}
         {partyType !== 'union' && (

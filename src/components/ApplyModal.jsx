@@ -103,8 +103,11 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
   if (!profile) return null;
 
   const guildAllowed = (() => {
+    const userGuildId = profile.guildId || '';
+    const isNoGuild = userGuildId === 'none' || userGuildId === '';
+    if (isNoGuild && raid.allowNoGuild === false) return false;
     if (!raid.allowedGuilds || raid.allowedGuilds === 'all') return true;
-    if (Array.isArray(raid.allowedGuilds)) return raid.allowedGuilds.includes(profile.guildId || '');
+    if (Array.isArray(raid.allowedGuilds)) return raid.allowedGuilds.includes(userGuildId);
     return true;
   })();
 
