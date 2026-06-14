@@ -145,7 +145,23 @@ export function randomId(prefix = '') {
   return `${prefix}${part()}${part()}`;
 }
 
-/** Readable text color (dark) for very bright class colors like Priest white. */
+/** Class-coloured text with a crisp dark outline for contrast on any background. */
 export function badgeTextStyle(color) {
-  return { color, textShadow: '0 0 1px rgba(0,0,0,0.6)' };
+  return {
+    color,
+    textShadow:
+      '-1px -1px 0 rgba(0,0,0,0.75), 1px -1px 0 rgba(0,0,0,0.75), -1px 1px 0 rgba(0,0,0,0.75), 1px 1px 0 rgba(0,0,0,0.75)',
+  };
+}
+
+/** Returns a readable text colour (dark or white) for a given background hex. */
+export function readableOn(hex) {
+  if (!hex || typeof hex !== 'string') return '#ffffff';
+  const c = hex.replace('#', '');
+  if (c.length < 6) return '#ffffff';
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  const L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return L > 0.6 ? '#0b0e13' : '#ffffff';
 }

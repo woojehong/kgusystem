@@ -1,6 +1,6 @@
 import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
-import { buildCalendarWeeks, toDateKey, WEEKDAYS_KO, getCaps } from '../lib/utils';
+import { buildCalendarWeeks, toDateKey, WEEKDAYS_KO, getCaps, readableOn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 function chipPrefix(partyType, guilds) {
@@ -98,23 +98,29 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                         tabIndex={0}
                         onClick={() => navigate(`/raid/${r.id}`)}
                         onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/raid/${r.id}`); }}
-                        className={`w-full text-[10px] sm:text-xs font-semibold px-1.5 py-1.5 sm:py-1 rounded-md cursor-pointer hover:opacity-80 transition leading-tight min-h-[44px] sm:min-h-0 flex flex-col justify-center ${
-                          mine ? 'ring-1 ring-indigo-400/70' : ''
-                        }`}
-                        style={{ color: diff.color, backgroundColor: `${diff.color}1f` }}
+                        className="relative w-full text-[10px] sm:text-xs font-semibold px-1.5 py-1.5 sm:py-1 rounded-md cursor-pointer hover:opacity-80 transition leading-tight min-h-[44px] sm:min-h-0 flex flex-col justify-center"
+                        style={{
+                          color: diff.color,
+                          backgroundColor: `${diff.color}1f`,
+                          // 미신청: 같은 색 옅게 / 신청: 같은 색 진하게
+                          border: `1.5px solid ${mine ? diff.color : `${diff.color}22`}`,
+                        }}
                       >
-                        {/* 줄 1: 시간 + [bracket] (+ 내 신청 표시) */}
-                        <div className="truncate opacity-80 text-[11px] sm:text-sm">
-                          {mine && (
-                            <span
-                              className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400 mr-1 align-middle"
-                              title={mine === 'active' ? '신청함' : '대기중'}
-                            />
-                          )}
+                        {/* 신청 표시 — 우측 상단, 신청한 클래스 컬러 */}
+                        {mine && (
+                          <span
+                            className="absolute -top-1 -right-1 z-10 px-1 rounded text-[8px] font-extrabold leading-tight shadow"
+                            style={{ backgroundColor: mine.classColor || '#6366f1', color: readableOn(mine.classColor || '#6366f1') }}
+                          >
+                            {mine.status === 'active' ? '신청' : '대기'}
+                          </span>
+                        )}
+                        {/* 줄 1: 시간 + [bracket] */}
+                        <div className="truncate opacity-90 text-[11px] sm:text-sm text-outline">
                           {time}{prefix && ` [${prefix}]`}
                         </div>
                         {/* 줄 2: 레이드 제목 */}
-                        <div className="truncate font-bold mt-0.5 text-[11px] sm:text-sm">
+                        <div className="truncate font-bold mt-0.5 text-[11px] sm:text-sm text-outline">
                           {r.title || diff.label}
                         </div>
                         {/* 줄 3: 탱/힐/딜 카운트 */}
@@ -131,7 +137,7 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                               ].map(({ key, label, cur, cap }) => (
                                 <span
                                   key={key}
-                                  className="text-[9px] font-bold"
+                                  className="text-[9px] font-bold text-outline"
                                   style={{ color: ROLE_COLORS[key] }}
                                 >
                                   {label} {cur}/{cap}

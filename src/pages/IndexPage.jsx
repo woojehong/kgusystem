@@ -152,9 +152,14 @@ export default function IndexPage() {
           });
           setCounts((prev) => ({ ...prev, [id]: c }));
 
-          // Whether the current user has an application on this raid.
+          // Whether the current user has an application on this raid (with the
+          // class colour they applied with, for the highlight/indicator).
           const myDoc = userId ? snap.docs.find((d) => d.id === userId) : null;
-          setMyStatus((prev) => ({ ...prev, [id]: myDoc ? myDoc.data().status : undefined }));
+          const md = myDoc ? myDoc.data() : null;
+          setMyStatus((prev) => ({
+            ...prev,
+            [id]: md ? { status: md.status, classColor: md.classColor || null } : undefined,
+          }));
         },
         () => {}
       )

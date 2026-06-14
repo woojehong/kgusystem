@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
-import { formatTimeRange, getCaps } from '../lib/utils';
+import { formatTimeRange, getCaps, readableOn } from '../lib/utils';
 
 // Role colours shared across the app (tank / healer / dps).
 const ROLE_META = [
@@ -28,14 +28,15 @@ function shortDate(dateKey) {
 
 /**
  * Position capacity bar — colour-coded by role, with the headcount (e.g. 0/2)
- * centered on the bar for readability. Turns gold when the position is full.
+ * centered on the bar. White text + outline stays readable on any fill colour.
+ * Turns gold when the position is full.
  */
 function CapacityBar({ label, current, cap, color }) {
   const full = cap > 0 && current >= cap;
   const pct = cap > 0 ? Math.min(100, Math.round((current / cap) * 100)) : 0;
   return (
     <div className="flex items-center gap-1.5" title={`${label} ${current}/${cap}`}>
-      <span className="text-[10px] font-black w-3 text-center shrink-0" style={{ color: full ? GOLD : color }}>
+      <span className="text-[10px] font-black w-3 text-center shrink-0 text-outline" style={{ color: full ? GOLD : color }}>
         {label}
       </span>
       <div className="relative flex-1 h-5 rounded-full bg-base-900/70 overflow-hidden">
@@ -47,10 +48,7 @@ function CapacityBar({ label, current, cap, color }) {
             boxShadow: full ? `0 0 6px ${GOLD}aa` : 'none',
           }}
         />
-        <span
-          className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white"
-          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.75)' }}
-        >
+        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white text-outline">
           {current}/{cap}
         </span>
       </div>
@@ -66,31 +64,37 @@ export default function RaidCard({ raid, counts, mine }) {
   const endAt = raid.endAt.toDate();
 
   const allFull = ROLE_META.every((r) => (counts?.[r.key] ?? 0) >= caps[r.key]);
+  const applyColor = mine?.classColor || '#6366f1';
 
   return (
     <Link
       to={`/raid/${raid.id}`}
-      className={`relative block card overflow-hidden hover:border-base-600 hover:-translate-y-0.5 transition-all ${
-        mine ? 'ring-1 ring-indigo-400/60' : ''
-      }`}
-      style={{ backgroundColor: diff.soft }}
+      className="relative block card overflow-hidden hover:-translate-y-0.5 transition-all"
+      style={{
+        backgroundColor: diff.soft,
+        // 미신청: 같은 색 옅게(거의 안 보이게) · 신청: 같은 색 진하게(눈에 띄게)
+        border: `2px solid ${mine ? diff.color : `${diff.color}22`}`,
+      }}
     >
       <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
 
-      {/* 마감 리본 (전체 정원 충족 시) */}
+      {/* 마감 리본 — 중앙 상단 */}
       {allFull && (
         <span
-          className="absolute -right-9 top-3 rotate-45 px-9 py-0.5 text-[10px] font-black text-base-900 shadow z-10"
+          className="absolute top-0 left-1/2 -translate-x-1/2 px-4 py-0.5 rounded-b-lg text-[10px] font-black text-base-900 z-10 shadow"
           style={{ backgroundColor: GOLD }}
         >
           마감
         </span>
       )}
 
-      {/* 신청함 / 대기중 (우측 상단, 신청했을 때만) */}
-      {mine && !allFull && (
-        <span className="absolute top-2 right-2 z-20 text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-indigo-500/30 text-indigo-100 border border-indigo-400/40">
-          {mine === 'active' ? '신청함' : '대기중'}
+      {/* 신청 표시 — 우측 상단, 신청한 클래스 컬러 (마감돼도 유지) */}
+      {mine && (
+        <span
+          className="absolute top-2 right-2 z-20 text-[10px] px-2 py-0.5 rounded-full font-extrabold shadow"
+          style={{ backgroundColor: applyColor, color: readableOn(applyColor) }}
+        >
+          {mine.status === 'active' ? '신청함' : '대기중'}
         </span>
       )}
 
