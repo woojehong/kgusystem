@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// GitHub Pages serves this app from https://<user>.github.io/kgusystem/
+// Custom domain: https://wowkorea.space
 export default defineConfig({
   plugins: [react()],
-  base: '/kgusystem/',
+  base: '/',
   build: {
     rollupOptions: {
       output: {

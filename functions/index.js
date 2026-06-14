@@ -9,7 +9,7 @@ initializeApp();
 const WEBHOOK_ANNOUNCE = defineSecret('DISCORD_WEBHOOK_ANNOUNCE');
 const WEBHOOK_NOTIFY   = defineSecret('DISCORD_WEBHOOK_NOTIFY');
 
-const SITE_URL   = 'https://woojehong.github.io/kgusystem/';
+const SITE_URL   = 'https://wowkorea.site';
 const ROLE_LABEL = { tank: '🛡 탱커', healer: '💚 힐러', dps: '⚔️ 딜러' };
 const ROLE_COLOR = { tank: 0x38bdf8, healer: 0x34d399, dps: 0xfb7185 };
 const FOOTER     = '한길련 레이드 시스템 · 제목 클릭 → 사이트 바로가기';
