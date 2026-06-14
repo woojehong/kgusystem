@@ -227,7 +227,9 @@ export function buildBadgeStyles(badgeCfg, signatureColor) {
 export default function GuildBadge({ guildId, guildName, guildColor, size = 'sm', badgeConfig }) {
   const { guilds } = useApp();
   const guild    = guilds.find((g) => g.id === guildId);
-  const name     = guildName  ?? guild?.name  ?? '소속 없음';
+  // Prefer the guild's dedicated badge name (emoji/abbreviation) when the
+  // guild resolves; otherwise fall back to the passed-in name.
+  const name     = guild ? (guild.badgeName || guild.name) : (guildName ?? '소속 없음');
   const color    = guildColor ?? guild?.color ?? '#64748b';
   const logoPath = guild?.logoPath;
 

@@ -128,7 +128,7 @@ export function defaultHero(color = '#64748b') {
   return {
     showBox: true,      // 타이틀 박스 자체
     showLogo: false,    // 로고(logoPath 재사용)
-    showBanner: false,  // 배너(가로 커버, 슈퍼관리자만 경로 설정)
+    showBadge: true,    // 길드 뱃지(칩)
     showName: true,     // 길드명
     showTag: false,     // 추가 문구
     nameFont: 'pretendard',
@@ -138,7 +138,6 @@ export function defaultHero(color = '#64748b') {
     tagFont: 'pretendard',
     tagColor: '#cbd5e1',
     tagSize: 16,
-    bannerPath: '',
     bgStyle: 'signature', // 'signature' | 'solid' | 'gradient' | 'none'
     bgColor1: color,
     bgColor2: color,

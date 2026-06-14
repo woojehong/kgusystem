@@ -104,7 +104,7 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                         style={{ color: diff.color, backgroundColor: `${diff.color}1f` }}
                       >
                         {/* 줄 1: 시간 + [bracket] (+ 내 신청 표시) */}
-                        <div className="truncate opacity-80">
+                        <div className="truncate opacity-80 text-[11px] sm:text-sm">
                           {mine && (
                             <span
                               className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400 mr-1 align-middle"
@@ -114,7 +114,7 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                           {time}{prefix && ` [${prefix}]`}
                         </div>
                         {/* 줄 2: 레이드 제목 */}
-                        <div className="truncate font-bold mt-0.5">
+                        <div className="truncate font-bold mt-0.5 text-[11px] sm:text-sm">
                           {r.title || diff.label}
                         </div>
                         {/* 줄 3: 탱/힐/딜 카운트 */}
@@ -123,7 +123,7 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                           const caps = getCaps(r);
                           if (!c) return null;
                           return (
-                            <div className="flex gap-1 mt-0.5">
+                            <div className="flex gap-1 mt-0.5 justify-center">
                               {[
                                 { key: 'tank',   label: '탱', cur: c.tank,   cap: caps.tank   },
                                 { key: 'healer', label: '힐', cur: c.healer, cap: caps.healer },

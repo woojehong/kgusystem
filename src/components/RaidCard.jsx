@@ -27,29 +27,32 @@ function shortDate(dateKey) {
 }
 
 /**
- * Position capacity bar — no numbers, colour-coded by role.
- * Fills proportionally; once the position is full the whole bar turns gold.
+ * Position capacity bar — colour-coded by role, with the headcount (e.g. 0/2)
+ * centered on the bar for readability. Turns gold when the position is full.
  */
 function CapacityBar({ label, current, cap, color }) {
   const full = cap > 0 && current >= cap;
   const pct = cap > 0 ? Math.min(100, Math.round((current / cap) * 100)) : 0;
   return (
     <div className="flex items-center gap-1.5" title={`${label} ${current}/${cap}`}>
-      <span
-        className="text-[10px] font-black w-3 text-center shrink-0"
-        style={{ color: full ? GOLD : color }}
-      >
+      <span className="text-[10px] font-black w-3 text-center shrink-0" style={{ color: full ? GOLD : color }}>
         {label}
       </span>
-      <div className="flex-1 h-2 rounded-full bg-base-900/70 overflow-hidden">
+      <div className="relative flex-1 h-5 rounded-full bg-base-900/70 overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-300"
+          className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
           style={{
             width: full ? '100%' : `${pct}%`,
             backgroundColor: full ? GOLD : color,
             boxShadow: full ? `0 0 6px ${GOLD}aa` : 'none',
           }}
         />
+        <span
+          className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white"
+          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.75)' }}
+        >
+          {current}/{cap}
+        </span>
       </div>
     </div>
   );
@@ -77,31 +80,25 @@ export default function RaidCard({ raid, counts, mine }) {
       {/* 마감 리본 (전체 정원 충족 시) */}
       {allFull && (
         <span
-          className="absolute -right-9 top-3 rotate-45 px-9 py-0.5 text-[10px] font-black text-base-900 shadow"
+          className="absolute -right-9 top-3 rotate-45 px-9 py-0.5 text-[10px] font-black text-base-900 shadow z-10"
           style={{ backgroundColor: GOLD }}
         >
           마감
         </span>
       )}
 
+      {/* 신청함 / 대기중 (우측 상단, 신청했을 때만) */}
+      {mine && !allFull && (
+        <span className="absolute top-2 right-2 z-20 text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-indigo-500/30 text-indigo-100 border border-indigo-400/40">
+          {mine === 'active' ? '신청함' : '대기중'}
+        </span>
+      )}
+
       <div className="p-4 pl-5">
-        {/* Category + 내 신청 표시 */}
-        <div className="flex items-center gap-1.5 mb-1">
-          <p className="text-xs font-bold tracking-wide text-base-400 uppercase">
-            {partyTypeLabel(raid.partyType, guilds)}
-          </p>
-          {mine && (
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ${
-                mine === 'active'
-                  ? 'bg-indigo-500/20 text-indigo-300'
-                  : 'bg-amber-500/20 text-amber-300'
-              }`}
-            >
-              {mine === 'active' ? '신청함' : '대기중'}
-            </span>
-          )}
-        </div>
+        {/* Category (가운데 · 크게) */}
+        <p className="text-sm font-bold tracking-wide text-base-300 uppercase mb-1 text-center">
+          {partyTypeLabel(raid.partyType, guilds)}
+        </p>
 
         {/* Title */}
         <p className="font-bold text-base leading-snug break-keep">

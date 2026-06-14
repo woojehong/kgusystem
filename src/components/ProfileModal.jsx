@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useApp } from '../context/AppContext';
-import { changeNickname, changePin } from '../lib/auth';
+import { changePin } from '../lib/auth';
 import { saveGuild } from '../lib/db';
-import { PIN_RULE, NICKNAME_RULE } from '../lib/constants';
+import { PIN_RULE } from '../lib/constants';
 import Modal from './Modal';
 import GuildBadge, { buildBadgeStyles } from './GuildBadge';
 import GuildPageEditor from './GuildPageEditor';
@@ -150,9 +150,7 @@ function BadgeSection({ label, children }) {
 
 // ── BasicTab ─────────────────────────────────────────────────────────
 function BasicTab({ onClose }) {
-  const { userId, profile, guilds } = useApp();
-  const [nickname, setNickname] = useState(profile.nickname);
-  const [guildId, setGuildId] = useState(profile.guildId);
+  const { userId, profile } = useApp();
   const [leaderCapable, setLeaderCapable] = useState(!!profile.leaderCapable);
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -164,11 +162,7 @@ function BasicTab({ onClose }) {
     setMsg(null);
     setBusy(true);
     try {
-      const name = nickname.trim();
-      if (name !== profile.nickname) {
-        await changeNickname(userId, profile.nickname, name);
-      }
-      await updateDoc(doc(db, 'users', userId), { guildId, leaderCapable });
+      await updateDoc(doc(db, 'users', userId), { leaderCapable });
 
       const wantsPinChange = currentPin || newPin || newPin2;
       if (wantsPinChange) {
@@ -192,30 +186,14 @@ function BasicTab({ onClose }) {
     <div className="space-y-5">
       <div>
         <label className="label-sm">닉네임</label>
-        <input
-          className="input-base"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          placeholder={NICKNAME_RULE.hint}
-        />
+        <input className="input-base opacity-60 cursor-not-allowed" value={profile.nickname} disabled />
+        <p className="text-[11px] text-base-500 mt-1">닉네임 변경은 슈퍼관리자에게 문의하세요.</p>
       </div>
 
       <div>
         <label className="label-sm">소속 길드</label>
-        <div className="flex flex-wrap gap-2">
-          {guilds.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => setGuildId(g.id)}
-              className={`rounded-full transition ring-offset-2 ring-offset-base-800 ${
-                guildId === g.id ? 'ring-2 ring-indigo-400' : 'opacity-70 hover:opacity-100'
-              }`}
-            >
-              <GuildBadge guildId={g.id} />
-            </button>
-          ))}
-        </div>
+        <div className="flex"><GuildBadge guildId={profile.guildId} /></div>
+        <p className="text-[11px] text-base-500 mt-1">소속 길드 변경은 슈퍼관리자에게 문의하세요.</p>
       </div>
 
       <div className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700">
@@ -415,6 +393,7 @@ function GuildTab({ onClose }) {
   const [badgeTab, setBadgeTab] = useState('info');
   const [name, setName] = useState(guild?.name || '');
   const [shortName, setShortName] = useState(guild?.shortName || '');
+  const [badgeName, setBadgeName] = useState(guild?.badgeName || '');
   const [color, setColor] = useState(guild?.color || '#7dd3fc');
   const englishLocked = !!guild?.englishName;
   const [englishName, setEnglishName] = useState(guild?.englishName || '');
@@ -466,6 +445,7 @@ function GuildTab({ onClose }) {
         ...guild,
         name: name.trim(),
         shortName: sn,
+        badgeName: badgeName.trim(),
         color,
         page,
         badge: {
@@ -528,6 +508,16 @@ function GuildTab({ onClose }) {
             />
           </div>
           <div>
+            <label className="label-sm">뱃지명 <span className="text-base-500 font-normal">(뱃지에 표시 · 이모지/줄임 가능)</span></label>
+            <input
+              className="input-base"
+              value={badgeName}
+              onChange={(e) => setBadgeName(e.target.value)}
+              placeholder="예: 🌲스타폴, SF (비우면 길드명)"
+              maxLength={16}
+            />
+          </div>
+          <div>
             <label className="label-sm">영문명 <span className="text-base-500 font-normal">(로고 파일명 · 페이지 주소)</span></label>
             <input
               className="input-base"
@@ -558,6 +548,13 @@ function GuildTab({ onClose }) {
               />
               <input className="input-base flex-1" value={color} onChange={(e) => setColor(e.target.value)} />
             </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-base-850 border border-base-700 text-[11px] text-base-400 leading-relaxed">
+            <b className="text-base-300">이미지 규격 안내</b>
+            <br />· 로고: <b className="text-base-300">512 × 512</b> (정사각 · 배경 투명 PNG)
+            <br />· 깃발: <b className="text-base-300">512 × 640</b> (4:5 · 배경 투명 PNG)
+            <br />만들어서 관리자에게 전달하면 등록해 드립니다.
           </div>
         </div>
       )}
@@ -682,7 +679,8 @@ function GuildTab({ onClose }) {
           guildName={name || guild?.name || '길드'}
           guildEnglishName={guild?.englishName || ''}
           guildLogoPath={guild?.logoPath || ''}
-          canSetImagePaths={false}
+          guildBadge={previewBadgeConfig}
+          guildBadgeName={badgeName || name || guild?.name || ''}
         />
       )}
 

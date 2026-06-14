@@ -7,7 +7,7 @@ import { flagImageUrl } from '../lib/guildPage';
 // Bottom swallowtail notch (화환 깃발 느낌).
 const TAIL_CLIP = 'polygon(0 0, 100% 0, 100% 88%, 50% 100%, 0 88%)';
 
-function Flag({ guild, index }) {
+function Flag({ guild, index, widthStyle }) {
   const [imgError, setImgError] = useState(false);
   const color = guild.color || '#64748b';
   const slug = guild.englishName;
@@ -21,7 +21,7 @@ function Flag({ guild, index }) {
     <Link
       to={to}
       className="group flex flex-col items-center"
-      style={{ width: 'calc(25% - 24px)', maxWidth: 150, minWidth: 0 }}
+      style={widthStyle}
       title={guild.name}
     >
       {/* 가로 깃대 */}
@@ -73,7 +73,7 @@ function Flag({ guild, index }) {
                 className="font-black text-white leading-tight break-keep"
                 style={{ fontSize: 'clamp(11px, 2.4vw, 18px)', textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
               >
-                {guild.name}
+                {guild.badgeName || guild.name}
               </span>
             </div>
           )}
@@ -96,10 +96,17 @@ function Flag({ guild, index }) {
   );
 }
 
+// 첫 줄은 4개, 둘째 줄부터는 6개씩 (각 줄 가운데 정렬, 왼쪽부터 채움).
+const WIDTH_4 = { width: 'calc(25% - 24px)', maxWidth: 150, minWidth: 0 };
+const WIDTH_6 = { width: 'calc(16.666% - 20px)', maxWidth: 112, minWidth: 0 };
+
 export default function GuildFlags() {
   const { guilds } = useApp();
   const list = sortGuilds(guilds.filter((g) => !g.isNone));
   if (list.length === 0) return null;
+
+  const first = list.slice(0, 4);
+  const rest = list.slice(4);
 
   return (
     <section className="mt-10">
@@ -108,11 +115,20 @@ export default function GuildFlags() {
         <h2 className="text-sm font-bold text-base-400 tracking-wider">한국길드연합 소속 길드 소개</h2>
         <span className="flex-1 h-px bg-base-700/70" />
       </div>
+
       <div className="flex flex-wrap justify-center gap-6 sm:gap-8">
-        {list.map((g, i) => (
-          <Flag key={g.id} guild={g} index={i} />
+        {first.map((g, i) => (
+          <Flag key={g.id} guild={g} index={i} widthStyle={WIDTH_4} />
         ))}
       </div>
+
+      {rest.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mt-6">
+          {rest.map((g, i) => (
+            <Flag key={g.id} guild={g} index={i + 4} widthStyle={WIDTH_6} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

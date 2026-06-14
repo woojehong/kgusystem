@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
+import { buildBadgeStyles } from '../components/GuildBadge';
 import {
   blockTextStyle,
   imgWidthValue,
@@ -37,7 +38,8 @@ export default function GuildPage() {
   const { hero, blocks } = normalizePage(guild.page, color);
 
   const logoUrl = guild.logoPath ? resolveImagePath(guild.logoPath, guild.englishName) : '';
-  const bannerUrl = hero.showBanner ? resolveImagePath(hero.bannerPath, guild.englishName) : '';
+  const badgeLabel = guild.badgeName || guild.name;
+  const { style: badgeStyle, animClass: badgeAnim, isClipPath: badgeClip } = buildBadgeStyles(guild.badge, color);
 
   const nameStyle = {
     fontFamily: fontCss(hero.nameFont),
@@ -55,7 +57,7 @@ export default function GuildPage() {
   };
 
   const heroEmpty =
-    !(hero.showBanner && bannerUrl) &&
+    !hero.showBadge &&
     !(hero.showLogo && logoUrl) &&
     !hero.showName &&
     !(hero.showTag && hero.tagText);
@@ -74,29 +76,27 @@ export default function GuildPage() {
         {/* ── Hero (타이틀 박스) — 부품 조립식 ── */}
         {hero.showBox && !heroEmpty && (
           <div
-            className="card relative overflow-hidden flex flex-col items-center text-center"
+            className="card relative overflow-hidden p-7 flex flex-col items-center text-center gap-3"
             style={{ background: heroBackground(hero, color) }}
           >
-            {hero.showBanner && bannerUrl && (
+            {hero.showLogo && logoUrl && (
               <img
-                src={bannerUrl}
+                src={logoUrl}
                 alt=""
-                className="w-full max-h-52 object-cover"
+                className="w-24 h-24 object-contain drop-shadow"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             )}
-            <div className="p-7 flex flex-col items-center gap-3 w-full">
-              {hero.showLogo && logoUrl && (
-                <img
-                  src={logoUrl}
-                  alt=""
-                  className="w-24 h-24 object-contain drop-shadow"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                />
-              )}
-              {hero.showName && <p className="break-keep" style={nameStyle}>{guild.name}</p>}
-              {hero.showTag && hero.tagText && <p className="break-keep" style={tagStyle}>{hero.tagText}</p>}
-            </div>
+            {hero.showBadge && (
+              <span
+                className={`inline-flex items-center justify-center text-lg font-bold px-7 py-3 ${badgeAnim}`}
+                style={{ ...badgeStyle, ...(badgeClip ? { minWidth: '9rem', minHeight: '3rem' } : {}) }}
+              >
+                {badgeLabel}
+              </span>
+            )}
+            {hero.showName && <p className="break-keep" style={nameStyle}>{guild.name}</p>}
+            {hero.showTag && hero.tagText && <p className="break-keep" style={tagStyle}>{hero.tagText}</p>}
           </div>
         )}
 

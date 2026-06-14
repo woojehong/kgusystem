@@ -13,6 +13,7 @@ import {
   fontCss,
   resolveImagePath,
 } from '../lib/guildPage';
+import { buildBadgeStyles } from './GuildBadge';
 
 const HERO_BG_OPTIONS = [
   ['signature', '시그니처'],
@@ -61,8 +62,7 @@ function ToggleChip({ label, on, onChange }) {
  * value: { hero, blocks }   onChange: (nextPage) => void
  * - guildEnglishName: used to resolve bare image file names.
  * - guildLogoPath: existing guild logo (reused as hero logo).
- * - canSetImagePaths: true for super admin (can type banner path); guild
- *   masters only toggle and reference admin-provided file names.
+ * - guildBadge / guildBadgeName: badge config + label for the hero badge preview.
  */
 export default function GuildPageEditor({
   value,
@@ -71,7 +71,8 @@ export default function GuildPageEditor({
   guildName = '길드',
   guildEnglishName = '',
   guildLogoPath = '',
-  canSetImagePaths = false,
+  guildBadge = {},
+  guildBadgeName = '',
 }) {
   const page = normalizePage(value, guildColor);
   const blocks = page.blocks;
@@ -92,7 +93,9 @@ export default function GuildPageEditor({
   };
 
   const logoUrl = guildLogoPath ? resolveImagePath(guildLogoPath, guildEnglishName) : '';
-  const bannerUrl = hero.showBanner ? resolveImagePath(hero.bannerPath, guildEnglishName) : '';
+
+  const { style: badgeStyle, animClass: badgeAnim, isClipPath: badgeClip } = buildBadgeStyles(guildBadge, guildColor);
+  const badgeLabel = guildBadgeName || guildName;
 
   const nameStyle = {
     fontFamily: fontCss(hero.nameFont),
@@ -129,28 +132,30 @@ export default function GuildPageEditor({
         {hero.showBox && (
           <>
             {/* 미리보기 */}
-            <div className="rounded-lg overflow-hidden" style={{ background: heroBackground(hero, guildColor) }}>
-              {hero.showBanner && bannerUrl && (
-                <img src={bannerUrl} alt="" className="w-full max-h-24 object-cover"
+            <div className="rounded-lg py-5 px-3 flex flex-col items-center gap-2" style={{ background: heroBackground(hero, guildColor) }}>
+              {hero.showLogo && logoUrl && (
+                <img src={logoUrl} alt="" className="w-14 h-14 object-contain"
                   onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               )}
-              <div className="py-5 px-3 flex flex-col items-center gap-2">
-                {hero.showLogo && logoUrl && (
-                  <img src={logoUrl} alt="" className="w-14 h-14 object-contain"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                )}
-                {hero.showName && <p className="break-keep text-center" style={nameStyle}>{guildName}</p>}
-                {hero.showTag && hero.tagText && <p className="break-keep text-center" style={tagStyle}>{hero.tagText}</p>}
-                {!hero.showName && !hero.showTag && !hero.showLogo && !bannerUrl && (
-                  <span className="text-[11px] text-base-500">(빈 타이틀 — 부품을 켜보세요)</span>
-                )}
-              </div>
+              {hero.showBadge && (
+                <span
+                  className={`inline-flex items-center justify-center text-sm font-bold px-4 py-1.5 ${badgeAnim}`}
+                  style={{ ...badgeStyle, ...(badgeClip ? { minWidth: '6rem', minHeight: '2.1rem' } : {}) }}
+                >
+                  {badgeLabel}
+                </span>
+              )}
+              {hero.showName && <p className="break-keep text-center" style={nameStyle}>{guildName}</p>}
+              {hero.showTag && hero.tagText && <p className="break-keep text-center" style={tagStyle}>{hero.tagText}</p>}
+              {!hero.showName && !hero.showTag && !hero.showLogo && !hero.showBadge && (
+                <span className="text-[11px] text-base-500">(빈 타이틀 — 부품을 켜보세요)</span>
+              )}
             </div>
 
             {/* 부품 on/off */}
             <div className="grid grid-cols-2 gap-1.5">
+              <ToggleChip label="뱃지" on={hero.showBadge} onChange={(v) => updateHero({ showBadge: v })} />
               <ToggleChip label="로고" on={hero.showLogo} onChange={(v) => updateHero({ showLogo: v })} />
-              <ToggleChip label="배너" on={hero.showBanner} onChange={(v) => updateHero({ showBanner: v })} />
               <ToggleChip label="길드명" on={hero.showName} onChange={(v) => updateHero({ showName: v })} />
               <ToggleChip label="추가 문구" on={hero.showTag} onChange={(v) => updateHero({ showTag: v })} />
             </div>
@@ -158,23 +163,6 @@ export default function GuildPageEditor({
             {/* 로고 안내 */}
             {hero.showLogo && !logoUrl && (
               <p className="text-[11px] text-amber-300/80">로고 이미지는 관리자가 설정합니다. (관리자에게 문의)</p>
-            )}
-
-            {/* 배너 경로 (슈퍼관리자만 입력) */}
-            {hero.showBanner && (
-              canSetImagePaths ? (
-                <div>
-                  <label className="text-[11px] text-base-400">배너 이미지 (파일명)</label>
-                  <input
-                    className="input-base text-sm"
-                    value={hero.bannerPath}
-                    onChange={(e) => updateHero({ bannerPath: e.target.value.trim() })}
-                    placeholder="예: banner.png"
-                  />
-                </div>
-              ) : (
-                <p className="text-[11px] text-amber-300/80">배너 이미지는 관리자가 설정합니다. (관리자에게 문의)</p>
-              )
             )}
 
             {/* 길드명 글꼴/크기/색 */}

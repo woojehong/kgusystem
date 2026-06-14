@@ -198,6 +198,13 @@ export default function IndexPage() {
       <Header />
       <main className="max-w-6xl mx-auto px-4 mt-5">
 
+        {/* ── 섹션 타이틀 ── */}
+        <div className="flex items-center gap-3 mb-5">
+          <span className="flex-1 h-px bg-base-700/70" />
+          <h2 className="text-sm font-bold text-base-400 tracking-wider">레이드 일정</h2>
+          <span className="flex-1 h-px bg-base-700/70" />
+        </div>
+
         {/* ── Filter rows ── */}
         <div className="space-y-2 mb-5">
 

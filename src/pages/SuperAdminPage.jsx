@@ -630,6 +630,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
   const [name, setName] = useState(guild.name);
   const [shortName, setShortName] = useState(guild.shortName || '');
   const [englishName, setEnglishName] = useState(guild.englishName || '');
+  const [badgeName, setBadgeName] = useState(guild.badgeName || '');
   const [color, setColor] = useState(guild.color || '#7dd3fc');
   const [page, setPage] = useState(normalizePage(guild.page, guild.color));
   const [logoPath, setLogoPath] = useState(guild.logoPath || '');
@@ -688,6 +689,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
         name: name.trim(),
         shortName: sn,
         englishName: en,
+        badgeName: badgeName.trim(),
         color,
         logoPath: logoPath.trim(),
         isNone: !!guild.isNone,
@@ -751,6 +753,16 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
             />
           </div>
           <div>
+            <label className="label-sm">뱃지명 <span className="text-base-500 font-normal">(뱃지에 표시 · 이모지/줄임 가능)</span></label>
+            <input
+              className="input-base"
+              value={badgeName}
+              onChange={(e) => setBadgeName(e.target.value)}
+              placeholder="예: 🌲스타폴, SF (비우면 길드명)"
+              maxLength={16}
+            />
+          </div>
+          <div>
             <label className="label-sm">영문명 <span className="text-base-500 font-normal">(로고 파일명 · 페이지 주소 · 슈퍼관리자만 변경)</span></label>
             <input
               className="input-base"
@@ -782,8 +794,9 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
               onChange={(e) => setLogoPath(e.target.value)}
               placeholder="예: logos/starfall.png"
             />
-            <p className="text-[11px] text-base-400 mt-1">
+            <p className="text-[11px] text-base-400 mt-1 leading-relaxed">
               PNG 파일을 프로젝트 public/logos/ 폴더에 추가·커밋·배포 후 경로를 입력하세요.
+              <br />규격 — 로고: <b className="text-base-300">512 × 512</b> · 깃발: <b className="text-base-300">512 × 640</b> (배경 투명)
             </p>
           </div>
           {!guild.isNone && (
@@ -986,7 +999,8 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
           guildName={name || guild.name || '길드'}
           guildEnglishName={englishName || ''}
           guildLogoPath={logoPath || ''}
-          canSetImagePaths={true}
+          guildBadge={previewBadgeConfig}
+          guildBadgeName={badgeName || name || guild.name || ''}
         />
       )}
 
