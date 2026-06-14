@@ -283,31 +283,28 @@ export default function RaidDetailPage() {
         <div className="card relative overflow-hidden p-5" style={{ backgroundColor: diff.soft }}>
           <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
           <div className="pl-2">
-            <div className="flex items-start gap-2">
-              <h1 className="text-2xl font-black leading-tight break-keep">
-                {raid.title || `${diff.label} 공격대`}
-              </h1>
-
-              {/* Edit + invite buttons (canEdit only) */}
-              {canEdit && (
-                <div className="ml-auto shrink-0 flex flex-col gap-2 items-end">
-                  <button
-                    type="button"
-                    onClick={() => setRaidEditOpen(true)}
-                    className="text-sm px-4 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white font-bold border border-base-500 shadow transition whitespace-nowrap"
-                  >
-                    레이드 수정
-                  </button>
-                  <button
-                    type="button"
-                    onClick={copyInvite}
-                    className="text-sm px-4 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white font-bold border border-base-500 shadow transition whitespace-nowrap"
-                  >
-                    {copied ? '복사됨 ✓' : '구성원 초대'}
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* 레이드 수정 / 구성원 초대 — 우측 상단 절대배치 (제목 행 높이에 영향 없음) */}
+            {canEdit && (
+              <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+                <button
+                  type="button"
+                  onClick={() => setRaidEditOpen(true)}
+                  className="text-sm px-4 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white font-bold border border-base-500 shadow transition whitespace-nowrap"
+                >
+                  레이드 수정
+                </button>
+                <button
+                  type="button"
+                  onClick={copyInvite}
+                  className="text-sm px-4 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white font-bold border border-base-500 shadow transition whitespace-nowrap"
+                >
+                  {copied ? '복사됨 ✓' : '구성원 초대'}
+                </button>
+              </div>
+            )}
+            <h1 className={`text-2xl font-black leading-tight break-keep ${canEdit ? 'pr-24 sm:pr-28' : ''}`}>
+              {raid.title || `${diff.label} 공격대`}
+            </h1>
 
             <div className="mt-2 flex items-center gap-2.5 flex-wrap">
               <span
