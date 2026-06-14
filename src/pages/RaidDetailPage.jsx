@@ -15,6 +15,7 @@ import Header from '../components/Header';
 import SynergyBoard from '../components/SynergyBoard';
 import SwapList from '../components/SwapList';
 import ApplicantCard from '../components/ApplicantCard';
+import BenchCard from '../components/BenchCard';
 import { useToast } from '../components/Toast';
 import ApplyModal from '../components/ApplyModal';
 import ReservationModal from '../components/ReservationModal';
@@ -27,6 +28,12 @@ function sortBySeq(list) {
 }
 
 const ROLE_COLORS = { tank: '#38bdf8', healer: '#34d399', dps: '#fb7185' };
+
+const STATUS_META = {
+  active: { label: '참가 확정', color: '#34d399' },
+  wait: { label: '대기 명단', color: '#f59e0b' },
+  bench: { label: '벤치', color: '#a3e635' },
+};
 
 function SectionHeader({ label, role, count, cap, adminMode, onAdd }) {
   const roleColor = ROLE_COLORS[role] || '#94a3b8';
@@ -117,6 +124,8 @@ export default function RaidDetailPage() {
     const waitHealers = sortBySeq(waits.filter((a) => a.role === 'healer'));
     const waitDps = sortBySeq(waits.filter((a) => a.role === 'dps'));
 
+    const bench = sortBySeq(apps.filter((a) => a.status === 'bench'));
+
     return {
       tanks,
       healers,
@@ -124,6 +133,7 @@ export default function RaidDetailPage() {
       waitTanks,
       waitHealers,
       waitDps,
+      bench,
       counts: { tank: tanks.length, healer: healers.length, dps: dps.length },
     };
   }, [apps]);
@@ -202,6 +212,36 @@ export default function RaidDetailPage() {
       </div>
     ));
 
+  // 대기자/벤치는 한 줄에 2명 (절반 폭)
+  const renderCards2 = (list, rankFn) =>
+    list.map((app) => (
+      <div key={app.id} style={{ flexBasis: 'calc(50% - 3px)', flexShrink: 0, minWidth: 0 }}>
+        <ApplicantCard
+          app={app}
+          rank={rankFn(app)}
+          memo={adminView ? memos[app.id] : undefined}
+          adminView={adminView}
+          onAdminClick={setAdminTarget}
+          highlight={app.id === userId}
+        />
+      </div>
+    ));
+
+  const waitTotal = derived.waitTanks.length + derived.waitHealers.length + derived.waitDps.length;
+
+  // 내 신청 순번 (참가확정: T/H/D번호, 대기: 대기번호)
+  let myRank = null;
+  if (myApp) {
+    if (myApp.status === 'active') {
+      const letter = myApp.role === 'tank' ? 'T' : myApp.role === 'healer' ? 'H' : 'D';
+      const list = myApp.role === 'tank' ? derived.tanks : myApp.role === 'healer' ? derived.healers : derived.dps;
+      myRank = `${letter}${list.findIndex((a) => a.id === myApp.id) + 1}`;
+    } else if (myApp.status === 'wait') {
+      const list = myApp.role === 'tank' ? derived.waitTanks : myApp.role === 'healer' ? derived.waitHealers : derived.waitDps;
+      myRank = list.findIndex((a) => a.id === myApp.id) + 1;
+    }
+  }
+
   const waitGroups = [
     ['탱커 대기', derived.waitTanks],
     ['힐러 대기', derived.waitHealers],
@@ -230,21 +270,21 @@ export default function RaidDetailPage() {
 
               {/* Edit + invite buttons (canEdit only) */}
               {canEdit && (
-                <div className="ml-auto shrink-0 flex flex-col gap-1.5 items-end">
+                <div className="ml-auto shrink-0 flex flex-col gap-2 items-end">
                   <button
                     type="button"
                     onClick={() => setRaidEditOpen(true)}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 font-semibold transition whitespace-nowrap"
+                    className="text-sm px-4 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-bold border-2 border-indigo-300 shadow-lg transition whitespace-nowrap"
                   >
                     레이드 수정
                   </button>
                   <button
                     type="button"
                     onClick={copyInvite}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition whitespace-nowrap ${
+                    className={`text-sm px-4 py-1.5 rounded-lg font-bold border-2 shadow-lg transition whitespace-nowrap ${
                       copied
-                        ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                        : 'bg-base-700 hover:bg-base-600'
+                        ? 'bg-green-500 text-white border-green-300'
+                        : 'bg-emerald-500 hover:bg-emerald-400 text-white border-emerald-300'
                     }`}
                   >
                     {copied ? '복사됨 ✓' : '구성원 초대'}
@@ -311,47 +351,51 @@ export default function RaidDetailPage() {
           </div>
         </div>
 
-        {/* ── Apply actions ── */}
-        <div className="mt-4 flex gap-2">
-          {myApp ? (
-            <>
-              <div className="flex-1 card px-4 py-3 flex items-center gap-2 text-sm">
-                <span
-                  className={`font-bold ${myApp.status === 'active' ? 'text-green-400' : 'text-amber-400'}`}
-                >
-                  {myApp.status === 'active' ? '참가 확정' : '대기 중'}
-                </span>
-                <span className="text-base-300 truncate">
-                  {myApp.charName} · {myApp.specName}
-                </span>
-              </div>
+        {/* ── 내 신청 현황 ── */}
+        {myApp ? (
+          <div className="mt-4 space-y-3">
+            {/* 상태 칸 (가운데) */}
+            <div className="card py-2.5 text-center">
+              <span
+                className="font-black text-base text-outline"
+                style={{ color: STATUS_META[myApp.status]?.color || '#cbd5e1' }}
+              >
+                {STATUS_META[myApp.status]?.label || '신청됨'}
+              </span>
+            </div>
+            {/* 내 카드 (명단과 동일) */}
+            <div className="max-w-[220px] mx-auto">
+              {myApp.status === 'bench' ? (
+                <BenchCard app={myApp} highlight />
+              ) : (
+                <ApplicantCard app={myApp} rank={myRank} highlight />
+              )}
+            </div>
+            {/* 수정 / 취소 */}
+            <div className="flex gap-2">
               <button
                 type="button"
-                className="btn-ghost"
-                onClick={() => {
-                  setEditApply(true);
-                  setApplyOpen(true);
-                }}
+                className="btn-ghost flex-1"
+                onClick={() => { setEditApply(true); setApplyOpen(true); }}
               >
                 신청 정보 수정
               </button>
-              <button type="button" className="btn-danger" onClick={() => setCancelConfirm(true)}>
+              <button type="button" className="btn-danger flex-1" onClick={() => setCancelConfirm(true)}>
                 신청 취소
               </button>
-            </>
-          ) : (
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4">
             <button
               type="button"
               className="btn-primary w-full py-3.5 text-base"
-              onClick={() => {
-                setEditApply(false);
-                setApplyOpen(true);
-              }}
+              onClick={() => { setEditApply(false); setApplyOpen(true); }}
             >
               파티 참가 신청하기
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* ── Roster (primary) ── */}
         <div className="mt-5 space-y-4">
@@ -399,29 +443,60 @@ export default function RaidDetailPage() {
 
           {/* Secondary panels */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <SynergyBoard apps={apps} />
+            <SynergyBoard apps={apps} totalCap={caps.totalCap} />
             <SwapList apps={apps} />
           </div>
 
-          {/* Waitlist */}
-          <div className="card p-3 sm:max-w-2xl sm:mx-auto sm:w-full">
-            <p className="font-bold text-sm mb-2 text-center">대기 목록</p>
-            {waitGroups.every(([, list]) => list.length === 0) ? (
-              <p className="text-sm text-base-400 text-center py-2">대기자가 없습니다.</p>
-            ) : (
-              <div className="space-y-3">
-                {waitGroups.map(([label, list]) =>
-                  list.length === 0 ? null : (
-                    <div key={label}>
-                      <p className="text-xs font-semibold text-base-400 mb-1.5">{label}</p>
-                      <div className="space-y-1.5">
-                        {renderCards(list, (a) => list.indexOf(a) + 1)}
+          {/* 대기자 + 벤치 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* 대기자 */}
+            <div className="card p-3">
+              <p className="font-bold text-sm mb-2 flex items-center justify-between">
+                <span style={{ color: '#f59e0b' }}>대기자</span>
+                <span className="text-white">{waitTotal}</span>
+              </p>
+              {waitTotal === 0 ? (
+                <p className="text-sm text-base-400 text-center py-2">대기자가 없습니다.</p>
+              ) : (
+                <div className="space-y-3">
+                  {waitGroups.map(([label, list]) =>
+                    list.length === 0 ? null : (
+                      <div key={label}>
+                        <p className="text-xs font-semibold text-base-400 mb-1.5">{label}</p>
+                        <div className="flex flex-wrap justify-center gap-1.5">
+                          {renderCards2(list, (a) => list.indexOf(a) + 1)}
+                        </div>
                       </div>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 벤치 */}
+            <div className="card p-3">
+              <p className="font-bold text-sm mb-2 flex items-center justify-between">
+                <span style={{ color: '#a3e635' }}>벤치</span>
+                <span className="text-white">{derived.bench.length}</span>
+              </p>
+              {derived.bench.length === 0 ? (
+                <p className="text-sm text-base-400 text-center py-2">벤치 인원이 없습니다.</p>
+              ) : (
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {derived.bench.map((app) => (
+                    <div key={app.id} style={{ flexBasis: 'calc(50% - 3px)', flexShrink: 0, minWidth: 0 }}>
+                      <BenchCard
+                        app={app}
+                        memo={adminView ? memos[app.id] : undefined}
+                        adminView={adminView}
+                        onAdminClick={setAdminTarget}
+                        highlight={app.id === userId}
+                      />
                     </div>
-                  )
-                )}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </main>

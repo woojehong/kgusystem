@@ -114,6 +114,7 @@ exports.notifyAppCreated = onDocumentCreated(
   { document: 'raids/{raidId}/apps/{userId}', secrets: [WEBHOOK_ANNOUNCE, WEBHOOK_NOTIFY] },
   async (event) => {
     const app = event.data.data();
+    if (app.status === 'bench') return; // 벤치(예비)는 알림 제외
     const { raidId } = event.params;
     const [raid, counts] = await Promise.all([getRaid(raidId), getRaidCounts(raidId)]);
     if (!raid || raid.deleted) return;
@@ -169,6 +170,7 @@ exports.notifyAppDeleted = onDocumentDeleted(
   { document: 'raids/{raidId}/apps/{userId}', secrets: [WEBHOOK_NOTIFY] },
   async (event) => {
     const app = event.data.data();
+    if (app.status === 'bench') return; // 벤치(예비)는 알림 제외
     const { raidId } = event.params;
     const raid = await getRaid(raidId);
     if (!raid || raid.deleted) return;

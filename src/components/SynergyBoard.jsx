@@ -6,10 +6,11 @@ import { useApp } from '../context/AppContext';
  * applicant (or a reservation with a class) is present; otherwise it
  * renders desaturated. Tooltips carry the underlying buff details.
  */
-export default function SynergyBoard({ apps }) {
+export default function SynergyBoard({ apps, totalCap = 0 }) {
   const { gamedata } = useApp();
   const { synergies, classes } = gamedata;
 
+  const activeCount = apps.filter((a) => a.status === 'active').length;
   const presentClasses = new Set(
     apps.filter((a) => a.status === 'active' && a.classId).map((a) => a.classId)
   );
@@ -49,8 +50,10 @@ export default function SynergyBoard({ apps }) {
   };
 
   return (
-    <div className="card p-2.5">
-      <p className="text-[11px] font-bold text-base-400 mb-1.5 px-0.5">공격대 시너지</p>
+    <div className="card p-3">
+      <p className="font-bold text-sm mb-2" style={{ color: '#e879f9' }}>
+        공격대 시너지 <span className="text-white">현재 인원 {activeCount}/{totalCap}</span>
+      </p>
       <div className="flex flex-wrap gap-1">{chipsFor('buff')}</div>
       <p className="text-[11px] font-bold text-base-400 mt-2 mb-1 px-0.5">유틸리티</p>
       <div className="flex flex-wrap gap-1">{chipsFor('utility')}</div>

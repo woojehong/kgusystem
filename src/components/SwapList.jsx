@@ -26,8 +26,8 @@ export default function SwapList({ apps }) {
   ];
 
   return (
-    <div className="card p-2.5">
-      <p className="text-[11px] font-bold text-base-400 mb-1.5 px-0.5">스왑 가능자</p>
+    <div className="card p-3">
+      <p className="font-bold text-sm mb-2" style={{ color: '#fb923c' }}>스왑 가능자</p>
       <div className="space-y-1.5">
         {groups.map((g) => (
           <div key={g.key} className="flex flex-wrap items-center gap-1">

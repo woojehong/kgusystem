@@ -1,0 +1,63 @@
+import { badgeTextStyle } from '../lib/utils';
+import GuildBadge from './GuildBadge';
+
+/**
+ * Bench (standby reserve) applicant card. A single person can list multiple
+ * characters they can bring. Bench entries are display-only — they do NOT
+ * count toward the active roster or the waitlist.
+ */
+export default function BenchCard({ app, memo, adminView, onAdminClick, highlight }) {
+  const chars =
+    app.benchChars && app.benchChars.length
+      ? app.benchChars
+      : app.charName
+      ? [{ charName: app.charName, classColor: app.classColor, specNames: app.allSpecNames || (app.specName ? [app.specName] : []) }]
+      : [];
+
+  return (
+    <div
+      className={`rounded-xl border p-2 bg-base-850 transition ${
+        highlight ? 'border-indigo-400/60' : 'border-base-700'
+      } ${adminView ? 'cursor-pointer hover:border-base-500' : ''}`}
+      onClick={adminView ? () => onAdminClick(app) : undefined}
+      role={adminView ? 'button' : undefined}
+      tabIndex={adminView ? 0 : undefined}
+      onKeyDown={adminView ? (e) => { if (e.key === 'Enter') onAdminClick(app); } : undefined}
+    >
+      {/* 길드 뱃지 */}
+      <div className="flex justify-center mb-1">
+        <GuildBadge guildId={app.guildId} guildName={app.guildName || '無'} guildColor={app.guildColor || '#94a3b8'} size="xs" />
+      </div>
+
+      {/* 닉네임 */}
+      <div className="flex items-center justify-center gap-1 mb-1.5 min-w-0">
+        {app.isGuildMaster && <span className="text-sm leading-none shrink-0" title="길드장">👑</span>}
+        <span className="font-extrabold text-lg truncate text-white text-outline">{app.nickname}</span>
+      </div>
+
+      {/* 복수 캐릭터 */}
+      <div className="flex flex-wrap justify-center gap-x-2 gap-y-0.5">
+        {chars.map((c, i) => (
+          <span key={i} className="text-xs" style={badgeTextStyle(c.classColor || '#cbd5e1')}>
+            {c.charName}
+            {c.specNames && c.specNames.length > 0 && (
+              <span className="text-base-300"> · {c.specNames.join('/')}</span>
+            )}
+          </span>
+        ))}
+      </div>
+
+      {/* 관리자 영역 */}
+      {adminView && (
+        <div className="mt-2 pt-2 border-t border-base-700/60 text-center space-y-1">
+          {app.nickname && (
+            <p className="text-xs text-base-400">
+              로그인ID <span className="font-semibold text-base-200">{app.nickname}</span>
+            </p>
+          )}
+          {memo && <p className="text-xs text-base-300 break-words">📝 {memo}</p>}
+        </div>
+      )}
+    </div>
+  );
+}

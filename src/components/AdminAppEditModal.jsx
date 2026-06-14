@@ -151,7 +151,7 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
 
         <div>
           <label className="label-sm">상태</label>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
               onClick={() => setStatus('active')}
@@ -173,6 +173,17 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
               }`}
             >
               대기
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus('bench')}
+              className={`py-2 rounded-lg text-sm font-semibold border transition ${
+                status === 'bench'
+                  ? 'border-lime-400 bg-lime-500/10 text-lime-300'
+                  : 'border-base-700 bg-base-850 hover:bg-base-700'
+              }`}
+            >
+              벤치
             </button>
           </div>
         </div>

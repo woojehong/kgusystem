@@ -26,11 +26,9 @@ function Toggle({ on, onChange, disabled }) {
 
 /**
  * Application create/edit form.
- * - Spec defaults to the character's 1st priority but any spec of the
- *   class can be chosen per raid (profile is never modified).
- * - Below-minimum item level blocks submission but keeps the form open.
- * - When the position is full (or total including waiters exceeds the
- *   cap), a confirmation step offers waitlist registration.
+ * - Normal apply: one character + spec, auto active/waitlist by capacity.
+ * - Bench apply (toggle): standby reserve, multiple characters allowed,
+ *   no roster/waitlist counting, no webhook.
  */
 export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
   const { userId, profile, gamedata, guilds } = useApp();
@@ -38,6 +36,8 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
   const isEdit = !!existingApp;
 
   const characters = profile?.characters || [];
+  const [bench, setBench] = useState(false);
+  const [benchCharIds, setBenchCharIds] = useState([]);
   const [charIndex, setCharIndex] = useState(0);
   const [specId, setSpecId] = useState('');
   const [ilvl, setIlvl] = useState('');
@@ -53,6 +53,9 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
     setError('');
     setWaitConfirm(null);
     if (isEdit) {
+      const isBench = existingApp.status === 'bench';
+      setBench(isBench);
+      setBenchCharIds(isBench ? (existingApp.benchChars || []).map((c) => c.charId).filter(Boolean) : []);
       const idx = characters.findIndex((c) => c.id === existingApp.charId);
       setCharIndex(idx >= 0 ? idx : 0);
       setSpecId(existingApp.specId || '');
@@ -65,6 +68,8 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
         .catch(() => {});
     } else {
       const main = profile?.mainCharIndex ?? 0;
+      setBench(false);
+      setBenchCharIds([]);
       setCharIndex(main < characters.length ? main : 0);
       const mainChar = characters[main < characters.length ? main : 0];
       setSpecId(mainChar?.specs?.[0] || '');
@@ -80,8 +85,6 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
   const cls = character ? getClass(gamedata.classes, character.classId) : null;
   const spec = character ? getSpec(gamedata.classes, character.classId, specId) : null;
 
-  // Roles available via the character's *registered* specs, excluding
-  // the role currently being applied — basis for the swap toggle.
   const swapRoles = useMemo(() => {
     if (!character || !spec) return [];
     const roles = new Set(
@@ -99,7 +102,6 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
 
   if (!profile) return null;
 
-  // Check if this user's guild is allowed to apply
   const guildAllowed = (() => {
     if (!raid.allowedGuilds || raid.allowedGuilds === 'all') return true;
     if (Array.isArray(raid.allowedGuilds)) return raid.allowedGuilds.includes(profile.guildId || '');
@@ -110,8 +112,11 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
     setCharIndex(idx);
     const c = characters[idx];
     setSpecId(c?.specs?.[0] || '');
-    // Auto-fill ilvl from the character's saved current item level
     setIlvl(c?.ilvl ? String(c.ilvl) : '');
+  };
+
+  const toggleBenchChar = (id) => {
+    setBenchCharIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const buildAppData = (status, resetSeq) => {
@@ -144,6 +149,62 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
       status,
       seq: resetSeq ? Date.now() : existingApp?.seq ?? Date.now(),
       isReservation: false,
+      benchChars: [],
+    };
+  };
+
+  const buildBenchData = () => {
+    const guild = guilds.find((g) => g.id === profile.guildId);
+    const benchChars = benchCharIds
+      .map((id) => characters.find((c) => c.id === id))
+      .filter(Boolean)
+      .map((c) => {
+        const cCls = getClass(gamedata.classes, c.classId);
+        const specNames = (c.specs || [])
+          .map((sId) => getSpec(gamedata.classes, c.classId, sId)?.name)
+          .filter(Boolean);
+        const roles = [
+          ...new Set(
+            (c.specs || []).map((sId) => getSpec(gamedata.classes, c.classId, sId)?.role).filter(Boolean)
+          ),
+        ];
+        return {
+          charId: c.id,
+          charName: c.name,
+          server: c.server,
+          classId: c.classId,
+          className: cCls?.name || null,
+          classColor: cCls?.color || '#cbd5e1',
+          specNames,
+          roles,
+        };
+      });
+    return {
+      userId,
+      nickname: profile.nickname,
+      guildId: profile.guildId,
+      guildName: guild?.name || '소속 없음',
+      guildColor: guild?.color || '#64748b',
+      isGuildMaster: !!profile.isGuildMaster,
+      benchChars,
+      charId: benchChars[0]?.charId || null,
+      charName: benchChars[0]?.charName || null,
+      server: benchChars[0]?.server || null,
+      classId: benchChars[0]?.classId || null,
+      className: benchChars[0]?.className || null,
+      classColor: benchChars[0]?.classColor || '#cbd5e1',
+      specId: null,
+      specName: null,
+      allSpecNames: [],
+      role: null,
+      range: null,
+      ilvl: null,
+      leaderCapable: false,
+      swap: false,
+      swapRoles: [],
+      status: 'bench',
+      seq: existingApp?.seq ?? Date.now(),
+      isReservation: false,
     };
   };
 
@@ -167,8 +228,38 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
     }
   };
 
+  const persistBench = async () => {
+    setBusy(true);
+    try {
+      const data = buildBenchData();
+      if (isEdit) {
+        await updateApplication(raid.id, existingApp.id, data, memoText);
+      } else {
+        await submitApplication(raid.id, userId, data, memoText);
+      }
+      toast('벤치(예비 인원)로 등록되었습니다');
+      onClose(true);
+    } catch {
+      setError('저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submit = () => {
     setError('');
+
+    // ── 벤치 신청 ──
+    if (bench) {
+      if (benchCharIds.length === 0) {
+        setError('벤치로 등록할 캐릭터를 1개 이상 선택해주세요.');
+        return;
+      }
+      persistBench();
+      return;
+    }
+
+    // ── 일반 신청 ──
     if (!character) {
       setError('참여할 캐릭터를 선택해주세요.');
       return;
@@ -191,11 +282,11 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
     const caps = getCaps(raid);
     const others = apps.filter((a) => a.id !== existingApp?.id);
     const roleActive = others.filter((a) => a.status === 'active' && a.role === spec.role).length;
-    const totalCount = others.length + 1;
-    const roleChanged = isEdit && existingApp.role !== spec.role;
+    const totalCount = others.filter((a) => a.status !== 'bench').length + 1;
+    const wasBench = isEdit && existingApp.status === 'bench';
+    const roleChanged = isEdit && !wasBench && existingApp.role !== spec.role;
 
-    if (isEdit && !roleChanged) {
-      // Same position: keep status and order.
+    if (isEdit && !wasBench && !roleChanged) {
       persist(existingApp.status, false);
       return;
     }
@@ -253,96 +344,146 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
         </div>
       ) : (
         <div className="space-y-4">
-          <div>
-            <label className="label-sm">참여 캐릭터</label>
-            <div className="space-y-1.5">
-              {characters.map((c, i) => {
-                const cCls = getClass(gamedata.classes, c.classId);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => selectCharacter(i)}
-                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition ${
-                      charIndex === i
-                        ? 'border-indigo-400 bg-indigo-500/10'
-                        : 'border-base-700 bg-base-850 hover:bg-base-700'
-                    }`}
-                  >
-                    <span className="font-bold text-sm" style={badgeTextStyle(cCls?.color || '#fff')}>
-                      {c.name}
-                    </span>
-                    <span className="text-xs text-base-400">
-                      {c.server} · {cCls?.name}
-                    </span>
-                    {(profile.mainCharIndex ?? 0) === i && (
-                      <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
-                        대표
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+          {/* 벤치 토글 */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/30">
+            <div>
+              <p className="font-medium text-sm">벤치(예비 인원)로 신청</p>
+              <p className="text-xs text-base-400">결원 시 와줄 수 있는 예비 전력 (정원·대기 미포함)</p>
             </div>
+            <Toggle on={bench} onChange={setBench} />
           </div>
 
-          {cls && (
-            <div>
-              <label className="label-sm">참여 특성 (이번 레이드)</label>
-              <div className="flex flex-wrap gap-1.5">
-                {cls.specs.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setSpecId(s.id)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium border transition ${
-                      specId === s.id
-                        ? 'border-indigo-400 bg-indigo-500/15'
-                        : 'border-base-700 bg-base-850 text-base-200 hover:bg-base-700'
-                    }`}
-                  >
-                    {s.name}
-                    <span className="ml-1 text-xs text-base-400">
-                      {s.role === 'tank' ? '탱' : s.role === 'healer' ? '힐' : '딜'}
-                    </span>
-                  </button>
-                ))}
+          {bench ? (
+            <>
+              {/* 벤치 — 캐릭터 복수 선택 */}
+              <div>
+                <label className="label-sm">벤치 캐릭터 <span className="text-base-400 font-normal">(여러 개 선택 가능)</span></label>
+                <div className="space-y-1.5">
+                  {characters.map((c) => {
+                    const cCls = getClass(gamedata.classes, c.classId);
+                    const checked = benchCharIds.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => toggleBenchChar(c.id)}
+                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition ${
+                          checked ? 'border-indigo-400 bg-indigo-500/10' : 'border-base-700 bg-base-850 hover:bg-base-700'
+                        }`}
+                      >
+                        <span
+                          className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] shrink-0 ${
+                            checked ? 'bg-indigo-500 border-indigo-400 text-white' : 'border-base-600'
+                          }`}
+                        >
+                          {checked ? '✓' : ''}
+                        </span>
+                        <span className="font-bold text-sm" style={badgeTextStyle(cCls?.color || '#fff')}>
+                          {c.name}
+                        </span>
+                        <span className="text-xs text-base-400">
+                          {c.server} · {cCls?.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="label-sm">참여 캐릭터</label>
+                <div className="space-y-1.5">
+                  {characters.map((c, i) => {
+                    const cCls = getClass(gamedata.classes, c.classId);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => selectCharacter(i)}
+                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition ${
+                          charIndex === i
+                            ? 'border-indigo-400 bg-indigo-500/10'
+                            : 'border-base-700 bg-base-850 hover:bg-base-700'
+                        }`}
+                      >
+                        <span className="font-bold text-sm" style={badgeTextStyle(cCls?.color || '#fff')}>
+                          {c.name}
+                        </span>
+                        <span className="text-xs text-base-400">
+                          {c.server} · {cCls?.name}
+                        </span>
+                        {(profile.mainCharIndex ?? 0) === i && (
+                          <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
+                            대표
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          <div>
-            <label className="label-sm">
-              아이템 레벨{' '}
-              {raid.minIlvl != null && (
-                <span className="text-amber-400 font-normal">(최소 {raid.minIlvl})</span>
+              {cls && (
+                <div>
+                  <label className="label-sm">참여 특성 (이번 레이드)</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {cls.specs.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setSpecId(s.id)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium border transition ${
+                          specId === s.id
+                            ? 'border-indigo-400 bg-indigo-500/15'
+                            : 'border-base-700 bg-base-850 text-base-200 hover:bg-base-700'
+                        }`}
+                      >
+                        {s.name}
+                        <span className="ml-1 text-xs text-base-400">
+                          {s.role === 'tank' ? '탱' : s.role === 'healer' ? '힐' : '딜'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
-            </label>
-            <input
-              className="input-base"
-              value={ilvl}
-              onChange={(e) => setIlvl(e.target.value.replace(/\D/g, ''))}
-              placeholder="예: 489"
-              inputMode="numeric"
-            />
-          </div>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700">
-            <p className="font-medium text-sm">공대장 가능</p>
-            <Toggle on={leaderCapable} onChange={setLeaderCapable} />
-          </div>
+              <div>
+                <label className="label-sm">
+                  아이템 레벨{' '}
+                  {raid.minIlvl != null && (
+                    <span className="text-amber-400 font-normal">(최소 {raid.minIlvl})</span>
+                  )}
+                </label>
+                <input
+                  className="input-base"
+                  value={ilvl}
+                  onChange={(e) => setIlvl(e.target.value.replace(/\D/g, ''))}
+                  placeholder="예: 489"
+                  inputMode="numeric"
+                />
+              </div>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700">
-            <div>
-              <p className="font-medium text-sm">스왑 가능</p>
-              <p className="text-xs text-base-400">
-                {swapRoles.length > 0
-                  ? '다른 역할 특성이 등록되어 있어 선택 가능합니다'
-                  : '신청 특성과 다른 역할의 등록 특성이 없습니다'}
-              </p>
-            </div>
-            <Toggle on={swap} onChange={setSwap} disabled={swapRoles.length === 0} />
-          </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700">
+                <p className="font-medium text-sm">공대장 가능</p>
+                <Toggle on={leaderCapable} onChange={setLeaderCapable} />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700">
+                <div>
+                  <p className="font-medium text-sm">스왑 가능</p>
+                  <p className="text-xs text-base-400">
+                    {swapRoles.length > 0
+                      ? '다른 역할 특성이 등록되어 있어 선택 가능합니다'
+                      : '신청 특성과 다른 역할의 등록 특성이 없습니다'}
+                  </p>
+                </div>
+                <Toggle on={swap} onChange={setSwap} disabled={swapRoles.length === 0} />
+              </div>
+            </>
+          )}
 
           <div>
             <label className="label-sm">
@@ -359,7 +500,7 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
           {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
           <button type="button" className="btn-primary w-full" disabled={busy} onClick={submit}>
-            {busy ? '처리 중...' : isEdit ? '수정 완료' : '신청하기'}
+            {busy ? '처리 중...' : bench ? '벤치로 등록' : isEdit ? '수정 완료' : '신청하기'}
           </button>
         </div>
       )}
