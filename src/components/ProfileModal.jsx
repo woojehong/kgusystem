@@ -418,7 +418,7 @@ function GuildTab({ onClose }) {
   const [color, setColor] = useState(guild?.color || '#7dd3fc');
   const englishLocked = !!guild?.englishName;
   const [englishName, setEnglishName] = useState(guild?.englishName || '');
-  const [page, setPage] = useState(normalizePage(guild?.page));
+  const [page, setPage] = useState(normalizePage(guild?.page, guild?.color));
 
   const eb = guild?.badge || {};
   const [badgeShape,           setBadgeShape]           = useState(eb.shape           || 'pill');
@@ -674,7 +674,14 @@ function GuildTab({ onClose }) {
       )}
 
       {/* 소개글 */}
-      {badgeTab === 'page' && <GuildPageEditor value={page} onChange={setPage} />}
+      {badgeTab === 'page' && (
+        <GuildPageEditor
+          value={page}
+          onChange={setPage}
+          guildColor={color}
+          guildName={name || guild?.name || '길드'}
+        />
+      )}
 
       {msg && (
         <p className={`text-sm text-center ${msg.ok ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>

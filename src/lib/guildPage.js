@@ -14,6 +14,10 @@ export const FONT_OPTIONS = [
 
 const FONT_MAP = Object.fromEntries(FONT_OPTIONS.map((f) => [f.key, f.css]));
 
+export function fontCss(key) {
+  return FONT_MAP[key] || FONT_MAP.pretendard;
+}
+
 export const SIZE_OPTIONS = [
   { key: 14, label: '작게' },
   { key: 16, label: '보통' },
@@ -103,8 +107,34 @@ export function validateEnglishName(name) {
   return null;
 }
 
-/** Normalize a page object to a safe { blocks: [] } shape. */
-export function normalizePage(page) {
-  if (page && Array.isArray(page.blocks)) return page;
-  return { blocks: [] };
+// ── Hero (guild-page title box) ─────────────────────────────────────
+export function defaultHero(color = '#64748b') {
+  return {
+    nameFont: 'pretendard',
+    nameColor: '#ffffff',
+    nameSize: 28,
+    bgStyle: 'signature', // 'signature' | 'solid' | 'gradient' | 'none'
+    bgColor1: color,
+    bgColor2: color,
+  };
+}
+
+export function heroBackground(hero, color = '#64748b') {
+  const h = hero || {};
+  const c1 = h.bgColor1 || color;
+  const c2 = h.bgColor2 || color;
+  switch (h.bgStyle) {
+    case 'solid':    return c1;
+    case 'gradient': return `linear-gradient(135deg, ${c1}, ${c2})`;
+    case 'none':     return 'transparent';
+    case 'signature':
+    default:         return `radial-gradient(circle at 50% 0%, ${color}33 0%, transparent 70%)`;
+  }
+}
+
+/** Normalize a page object to a safe { hero, blocks } shape. */
+export function normalizePage(page, color = '#64748b') {
+  const blocks = page && Array.isArray(page.blocks) ? page.blocks : [];
+  const hero = { ...defaultHero(color), ...(page && page.hero ? page.hero : {}) };
+  return { hero, blocks };
 }

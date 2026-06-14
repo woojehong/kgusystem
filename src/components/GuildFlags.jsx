@@ -37,22 +37,26 @@ function Flag({ guild, index }) {
 
       {/* 천 */}
       <div
-        className="kwgu-flag-cloth relative w-full overflow-hidden shadow-lg transition-transform group-hover:scale-[1.04]"
+        className="kwgu-flag-cloth relative w-full overflow-hidden transition-transform group-hover:scale-[1.05]"
         style={{
-          aspectRatio: '3 / 4',
+          aspectRatio: '4 / 5',
           clipPath: TAIL_CLIP,
-          background: `linear-gradient(155deg, ${color} 0%, ${color}cc 45%, ${color}99 100%)`,
+          // 로고가 있으면 어두운 배경(시그니처 초록 안 보이게), 없으면 시그니처 천.
+          background: showImg
+            ? '#0b0e13'
+            : `linear-gradient(155deg, ${color} 0%, ${color}cc 45%, ${color}99 100%)`,
           animationDelay: delay,
-          border: `1px solid ${color}`,
+          // clip-path 도형엔 border가 안 먹으므로 drop-shadow로 외곽선+그림자+글로우.
+          filter: `drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 5px 10px rgba(0,0,0,0.55)) drop-shadow(0 0 9px ${color}66)`,
         }}
       >
-        {/* 로고 또는 길드명 */}
+        {/* 로고(꽉 차게) 또는 길드명 */}
         {showImg ? (
           <img
             src={src}
             alt={guild.name}
             onError={() => setImgError(true)}
-            className="absolute inset-0 w-full h-full object-contain p-2.5 drop-shadow"
+            className="absolute inset-0 w-full h-full object-cover"
             draggable={false}
           />
         ) : (
@@ -92,7 +96,7 @@ export default function GuildFlags() {
     <section className="mt-10">
       <div className="flex items-center gap-3 mb-4">
         <span className="flex-1 h-px bg-base-700/70" />
-        <h2 className="text-sm font-bold text-base-400 tracking-wider">한길련 길드</h2>
+        <h2 className="text-sm font-bold text-base-400 tracking-wider">한국길드연합 소속 길드 소개</h2>
         <span className="flex-1 h-px bg-base-700/70" />
       </div>
       <div className="flex flex-wrap justify-center gap-3 sm:gap-4">

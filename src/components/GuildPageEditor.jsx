@@ -10,7 +10,16 @@ import {
   imgWidthValue,
   publicUrl,
   normalizePage,
+  heroBackground,
+  fontCss,
 } from '../lib/guildPage';
+
+const HERO_BG_OPTIONS = [
+  ['signature', '시그니처'],
+  ['solid', '단색'],
+  ['gradient', '그라데이션'],
+  ['none', '투명'],
+];
 
 function Mini({ active, onClick, children }) {
   return (
@@ -32,11 +41,13 @@ function Mini({ active, onClick, children }) {
  * Block-based guild-page editor.
  * value: { blocks: [...] }   onChange: (nextPage) => void
  */
-export default function GuildPageEditor({ value, onChange }) {
-  const page = normalizePage(value);
+export default function GuildPageEditor({ value, onChange, guildColor = '#64748b', guildName = '길드' }) {
+  const page = normalizePage(value, guildColor);
   const blocks = page.blocks;
+  const hero = page.hero;
 
-  const commit = (next) => onChange({ blocks: next });
+  const commit = (next) => onChange({ hero, blocks: next });
+  const updateHero = (patch) => onChange({ hero: { ...hero, ...patch }, blocks });
 
   const addBlock = (block) => commit([...blocks, block]);
 
@@ -55,6 +66,84 @@ export default function GuildPageEditor({ value, onChange }) {
 
   return (
     <div className="space-y-3">
+      {/* ── 타이틀(히어로) 꾸미기 ── */}
+      <div className="rounded-xl border border-base-700 bg-base-850 p-3 space-y-3">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-base-500">타이틀 박스 (길드명)</p>
+
+        {/* 미리보기 */}
+        <div
+          className="rounded-lg py-5 px-3 flex flex-col items-center justify-center"
+          style={{ background: heroBackground(hero, guildColor) }}
+        >
+          <p
+            className="break-keep text-center"
+            style={{
+              fontFamily: fontCss(hero.nameFont),
+              color: hero.nameColor,
+              fontSize: hero.nameSize,
+              fontWeight: 800,
+              lineHeight: 1.2,
+            }}
+          >
+            {guildName}
+          </p>
+        </div>
+
+        {/* 길드명 글꼴/크기/색 */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-base-400 w-16 shrink-0">길드명</span>
+          <select
+            className="bg-base-800 border border-base-700 rounded-md text-[11px] px-1.5 py-1 text-base-200"
+            value={hero.nameFont}
+            onChange={(e) => updateHero({ nameFont: e.target.value })}
+          >
+            {FONT_OPTIONS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+          </select>
+          <select
+            className="bg-base-800 border border-base-700 rounded-md text-[11px] px-1.5 py-1 text-base-200"
+            value={hero.nameSize}
+            onChange={(e) => updateHero({ nameSize: Number(e.target.value) })}
+          >
+            {SIZE_OPTIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+          <input
+            type="color"
+            value={hero.nameColor}
+            onChange={(e) => updateHero({ nameColor: e.target.value })}
+            className="w-7 h-7 rounded-md border border-base-700 bg-transparent cursor-pointer"
+            title="길드명 색"
+          />
+        </div>
+
+        {/* 배경 스타일 */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-base-400 w-16 shrink-0">배경</span>
+          {HERO_BG_OPTIONS.map(([k, l]) => (
+            <Mini key={k} active={hero.bgStyle === k} onClick={() => updateHero({ bgStyle: k })}>{l}</Mini>
+          ))}
+        </div>
+
+        {(hero.bgStyle === 'solid' || hero.bgStyle === 'gradient') && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-base-400 w-16 shrink-0">배경 색</span>
+            <input
+              type="color"
+              value={hero.bgColor1}
+              onChange={(e) => updateHero({ bgColor1: e.target.value })}
+              className="w-7 h-7 rounded-md border border-base-700 bg-transparent cursor-pointer"
+            />
+            {hero.bgStyle === 'gradient' && (
+              <input
+                type="color"
+                value={hero.bgColor2}
+                onChange={(e) => updateHero({ bgColor2: e.target.value })}
+                className="w-7 h-7 rounded-md border border-base-700 bg-transparent cursor-pointer"
+              />
+            )}
+          </div>
+        )}
+      </div>
+
       <p className="text-[11px] text-base-400 leading-relaxed">
         블록을 추가해 길드 소개를 꾸며보세요. 이미지는{' '}
         <code className="text-base-300">public/guilds/</code> 폴더에 PNG를 올리고(push) 경로를 입력합니다.

@@ -122,7 +122,15 @@ export function armoryUrl(serverKo, characterName) {
 
 export function sortGuilds(guilds) {
   return [...guilds].sort((a, b) => {
+    // '소속 없음' always last.
     if (a.isNone !== b.isNone) return a.isNone ? 1 : -1;
+    // Manual order (set by the super admin) takes priority when present.
+    const ao = typeof a.order === 'number' ? a.order : null;
+    const bo = typeof b.order === 'number' ? b.order : null;
+    if (ao !== null && bo !== null && ao !== bo) return ao - bo;
+    if (ao !== null && bo === null) return -1;
+    if (ao === null && bo !== null) return 1;
+    // Fallback: English first, then 가나다.
     const aEng = /^[A-Za-z]/.test(a.name);
     const bEng = /^[A-Za-z]/.test(b.name);
     if (aEng !== bEng) return aEng ? -1 : 1;

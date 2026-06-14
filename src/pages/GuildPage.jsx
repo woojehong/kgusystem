@@ -9,6 +9,8 @@ import {
   publicUrl,
   flagImageUrl,
   normalizePage,
+  heroBackground,
+  fontCss,
 } from '../lib/guildPage';
 
 export default function GuildPage() {
@@ -34,7 +36,7 @@ export default function GuildPage() {
 
   const isOwner = isSuper || (profile?.isGuildMaster && profile?.guildId === guild.id);
   const color = guild.color || '#64748b';
-  const blocks = normalizePage(guild.page).blocks;
+  const { hero, blocks } = normalizePage(guild.page, color);
   const flag = guild.englishName ? flagImageUrl(guild.englishName) : '';
 
   const { style: badgeStyle, animClass, isClipPath } = buildBadgeStyles(guild.badge, color);
@@ -53,7 +55,7 @@ export default function GuildPage() {
         {/* ── Hero ── */}
         <div
           className="card relative overflow-hidden p-7 flex flex-col items-center text-center"
-          style={{ background: `radial-gradient(circle at 50% 0%, ${color}33 0%, transparent 70%)` }}
+          style={{ background: heroBackground(hero, color) }}
         >
           {flag && (
             <img
@@ -69,9 +71,19 @@ export default function GuildPage() {
           >
             {guild.name}
           </span>
-          {guild.shortName && (
-            <p className="mt-2 text-sm text-base-400">[{guild.shortName}]</p>
-          )}
+          {/* 길드 풀네임 (글꼴·색·크기 편집 가능) */}
+          <p
+            className="mt-3 break-keep"
+            style={{
+              fontFamily: fontCss(hero.nameFont),
+              color: hero.nameColor,
+              fontSize: hero.nameSize,
+              fontWeight: 800,
+              lineHeight: 1.2,
+            }}
+          >
+            {guild.name}
+          </p>
         </div>
 
         {/* ── 소개글 ── */}

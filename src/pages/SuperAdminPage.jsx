@@ -401,24 +401,65 @@ function UserEditModal({ user, guilds, gamedata, onClose }) {
 
 function GuildsTab({ guilds, reload }) {
   const [target, setTarget] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const ordered = sortGuilds(guilds);
+  const movable = ordered.filter((g) => !g.isNone);
+  const noneGuild = ordered.find((g) => g.isNone);
+
+  // Persist the new sequence as a 0..n-1 `order` on every movable guild.
+  const move = async (index, dir) => {
+    const t = index + dir;
+    if (busy || t < 0 || t >= movable.length) return;
+    const arr = [...movable];
+    [arr[index], arr[t]] = [arr[t], arr[index]];
+    setBusy(true);
+    try {
+      await Promise.all(arr.map((g, i) => saveGuild(g.id, { order: i })));
+      reload();
+    } catch {
+      /* ignore — reload keeps previous state */
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rowInner = (g, fixed) => (
+    <button
+      type="button"
+      onClick={() => setTarget(g)}
+      className="flex-1 flex items-center gap-3 text-left min-w-0 hover:opacity-90 transition"
+    >
+      <span className="w-5 h-5 rounded-full border border-base-600 shrink-0" style={{ backgroundColor: g.color }} />
+      <span className="font-bold truncate" style={{ color: g.color }}>{g.name}</span>
+      {g.englishName && <span className="text-[11px] text-base-500 shrink-0">/{g.englishName}</span>}
+      {fixed && <span className="text-xs text-base-400 shrink-0">(고정)</span>}
+    </button>
+  );
 
   return (
     <div className="space-y-2">
-      {sortGuilds(guilds).map((g) => (
-        <button
-          key={g.id}
-          type="button"
-          onClick={() => setTarget(g)}
-          className="w-full flex items-center gap-3 p-3 card hover:border-base-500 text-left transition"
-        >
-          <span className="w-5 h-5 rounded-full border border-base-600" style={{ backgroundColor: g.color }} />
-          <span className="font-bold" style={{ color: g.color }}>
-            {g.name}
-          </span>
-          {g.isNone && <span className="text-xs text-base-400">(고정)</span>}
-          {g.logoPath && <span className="ml-auto text-xs text-base-400 truncate">{g.logoPath}</span>}
-        </button>
+      <p className="text-[11px] text-base-400 mb-1">▲▼ 버튼으로 길드 깃발/목록 순서를 바꿉니다. 새 길드는 맨 뒤에 추가됩니다.</p>
+
+      {movable.map((g, i) => (
+        <div key={g.id} className="w-full flex items-center gap-2 p-3 card">
+          <div className="flex flex-col gap-0.5 shrink-0">
+            <button type="button" disabled={busy || i === 0} onClick={() => move(i, -1)}
+              className="w-6 h-5 rounded bg-base-700 hover:bg-base-600 text-[10px] disabled:opacity-30">▲</button>
+            <button type="button" disabled={busy || i === movable.length - 1} onClick={() => move(i, 1)}
+              className="w-6 h-5 rounded bg-base-700 hover:bg-base-600 text-[10px] disabled:opacity-30">▼</button>
+          </div>
+          {rowInner(g, false)}
+        </div>
       ))}
+
+      {noneGuild && (
+        <div key={noneGuild.id} className="w-full flex items-center gap-2 p-3 card opacity-80">
+          <span className="w-6 shrink-0" />
+          {rowInner(noneGuild, true)}
+        </div>
+      )}
+
       <button
         type="button"
         className="w-full py-3 rounded-xl border border-dashed border-base-600 text-base-400 hover:text-base-200 hover:border-base-400 transition text-sm font-medium"
@@ -430,6 +471,7 @@ function GuildsTab({ guilds, reload }) {
       {target && (
         <GuildEditModal
           guild={target}
+          nextOrder={movable.length}
           onClose={(changed) => {
             setTarget(null);
             if (changed) reload();
@@ -579,7 +621,7 @@ function BadgeSection({ label, children }) {
   );
 }
 
-function GuildEditModal({ guild, onClose }) {
+function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
   const isNew = !guild.id;
   const [activeTab, setActiveTab] = useState('info');
 
@@ -648,6 +690,7 @@ function GuildEditModal({ guild, onClose }) {
         logoPath: logoPath.trim(),
         isNone: !!guild.isNone,
         showInFilter,
+        ...(isNew ? { order: nextOrder } : {}),
         badge: {
           shape: badgeShape, bgType: badgeBgType,
           color2: badgeColor2, color3: badgeColor3,
