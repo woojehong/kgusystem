@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
-import { formatTimeRange, getCaps, readableOn } from '../lib/utils';
+import { formatTimeRange, getCaps } from '../lib/utils';
 
 // Role colours shared across the app (tank / healer / dps).
 const ROLE_META = [
@@ -79,21 +79,21 @@ export default function RaidCard({ raid, counts, mine }) {
     >
       <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
 
-      {/* 마감 리본 — 중앙 상단 */}
+      {/* FULL 표시 — 중앙 상단, 빨강 */}
       {allFull && (
         <span
-          className="absolute top-0 left-1/2 -translate-x-1/2 px-4 py-0.5 rounded-b-lg text-[10px] font-black text-base-900 z-10 shadow"
-          style={{ backgroundColor: GOLD }}
+          className="absolute top-0 left-1/2 -translate-x-1/2 px-4 py-0.5 rounded-b-lg text-[11px] font-black text-white text-outline z-10 shadow"
+          style={{ backgroundColor: '#ef4444' }}
         >
-          마감
+          FULL
         </span>
       )}
 
       {/* 신청 표시 — 우측 상단, 신청한 클래스 컬러 (마감돼도 유지) */}
       {mine && (
         <span
-          className="absolute top-2 right-2 z-20 text-[10px] px-2 py-0.5 rounded-full font-extrabold shadow"
-          style={{ backgroundColor: applyColor, color: readableOn(applyColor) }}
+          className="absolute top-2 right-2 z-20 text-[11px] px-2 py-0.5 rounded-full font-extrabold shadow text-white text-outline"
+          style={{ backgroundColor: applyColor }}
         >
           {mine.status === 'active' ? '신청함' : '대기중'}
         </span>

@@ -1,6 +1,6 @@
 import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
-import { buildCalendarWeeks, toDateKey, WEEKDAYS_KO, getCaps, readableOn } from '../lib/utils';
+import { buildCalendarWeeks, toDateKey, WEEKDAYS_KO, getCaps } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 function chipPrefix(partyType, guilds) {
@@ -59,12 +59,12 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
             return (
               <div
                 key={key}
-                className={`p-1 sm:p-1.5 border-r border-base-700 last:border-r-0 ${
+                className={`relative p-1 sm:p-1.5 border-r border-base-700 last:border-r-0 ${
                   isPast ? 'opacity-35' : ''
                 } ${isToday ? 'bg-amber-400/10 ring-2 ring-inset ring-amber-400/70' : ''}`}
               >
-                {/* Date row */}
-                <div className="flex items-center justify-between mb-0.5">
+                {/* Date — 가운데 정렬 */}
+                <div className="text-center mb-1.5">
                   <span
                     className={`text-[11px] sm:text-sm font-extrabold leading-none text-outline ${
                       isToday
@@ -78,17 +78,17 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                   >
                     {day.getMonth() + 1}월 {day.getDate()}일
                   </span>
-                  {isAdmin && !isPast && (
-                    <button
-                      type="button"
-                      onClick={() => onCreate(key)}
-                      className="w-7 h-7 sm:w-5 sm:h-5 rounded-md bg-base-700 hover:bg-indigo-500/50 text-base-300 hover:text-white font-bold text-sm sm:text-xs transition leading-none flex items-center justify-center"
-                      title="레이드 추가"
-                    >
-                      +
-                    </button>
-                  )}
                 </div>
+                {isAdmin && !isPast && (
+                  <button
+                    type="button"
+                    onClick={() => onCreate(key)}
+                    className="absolute top-1 right-1 z-10 w-6 h-6 sm:w-5 sm:h-5 rounded-md bg-base-700/90 hover:bg-indigo-500/60 text-base-300 hover:text-white font-bold text-sm sm:text-xs transition leading-none flex items-center justify-center"
+                    title="레이드 추가"
+                  >
+                    +
+                  </button>
+                )}
 
                 {/* Raid chips — 2줄 레이아웃, 칸 자동 확장 */}
                 <div className="space-y-1">
@@ -116,10 +116,10 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                         {/* 신청 표시 — 우측 상단, 신청한 클래스 컬러 */}
                         {mine && (
                           <span
-                            className="absolute -top-1 -right-1 z-10 px-1 rounded text-[8px] font-extrabold leading-tight shadow"
-                            style={{ backgroundColor: mine.classColor || '#6366f1', color: readableOn(mine.classColor || '#6366f1') }}
+                            className="absolute -top-1.5 -right-1.5 z-10 px-1.5 py-0.5 rounded text-[10px] font-extrabold leading-none shadow text-white text-outline"
+                            style={{ backgroundColor: mine.classColor || '#6366f1' }}
                           >
-                            {mine.status === 'active' ? '신청' : '대기'}
+                            {mine.status === 'active' ? '신청함' : '대기중'}
                           </span>
                         )}
                         {/* 줄 1: 시간 + [bracket] */}
