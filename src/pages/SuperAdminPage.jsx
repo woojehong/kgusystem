@@ -984,6 +984,9 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
           onChange={setPage}
           guildColor={color}
           guildName={name || guild.name || '길드'}
+          guildEnglishName={englishName || ''}
+          guildLogoPath={logoPath || ''}
+          canSetImagePaths={true}
         />
       )}
 

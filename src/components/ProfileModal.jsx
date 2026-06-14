@@ -680,6 +680,9 @@ function GuildTab({ onClose }) {
           onChange={setPage}
           guildColor={color}
           guildName={name || guild?.name || '길드'}
+          guildEnglishName={guild?.englishName || ''}
+          guildLogoPath={guild?.logoPath || ''}
+          canSetImagePaths={false}
         />
       )}
 

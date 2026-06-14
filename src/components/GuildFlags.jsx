@@ -35,57 +35,58 @@ function Flag({ guild, index }) {
         <span className="w-px h-2 bg-base-500" />
       </div>
 
-      {/* 천 */}
+      {/* 천 — 바깥 레이어가 은색 테두리, 안쪽 레이어가 로고. (clip-path엔 border가
+          안 먹으므로 같은 모양 레이어를 겹쳐 테두리를 만든다 → 확실하게 보임) */}
       <div
-        className="kwgu-flag-cloth relative w-full overflow-hidden transition-transform group-hover:scale-[1.05]"
+        className="kwgu-flag-cloth relative w-full transition-transform group-hover:scale-[1.05]"
         style={{
           aspectRatio: '4 / 5',
           clipPath: TAIL_CLIP,
-          // 로고가 있으면 어두운 배경(시그니처 초록 안 보이게), 없으면 시그니처 천.
-          background: showImg
-            ? '#0b0e13'
-            : `linear-gradient(155deg, ${color} 0%, ${color}cc 45%, ${color}99 100%)`,
+          background: '#d7dde6',     // 은색 테두리 색
+          padding: '3px',            // 테두리 두께
           animationDelay: delay,
-          // clip-path 도형엔 border가 안 먹으므로 drop-shadow를 겹쳐 실루엣을 따라가는
-          // 선명한 은색 외곽선 + 은색 글로우 + 깊이 그림자를 만든다. (배경/로고와 확실히 분리)
-          filter: [
-            'drop-shadow(1.6px 0 0 #d7dde6)',
-            'drop-shadow(-1.6px 0 0 #d7dde6)',
-            'drop-shadow(0 1.6px 0 #d7dde6)',
-            'drop-shadow(0 -1.6px 0 #d7dde6)',
-            'drop-shadow(0 0 6px rgba(215,221,230,0.6))',
-            'drop-shadow(0 6px 12px rgba(0,0,0,0.6))',
-          ].join(' '),
+          filter: `drop-shadow(0 0 7px rgba(215,221,230,0.55)) drop-shadow(0 6px 12px rgba(0,0,0,0.6))`,
         }}
       >
-        {/* 로고(꽉 차게) 또는 길드명 */}
-        {showImg ? (
-          <img
-            src={src}
-            alt={guild.name}
-            onError={() => setImgError(true)}
-            className="absolute inset-0 w-full h-full object-cover"
-            draggable={false}
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center px-1 text-center">
-            <span
-              className="font-black text-white leading-tight break-keep"
-              style={{ fontSize: 'clamp(11px, 2.4vw, 18px)', textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
-            >
-              {guild.name}
-            </span>
-          </div>
-        )}
-
-        {/* 펄럭임 광택 */}
-        <span
-          className="kwgu-flag-sheen pointer-events-none absolute inset-y-0 -left-1/4 w-1/3"
+        <div
+          className="relative w-full h-full overflow-hidden"
           style={{
-            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)',
-            animationDelay: delay,
+            clipPath: TAIL_CLIP,
+            // 로고가 있으면 어두운 배경(시그니처 초록 안 보이게), 없으면 시그니처 천.
+            background: showImg
+              ? '#0b0e13'
+              : `linear-gradient(155deg, ${color} 0%, ${color}cc 45%, ${color}99 100%)`,
           }}
-        />
+        >
+          {/* 로고(꽉 차게) 또는 길드명 */}
+          {showImg ? (
+            <img
+              src={src}
+              alt={guild.name}
+              onError={() => setImgError(true)}
+              className="absolute inset-0 w-full h-full object-cover"
+              draggable={false}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center px-1 text-center">
+              <span
+                className="font-black text-white leading-tight break-keep"
+                style={{ fontSize: 'clamp(11px, 2.4vw, 18px)', textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
+              >
+                {guild.name}
+              </span>
+            </div>
+          )}
+
+          {/* 펄럭임 광택 */}
+          <span
+            className="kwgu-flag-sheen pointer-events-none absolute inset-y-0 -left-1/4 w-1/3"
+            style={{
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)',
+              animationDelay: delay,
+            }}
+          />
+        </div>
       </div>
 
       <p className="mt-1.5 text-[11px] sm:text-xs font-bold text-base-300 group-hover:text-white transition text-center truncate w-full">

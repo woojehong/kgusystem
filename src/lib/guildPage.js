@@ -96,6 +96,22 @@ export function flagImageUrl(englishName) {
   return `${base}guildflag/${englishName}.png`;
 }
 
+/**
+ * Resolve a guild-page image reference to a URL.
+ * - Full URL or a path containing '/' → used as-is (super-admin power use).
+ * - A bare file name → resolved under public/guilds/<englishName>/, and a
+ *   '.png' extension is appended automatically when none is given.
+ */
+export function resolveImagePath(val, englishName) {
+  if (!val) return '';
+  const v = String(val).trim();
+  if (/^https?:\/\//.test(v)) return v;
+  if (v.includes('/')) return publicUrl(v);
+  const name = /\.[a-z0-9]{2,4}$/i.test(v) ? v : `${v}.png`;
+  const folder = englishName ? `guilds/${englishName}/` : 'guilds/';
+  return publicUrl(`${folder}${name}`);
+}
+
 // ── English slug validation (filename + URL safe) ───────────────────
 export const ENGLISH_NAME_RULE = /^[a-z0-9-]{2,30}$/;
 
@@ -110,9 +126,19 @@ export function validateEnglishName(name) {
 // ── Hero (guild-page title box) ─────────────────────────────────────
 export function defaultHero(color = '#64748b') {
   return {
+    showBox: true,      // 타이틀 박스 자체
+    showLogo: false,    // 로고(logoPath 재사용)
+    showBanner: false,  // 배너(가로 커버, 슈퍼관리자만 경로 설정)
+    showName: true,     // 길드명
+    showTag: false,     // 추가 문구
     nameFont: 'pretendard',
     nameColor: '#ffffff',
     nameSize: 28,
+    tagText: '',
+    tagFont: 'pretendard',
+    tagColor: '#cbd5e1',
+    tagSize: 16,
+    bannerPath: '',
     bgStyle: 'signature', // 'signature' | 'solid' | 'gradient' | 'none'
     bgColor1: color,
     bgColor2: color,

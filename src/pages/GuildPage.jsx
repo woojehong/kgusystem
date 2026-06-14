@@ -2,12 +2,10 @@ import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
-import { buildBadgeStyles } from '../components/GuildBadge';
 import {
   blockTextStyle,
   imgWidthValue,
-  publicUrl,
-  flagImageUrl,
+  resolveImagePath,
   normalizePage,
   heroBackground,
   fontCss,
@@ -37,9 +35,30 @@ export default function GuildPage() {
   const isOwner = isSuper || (profile?.isGuildMaster && profile?.guildId === guild.id);
   const color = guild.color || '#64748b';
   const { hero, blocks } = normalizePage(guild.page, color);
-  const flag = guild.englishName ? flagImageUrl(guild.englishName) : '';
 
-  const { style: badgeStyle, animClass, isClipPath } = buildBadgeStyles(guild.badge, color);
+  const logoUrl = guild.logoPath ? resolveImagePath(guild.logoPath, guild.englishName) : '';
+  const bannerUrl = hero.showBanner ? resolveImagePath(hero.bannerPath, guild.englishName) : '';
+
+  const nameStyle = {
+    fontFamily: fontCss(hero.nameFont),
+    color: hero.nameColor,
+    fontSize: hero.nameSize,
+    fontWeight: 800,
+    lineHeight: 1.2,
+  };
+  const tagStyle = {
+    fontFamily: fontCss(hero.tagFont),
+    color: hero.tagColor,
+    fontSize: hero.tagSize,
+    lineHeight: 1.4,
+    whiteSpace: 'pre-wrap',
+  };
+
+  const heroEmpty =
+    !(hero.showBanner && bannerUrl) &&
+    !(hero.showLogo && logoUrl) &&
+    !hero.showName &&
+    !(hero.showTag && hero.tagText);
 
   return (
     <div className="min-h-screen pb-20">
@@ -52,39 +71,34 @@ export default function GuildPage() {
           ← 메인으로
         </Link>
 
-        {/* ── Hero ── */}
-        <div
-          className="card relative overflow-hidden p-7 flex flex-col items-center text-center"
-          style={{ background: heroBackground(hero, color) }}
-        >
-          {flag && (
-            <img
-              src={flag}
-              alt=""
-              className="w-20 h-20 object-contain mb-3 drop-shadow"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            />
-          )}
-          <span
-            className={`inline-flex items-center justify-center text-lg font-bold px-7 py-3 ${animClass}`}
-            style={{ ...badgeStyle, ...(isClipPath ? { minWidth: '9rem', minHeight: '3rem' } : {}) }}
+        {/* ── Hero (타이틀 박스) — 부품 조립식 ── */}
+        {hero.showBox && !heroEmpty && (
+          <div
+            className="card relative overflow-hidden flex flex-col items-center text-center"
+            style={{ background: heroBackground(hero, color) }}
           >
-            {guild.name}
-          </span>
-          {/* 길드 풀네임 (글꼴·색·크기 편집 가능) */}
-          <p
-            className="mt-3 break-keep"
-            style={{
-              fontFamily: fontCss(hero.nameFont),
-              color: hero.nameColor,
-              fontSize: hero.nameSize,
-              fontWeight: 800,
-              lineHeight: 1.2,
-            }}
-          >
-            {guild.name}
-          </p>
-        </div>
+            {hero.showBanner && bannerUrl && (
+              <img
+                src={bannerUrl}
+                alt=""
+                className="w-full max-h-52 object-cover"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+            )}
+            <div className="p-7 flex flex-col items-center gap-3 w-full">
+              {hero.showLogo && logoUrl && (
+                <img
+                  src={logoUrl}
+                  alt=""
+                  className="w-24 h-24 object-contain drop-shadow"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              )}
+              {hero.showName && <p className="break-keep" style={nameStyle}>{guild.name}</p>}
+              {hero.showTag && hero.tagText && <p className="break-keep" style={tagStyle}>{hero.tagText}</p>}
+            </div>
+          </div>
+        )}
 
         {/* ── 소개글 ── */}
         <div className="mt-5 space-y-4">
@@ -112,7 +126,7 @@ export default function GuildPage() {
                   return (
                     <div key={b.id} className="flex justify-center">
                       <img
-                        src={publicUrl(b.path)}
+                        src={resolveImagePath(b.path, guild.englishName)}
                         alt=""
                         className="rounded-xl border border-base-700"
                         style={{ width: imgWidthValue(b.width) }}
