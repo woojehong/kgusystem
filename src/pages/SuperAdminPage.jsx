@@ -28,7 +28,8 @@ import {
 } from '../lib/utils';
 import Modal from '../components/Modal';
 import GuildBadge, { buildBadgeStyles } from '../components/GuildBadge';
-import { validateEnglishName } from '../lib/guildPage';
+import GuildPageEditor from '../components/GuildPageEditor';
+import { validateEnglishName, normalizePage } from '../lib/guildPage';
 
 // ── Login / bootstrap ───────────────────────────────────────────────
 
@@ -630,6 +631,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
   const [shortName, setShortName] = useState(guild.shortName || '');
   const [englishName, setEnglishName] = useState(guild.englishName || '');
   const [color, setColor] = useState(guild.color || '#7dd3fc');
+  const [page, setPage] = useState(normalizePage(guild.page, guild.color));
   const [logoPath, setLogoPath] = useState(guild.logoPath || '');
   const [showInFilter, setShowInFilter] = useState(guild.showInFilter !== false);
 
@@ -690,6 +692,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
         logoPath: logoPath.trim(),
         isNone: !!guild.isNone,
         showInFilter,
+        page,
         ...(isNew ? { order: nextOrder } : {}),
         badge: {
           shape: badgeShape, bgType: badgeBgType,
@@ -716,7 +719,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
     <Modal open onClose={() => onClose(false)} title={isNew ? '길드 추가' : `길드 수정 · ${guild.name}`}>
       {/* ── Tab selector ── */}
       <div className="flex gap-1 p-1 rounded-xl bg-base-850 border border-base-700 mb-4">
-        {[['info', '기본 정보'], ['badge', '뱃지 수정']].map(([key, label]) => (
+        {[['info', '기본 정보'], ['badge', '뱃지 수정'], ['page', '소개글']].map(([key, label]) => (
           <button
             key={key}
             type="button"
@@ -972,6 +975,16 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
             ))}
           </BadgeSection>
         </div>
+      )}
+
+      {/* ── 소개글 Tab ── */}
+      {activeTab === 'page' && (
+        <GuildPageEditor
+          value={page}
+          onChange={setPage}
+          guildColor={color}
+          guildName={name || guild.name || '길드'}
+        />
       )}
 
       {/* ── Footer ── */}
