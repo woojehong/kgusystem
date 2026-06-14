@@ -2,7 +2,7 @@ const { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } = require('fir
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 initializeApp();
 
@@ -277,3 +277,63 @@ exports.scheduledRaidAlerts = onSchedule(
     }
   }
 );
+
+// ── 신청 로그 (신청/취소/변경) — 웹훅과 별개로 벤치 포함 모두 기록 ──
+async function writeLog(raidId, entry) {
+  await getFirestore()
+    .collection('raids')
+    .doc(raidId)
+    .collection('logs')
+    .add({ at: FieldValue.serverTimestamp(), ...entry });
+}
+
+const STATUS_KO = { active: '확정', wait: '대기', bench: '벤치' };
+
+exports.logAppCreated = onDocumentCreated('raids/{raidId}/apps/{appId}', async (event) => {
+  const app = event.data.data();
+  if (!app) return;
+  const kind = app.isReservation
+    ? '예약'
+    : app.status === 'bench'
+    ? '벤치'
+    : app.status === 'wait'
+    ? '대기'
+    : '신청';
+  await writeLog(event.params.raidId, {
+    action: 'apply',
+    actor: app.nickname || app.charName || '?',
+    char: app.charName || '',
+    detail: `${kind} 등록${app.specName ? ` (${app.specName})` : ''}`,
+  });
+});
+
+exports.logAppDeleted = onDocumentDeleted('raids/{raidId}/apps/{appId}', async (event) => {
+  const app = event.data.data();
+  if (!app) return;
+  await writeLog(event.params.raidId, {
+    action: 'cancel',
+    actor: app.nickname || app.charName || '?',
+    char: app.charName || '',
+    detail: '신청 취소',
+  });
+});
+
+exports.logAppUpdated = onDocumentUpdated('raids/{raidId}/apps/{appId}', async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+  if (!before || !after) return;
+  const changes = [];
+  if (before.status !== after.status) {
+    changes.push(`상태 ${STATUS_KO[before.status] || before.status} → ${STATUS_KO[after.status] || after.status}`);
+  }
+  if (before.role !== after.role) changes.push(`역할 ${before.role || '-'} → ${after.role || '-'}`);
+  if (before.specName !== after.specName) changes.push(`특성 ${before.specName || '-'} → ${after.specName || '-'}`);
+  if ((before.ilvl ?? null) !== (after.ilvl ?? null)) changes.push(`아이템레벨 ${before.ilvl ?? '-'} → ${after.ilvl ?? '-'}`);
+  if (changes.length === 0) return;
+  await writeLog(event.params.raidId, {
+    action: 'change',
+    actor: after.nickname || after.charName || '?',
+    char: after.charName || '',
+    detail: changes.join(', '),
+  });
+});

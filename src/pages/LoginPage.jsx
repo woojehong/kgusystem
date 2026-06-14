@@ -74,12 +74,10 @@ export default function LoginPage() {
     return <Navigate to={profile.role === 'super' ? '/kga_adminnn' : '/'} replace />;
   }
 
-  // Nickname input handler: strip numbers/symbols only.
-  // Korean jamo (ㄱ-ㅎ, ㅏ-ㅣ) must be preserved for IME mid-composition.
-  // Mixing / length validation happens on submit only.
+  // Free input — 특수문자·숫자·한영혼합도 입력은 허용하고, '다음'을 누를 때만
+  // validateNicknameDetailed로 검증해 에러 메시지를 띄운다. (입력 자체는 막지 않음)
   const handleNicknameChange = (e) => {
-    const val = e.target.value.replace(/[^가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, '');
-    setNickname(val);
+    setNickname(e.target.value.slice(0, 20));
   };
 
   const handleNicknameNext = async () => {

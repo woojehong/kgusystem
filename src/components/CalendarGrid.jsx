@@ -63,10 +63,10 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                   isPast ? 'opacity-35' : ''
                 } ${isToday ? 'bg-amber-400/10 ring-2 ring-inset ring-amber-400/70' : ''}`}
               >
-                {/* Date — 가운데 정렬 */}
-                <div className="text-center mb-1.5">
+                {/* Date — 모바일: 왼쪽 + 버튼 인라인 / 데스크탑: 가운데 + 버튼 절대배치 */}
+                <div className="flex items-center justify-between gap-1 mb-1.5 sm:block">
                   <span
-                    className={`text-[11px] sm:text-sm font-extrabold leading-none text-outline ${
+                    className={`text-[10px] sm:text-sm font-extrabold leading-tight text-outline break-keep min-w-0 sm:block sm:text-center ${
                       isToday
                         ? 'text-amber-300'
                         : dow === 0
@@ -78,17 +78,17 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                   >
                     {day.getMonth() + 1}월 {day.getDate()}일
                   </span>
+                  {isAdmin && !isPast && (
+                    <button
+                      type="button"
+                      onClick={() => onCreate(key)}
+                      className="shrink-0 w-6 h-6 sm:w-5 sm:h-5 sm:absolute sm:top-1 sm:right-1 z-10 rounded-md bg-base-700/90 hover:bg-indigo-500/60 text-base-300 hover:text-white font-bold text-sm sm:text-xs transition leading-none flex items-center justify-center"
+                      title="레이드 추가"
+                    >
+                      +
+                    </button>
+                  )}
                 </div>
-                {isAdmin && !isPast && (
-                  <button
-                    type="button"
-                    onClick={() => onCreate(key)}
-                    className="absolute top-1 right-1 z-10 w-6 h-6 sm:w-5 sm:h-5 rounded-md bg-base-700/90 hover:bg-indigo-500/60 text-base-300 hover:text-white font-bold text-sm sm:text-xs transition leading-none flex items-center justify-center"
-                    title="레이드 추가"
-                  >
-                    +
-                  </button>
-                )}
 
                 {/* Raid chips — 2줄 레이아웃, 칸 자동 확장 */}
                 <div className="space-y-1">
@@ -136,7 +136,7 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                           const caps = getCaps(r);
                           if (!c) return null;
                           return (
-                            <div className="flex gap-1 mt-0.5 justify-center">
+                            <div className="flex items-center justify-center gap-1.5 mt-1 tabular-nums">
                               {[
                                 { key: 'tank',   label: '탱', cur: c.tank,   cap: caps.tank   },
                                 { key: 'healer', label: '힐', cur: c.healer, cap: caps.healer },
@@ -144,7 +144,7 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                               ].map(({ key, label, cur, cap }) => (
                                 <span
                                   key={key}
-                                  className="text-[9px] font-bold text-outline"
+                                  className="text-[9px] font-bold leading-none whitespace-nowrap text-outline"
                                   style={{ color: ROLE_COLORS[key] }}
                                 >
                                   {label} {cur}/{cap}

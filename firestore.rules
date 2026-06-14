@@ -150,6 +150,12 @@ service cloud.firestore {
       match /memos/{appId} {
         allow read, write: if isAdmin() || (isSignedIn() && appId == myUserId());
       }
+
+      // Activity logs: written by Cloud Functions only, read by super admin.
+      match /logs/{logId} {
+        allow read: if isSuper();
+        allow write: if false;
+      }
     }
   }
 }

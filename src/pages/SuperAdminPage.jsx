@@ -6,6 +6,8 @@ import {
   getDocs,
   updateDoc,
   writeBatch,
+  query,
+  orderBy,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useApp } from '../context/AppContext';
@@ -1178,8 +1180,23 @@ function RaidsTab() {
   );
 }
 
+const LOG_ACTION = {
+  apply: { label: '신청', color: 'text-green-300' },
+  cancel: { label: '취소', color: 'text-red-300' },
+  change: { label: '변경', color: 'text-amber-300' },
+};
+
+function fmtLogTime(ts) {
+  const d = ts && ts.toDate ? ts.toDate() : null;
+  if (!d) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 function RosterModal({ raid, onClose }) {
+  const [view, setView] = useState('roster');
   const [apps, setApps] = useState(null);
+  const [logs, setLogs] = useState(null);
 
   useEffect(() => {
     getDocs(collection(db, 'raids', raid.id, 'apps'))
@@ -1187,44 +1204,89 @@ function RosterModal({ raid, onClose }) {
       .catch(() => setApps([]));
   }, [raid.id]);
 
+  useEffect(() => {
+    if (view !== 'logs' || logs !== null) return;
+    getDocs(query(collection(db, 'raids', raid.id, 'logs'), orderBy('at', 'desc')))
+      .then((snap) => setLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+      .catch(() => setLogs([]));
+  }, [view, logs, raid.id]);
+
   const groups = apps
     ? [
-        ['탱커', apps.filter((a) => a.role === 'tank')],
-        ['힐러', apps.filter((a) => a.role === 'healer')],
-        ['딜러', apps.filter((a) => a.role === 'dps')],
+        ['탱커', apps.filter((a) => a.status !== 'bench' && a.role === 'tank')],
+        ['힐러', apps.filter((a) => a.status !== 'bench' && a.role === 'healer')],
+        ['딜러', apps.filter((a) => a.status !== 'bench' && a.role === 'dps')],
+        ['벤치', apps.filter((a) => a.status === 'bench')],
       ]
     : [];
 
   return (
-    <Modal open onClose={onClose} title={`명단 · ${formatDateLabel(raid.dateKey)}`}>
-      {!apps ? (
-        <p className="text-center text-base-400 py-6 animate-pulse">불러오는 중...</p>
-      ) : apps.length === 0 ? (
-        <p className="text-center text-base-400 py-6">신청자가 없습니다.</p>
-      ) : (
-        <div className="space-y-3">
-          {groups.map(([label, list]) => (
-            <div key={label}>
-              <p className="text-xs font-bold text-base-400 mb-1">
-                {label} ({list.length})
-              </p>
-              {list
-                .sort((a, b) => (a.seq || 0) - (b.seq || 0))
-                .map((a) => (
-                  <p key={a.id} className="text-sm py-0.5">
-                    <span className="font-semibold" style={badgeTextStyle(a.classColor)}>
-                      {a.charName}
-                    </span>{' '}
-                    <span className="text-xs text-base-400">
-                      {a.className || '미지정'}
-                      {a.specName ? ` | ${a.specName}` : ''} ·{' '}
-                      {a.status === 'active' ? '확정' : '대기'}
-                      {a.isReservation ? ' · 예약' : ''}
-                    </span>
+    <Modal open onClose={onClose} title={formatDateLabel(raid.dateKey)}>
+      <div className="flex gap-1 p-1 rounded-xl bg-base-850 mb-3">
+        {[['roster', '명단'], ['logs', '로그']].map(([k, l]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setView(k)}
+            className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition ${
+              view === k ? 'bg-base-700 text-white' : 'text-base-400 hover:text-base-200'
+            }`}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {view === 'roster' ? (
+        !apps ? (
+          <p className="text-center text-base-400 py-6 animate-pulse">불러오는 중...</p>
+        ) : apps.length === 0 ? (
+          <p className="text-center text-base-400 py-6">신청자가 없습니다.</p>
+        ) : (
+          <div className="space-y-3">
+            {groups.map(([label, list]) =>
+              list.length === 0 ? null : (
+                <div key={label}>
+                  <p className="text-xs font-bold text-base-400 mb-1">
+                    {label} ({list.length})
                   </p>
-                ))}
-            </div>
-          ))}
+                  {list
+                    .sort((a, b) => (a.seq || 0) - (b.seq || 0))
+                    .map((a) => (
+                      <p key={a.id} className="text-sm py-0.5">
+                        <span className="font-semibold" style={badgeTextStyle(a.classColor)}>
+                          {a.charName || a.nickname}
+                        </span>{' '}
+                        <span className="text-xs text-base-400">
+                          {a.className || '미지정'}
+                          {a.specName ? ` | ${a.specName}` : ''} ·{' '}
+                          {a.status === 'active' ? '확정' : a.status === 'bench' ? '벤치' : '대기'}
+                          {a.isReservation ? ' · 예약' : ''}
+                        </span>
+                      </p>
+                    ))}
+                </div>
+              )
+            )}
+          </div>
+        )
+      ) : !logs ? (
+        <p className="text-center text-base-400 py-6 animate-pulse">불러오는 중...</p>
+      ) : logs.length === 0 ? (
+        <p className="text-center text-base-400 py-6">기록된 로그가 없습니다.</p>
+      ) : (
+        <div className="space-y-0.5 max-h-[60vh] overflow-y-auto">
+          {logs.map((lg) => {
+            const a = LOG_ACTION[lg.action] || { label: lg.action, color: 'text-base-300' };
+            return (
+              <div key={lg.id} className="flex items-start gap-2 text-xs py-1 border-b border-base-800/70">
+                <span className="text-base-500 tabular-nums shrink-0">{fmtLogTime(lg.at)}</span>
+                <span className={`font-bold shrink-0 ${a.color}`}>{a.label}</span>
+                <span className="text-base-200 font-semibold shrink-0">{lg.actor}</span>
+                <span className="text-base-400 break-words">{lg.detail}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </Modal>

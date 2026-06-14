@@ -1,5 +1,12 @@
 import { initializeApp, getApps, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
+import {
+  getAuth,
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  createUserWithEmailAndPassword,
+  signOut as fbSignOut,
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 /**
@@ -17,7 +24,11 @@ export const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
+// Durable login persistence (IndexedDB → localStorage fallback). Helps keep
+// the session on iOS "add to home screen" PWAs where storage is isolated.
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+});
 export const db = getFirestore(app);
 
 /**

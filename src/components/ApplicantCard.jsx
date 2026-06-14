@@ -1,14 +1,15 @@
 import { badgeTextStyle, wclUrl, raiderUrl, armoryUrl } from '../lib/utils';
 import GuildBadge from './GuildBadge';
+import FitText from './FitText';
 
 /**
- * Applicant card — 3-row vertical layout (4 cards per row in parent grid).
- *
+ * Applicant card.
  * Row 1 (center) : guild badge
- * Row 2 (center) : 👑? + char name + reservation tag
- * Row 3          : spec (left) · ilvl + rank (right)
- *
- * Admin section  : divider → login ID → 3 links → memo (all centered)
+ * Row 2 (center) : 👑? + char name (auto-fit) + reservation tag
+ * Row 3          : desktop = spec(left) / ilvl(center) / rank(right)
+ *                  mobile  = each stacked & centered
+ * borderColor    : when set, the card is outlined in that colour (used to
+ *                  outline confirmed/active members in their class colour).
  */
 
 const ROLE_COLORS = { T: '#38bdf8', H: '#34d399', D: '#fb7185' };
@@ -31,19 +32,20 @@ function RankBadge({ rank }) {
   );
 }
 
-export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick, highlight }) {
+export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick, borderColor }) {
   const specDisplay = app.isReservation && !app.classId
     ? '클래스 미지정'
-    : (app.allSpecNames?.length ? app.allSpecNames : [app.specName]).filter(Boolean).join(' · ');
+    : (app.allSpecNames?.length ? app.allSpecNames : [app.specName]).filter(Boolean).join('·');
 
   const hasCharInfo = !app.isReservation && app.charName && app.server;
-  const guildColor  = app.guildColor || '#94a3b8';
+  const guildColor = app.guildColor || '#94a3b8';
 
   return (
     <div
-      className={`rounded-xl border p-2 bg-base-850 transition ${
-        highlight ? 'border-indigo-400/60' : 'border-base-700'
-      } ${adminView ? 'cursor-pointer hover:border-base-500' : ''}`}
+      className={`rounded-xl p-2 bg-base-850 transition ${
+        borderColor ? 'border-2' : 'border border-base-700'
+      } ${adminView ? 'cursor-pointer hover:brightness-110' : ''}`}
+      style={borderColor ? { borderColor } : undefined}
       onClick={adminView ? () => onAdminClick(app) : undefined}
       role={adminView ? 'button' : undefined}
       tabIndex={adminView ? 0 : undefined}
@@ -54,16 +56,15 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
         <GuildBadge guildId={app.guildId} guildName={app.guildName || '無'} guildColor={guildColor} size="xs" />
       </div>
 
-      {/* ── 줄 2: 👑 + 이름 (중앙) ── */}
-      <div className="flex items-center justify-center gap-1 min-w-0 mb-1.5">
+      {/* ── 줄 2: 👑 + 이름 (자동 맞춤) ── */}
+      <div className="flex items-center justify-center gap-1 min-w-0 mb-0.5">
         {app.isGuildMaster && (
           <span className="text-sm leading-none shrink-0" title="길드장">👑</span>
         )}
-        <span
-          className="font-extrabold text-2xl truncate"
-          style={badgeTextStyle(app.classColor)}
-        >
-          {app.charName}
+        <span className="min-w-0 flex-1 flex justify-center">
+          <FitText max={24} min={11} className="font-extrabold" style={badgeTextStyle(app.classColor)}>
+            {app.charName}
+          </FitText>
         </span>
         {app.isReservation && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold shrink-0">
@@ -72,15 +73,18 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
         )}
       </div>
 
-      {/* ── 줄 3: 특성(좌) / 템렙(중앙) / 순번(우) ── */}
-      <div className="grid items-center min-w-0" style={{ gridTemplateColumns: '1fr auto 1fr' }}>
-        <span className="text-xs truncate" style={badgeTextStyle(app.classColor)}>
+      {/* ── 줄 3: 특성 / 템렙 / 순번 (데스크탑 1줄, 모바일 세로 가운데) ── */}
+      <div
+        className="flex flex-col items-center gap-0.5 sm:grid sm:gap-0 sm:items-center min-w-0"
+        style={{ gridTemplateColumns: '1fr auto 1fr' }}
+      >
+        <span className="text-xs truncate max-w-full text-center sm:text-left" style={badgeTextStyle(app.classColor)}>
           {specDisplay}
         </span>
         <span className="text-sm font-bold text-base-100 text-center px-1">
           {app.ilvl != null ? app.ilvl : ''}
         </span>
-        <div className="flex justify-end">
+        <div className="flex justify-center sm:justify-end">
           {rank != null && <RankBadge rank={rank} />}
         </div>
       </div>
@@ -96,33 +100,15 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
           )}
           {hasCharInfo && (
             <div className="flex justify-center gap-3 flex-wrap">
-              <a
-                href={wclUrl(app.server, app.charName)}
-                target="_blank"
-                rel="noreferrer"
+              <a href={wclUrl(app.server, app.charName)} target="_blank" rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-xs text-sky-400 hover:text-sky-200 transition font-medium"
-              >
-                WCL
-              </a>
-              <a
-                href={raiderUrl(app.server, app.charName)}
-                target="_blank"
-                rel="noreferrer"
+                className="text-xs text-sky-400 hover:text-sky-200 transition font-medium">WCL</a>
+              <a href={raiderUrl(app.server, app.charName)} target="_blank" rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-xs text-emerald-400 hover:text-emerald-200 transition font-medium"
-              >
-                Raider.io
-              </a>
-              <a
-                href={armoryUrl(app.server, app.charName)}
-                target="_blank"
-                rel="noreferrer"
+                className="text-xs text-emerald-400 hover:text-emerald-200 transition font-medium">Raider.io</a>
+              <a href={armoryUrl(app.server, app.charName)} target="_blank" rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-xs text-amber-400 hover:text-amber-200 transition font-medium"
-              >
-                전투정보실
-              </a>
+                className="text-xs text-amber-400 hover:text-amber-200 transition font-medium">전투정보실</a>
             </div>
           )}
           {memo && <p className="text-xs text-base-300 break-words">📝 {memo}</p>}

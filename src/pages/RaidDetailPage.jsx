@@ -27,6 +27,15 @@ function sortBySeq(list) {
   return [...list].sort((a, b) => (a.seq || 0) - (b.seq || 0));
 }
 
+// 액티브 로스터: 클래스 가나다순 우선, 같은 클래스는 신청순(seq).
+function sortByClass(list) {
+  return [...list].sort((a, b) => {
+    const c = (a.className || '').localeCompare(b.className || '', 'ko');
+    if (c !== 0) return c;
+    return (a.seq || 0) - (b.seq || 0);
+  });
+}
+
 const ROLE_COLORS = { tank: '#38bdf8', healer: '#34d399', dps: '#fb7185' };
 
 const STATUS_META = {
@@ -116,9 +125,9 @@ export default function RaidDetailPage() {
     const actives = apps.filter((a) => a.status === 'active');
     const waits = apps.filter((a) => a.status === 'wait');
 
-    const tanks = sortBySeq(actives.filter((a) => a.role === 'tank'));
-    const healers = sortBySeq(actives.filter((a) => a.role === 'healer'));
-    const dps = sortBySeq(actives.filter((a) => a.role === 'dps'));
+    const tanks = sortByClass(actives.filter((a) => a.role === 'tank'));
+    const healers = sortByClass(actives.filter((a) => a.role === 'healer'));
+    const dps = sortByClass(actives.filter((a) => a.role === 'dps'));
 
     const waitTanks = sortBySeq(waits.filter((a) => a.role === 'tank'));
     const waitHealers = sortBySeq(waits.filter((a) => a.role === 'healer'));
@@ -207,7 +216,7 @@ export default function RaidDetailPage() {
           memo={adminView ? memos[app.id] : undefined}
           adminView={adminView}
           onAdminClick={setAdminTarget}
-          highlight={app.id === userId}
+          borderColor={app.classColor}
         />
       </div>
     ));
@@ -222,7 +231,6 @@ export default function RaidDetailPage() {
           memo={adminView ? memos[app.id] : undefined}
           adminView={adminView}
           onAdminClick={setAdminTarget}
-          highlight={app.id === userId}
         />
       </div>
     ));
@@ -366,9 +374,13 @@ export default function RaidDetailPage() {
             {/* 내 카드 (명단과 동일) */}
             <div className="max-w-[220px] mx-auto">
               {myApp.status === 'bench' ? (
-                <BenchCard app={myApp} highlight />
+                <BenchCard app={myApp} />
               ) : (
-                <ApplicantCard app={myApp} rank={myRank} highlight />
+                <ApplicantCard
+                  app={myApp}
+                  rank={myRank}
+                  borderColor={myApp.status === 'active' ? myApp.classColor : undefined}
+                />
               )}
             </div>
             {/* 수정 / 취소 */}
