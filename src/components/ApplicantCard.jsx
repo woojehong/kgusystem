@@ -56,16 +56,14 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
         <GuildBadge guildId={app.guildId} guildName={app.guildName || '無'} guildColor={guildColor} size="xs" />
       </div>
 
-      {/* ── 줄 2: 👑 + 이름 (자동 맞춤) ── */}
+      {/* ── 줄 2: 👑+이름 (한 몸으로 가운데정렬, 자동 맞춤) ── */}
       <div className="flex items-center justify-center gap-1 min-w-0 mb-0.5">
         {app.isGuildMaster && (
           <span className="text-sm leading-none shrink-0" title="길드장">👑</span>
         )}
-        <span className="min-w-0 flex-1 flex justify-center">
-          <FitText max={24} min={11} className="font-extrabold" style={badgeTextStyle(app.classColor)}>
-            {app.charName}
-          </FitText>
-        </span>
+        <FitText max={24} min={11} className="font-extrabold" style={badgeTextStyle(app.classColor)}>
+          {app.charName}
+        </FitText>
         {app.isReservation && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold shrink-0">
             예약

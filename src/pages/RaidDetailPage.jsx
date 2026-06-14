@@ -9,6 +9,7 @@ import {
   formatTimeRange,
   getCaps,
   countFillColor,
+  readableOn,
 } from '../lib/utils';
 import { updateRaid, fetchAllMemos, cancelApplication } from '../lib/db';
 import Header from '../components/Header';
@@ -39,7 +40,7 @@ function sortByClass(list) {
 const ROLE_COLORS = { tank: '#38bdf8', healer: '#34d399', dps: '#fb7185' };
 
 const STATUS_META = {
-  active: { label: '참가 확정', color: '#34d399' },
+  active: { label: '참가 확정', color: '#22c55e' },
   wait: { label: '대기 명단', color: '#f59e0b' },
   bench: { label: '벤치', color: '#a3e635' },
 };
@@ -282,18 +283,14 @@ export default function RaidDetailPage() {
                   <button
                     type="button"
                     onClick={() => setRaidEditOpen(true)}
-                    className="text-sm px-4 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-bold border-2 border-indigo-300 shadow-lg transition whitespace-nowrap"
+                    className="text-sm px-4 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white font-bold border border-base-500 shadow transition whitespace-nowrap"
                   >
                     레이드 수정
                   </button>
                   <button
                     type="button"
                     onClick={copyInvite}
-                    className={`text-sm px-4 py-1.5 rounded-lg font-bold border-2 shadow-lg transition whitespace-nowrap ${
-                      copied
-                        ? 'bg-green-500 text-white border-green-300'
-                        : 'bg-emerald-500 hover:bg-emerald-400 text-white border-emerald-300'
-                    }`}
+                    className="text-sm px-4 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white font-bold border border-base-500 shadow transition whitespace-nowrap"
                   >
                     {copied ? '복사됨 ✓' : '구성원 초대'}
                   </button>
@@ -359,20 +356,24 @@ export default function RaidDetailPage() {
           </div>
         </div>
 
-        {/* ── 내 신청 현황 ── */}
+        {/* ── 내 신청 현황 (4행: 상태 / 카드 / 수정 / 취소 — 모두 카드 너비) ── */}
         {myApp ? (
-          <div className="mt-4 space-y-3">
-            {/* 상태 칸 (가운데) */}
-            <div className="card py-2.5 text-center">
-              <span
-                className="font-black text-base text-outline"
-                style={{ color: STATUS_META[myApp.status]?.color || '#cbd5e1' }}
-              >
-                {STATUS_META[myApp.status]?.label || '신청됨'}
-              </span>
-            </div>
-            {/* 내 카드 (명단과 동일) */}
-            <div className="max-w-[220px] mx-auto">
+          <div className="mt-8 flex flex-col items-center gap-3">
+            {/* 1행: 상태 — 상태색 배경 + 대비 글씨 */}
+            {(() => {
+              const meta = STATUS_META[myApp.status] || { label: '신청됨', color: '#64748b' };
+              return (
+                <div
+                  className="w-full max-w-[220px] rounded-2xl py-2.5 text-center font-black text-base"
+                  style={{ backgroundColor: meta.color, color: readableOn(meta.color) }}
+                >
+                  {meta.label}
+                </div>
+              );
+            })()}
+
+            {/* 2행: 내 카드 */}
+            <div className="w-full max-w-[220px]">
               {myApp.status === 'bench' ? (
                 <BenchCard app={myApp} />
               ) : (
@@ -383,22 +384,28 @@ export default function RaidDetailPage() {
                 />
               )}
             </div>
-            {/* 수정 / 취소 */}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="btn-ghost flex-1"
-                onClick={() => { setEditApply(true); setApplyOpen(true); }}
-              >
-                신청 정보 수정
-              </button>
-              <button type="button" className="btn-danger flex-1" onClick={() => setCancelConfirm(true)}>
-                신청 취소
-              </button>
-            </div>
+
+            {/* 3행: 신청 정보 수정 (노랑) */}
+            <button
+              type="button"
+              className="w-full max-w-[220px] py-2.5 rounded-xl font-bold transition hover:brightness-110"
+              style={{ backgroundColor: '#eab308', color: '#0b0e13' }}
+              onClick={() => { setEditApply(true); setApplyOpen(true); }}
+            >
+              신청 정보 수정
+            </button>
+
+            {/* 4행: 신청 취소 (빨강) */}
+            <button
+              type="button"
+              className="w-full max-w-[220px] btn-danger py-2.5"
+              onClick={() => setCancelConfirm(true)}
+            >
+              신청 취소
+            </button>
           </div>
         ) : (
-          <div className="mt-4">
+          <div className="mt-8">
             <button
               type="button"
               className="btn-primary w-full py-3.5 text-base"
@@ -410,7 +417,7 @@ export default function RaidDetailPage() {
         )}
 
         {/* ── Roster (primary) ── */}
-        <div className="mt-5 space-y-4">
+        <div className="mt-10 space-y-4">
           <div className="card p-3">
             <SectionHeader
               label="탱커"
@@ -463,8 +470,8 @@ export default function RaidDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* 대기자 */}
             <div className="card p-3">
-              <p className="font-bold text-sm mb-2 flex items-center justify-between">
-                <span style={{ color: '#f59e0b' }}>대기자</span>
+              <p className="font-bold text-sm mb-2">
+                <span style={{ color: '#f59e0b' }}>대기자</span>{' '}
                 <span className="text-white">{waitTotal}</span>
               </p>
               {waitTotal === 0 ? (
@@ -487,8 +494,8 @@ export default function RaidDetailPage() {
 
             {/* 벤치 */}
             <div className="card p-3">
-              <p className="font-bold text-sm mb-2 flex items-center justify-between">
-                <span style={{ color: '#a3e635' }}>벤치</span>
+              <p className="font-bold text-sm mb-2">
+                <span style={{ color: '#a3e635' }}>벤치</span>{' '}
                 <span className="text-white">{derived.bench.length}</span>
               </p>
               {derived.bench.length === 0 ? (
