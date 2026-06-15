@@ -230,7 +230,8 @@ export default function GuildBadge({ guildId, guildName, guildColor, size = 'sm'
   // Prefer the guild's dedicated badge name (emoji/abbreviation) when the
   // guild resolves; otherwise fall back to the passed-in name.
   const name     = guild ? (guild.badgeName || guild.name) : (guildName ?? '소속 없음');
-  const color    = guildColor ?? guild?.color ?? '#64748b';
+  // 길드가 조회되면 현재(실시간) 색을 우선 사용 — 길드 색을 바꾸면 과거 신청 카드도 즉시 반영.
+  const color    = guild ? (guild.color || guildColor || '#64748b') : (guildColor ?? '#64748b');
   const logoPath = guild?.logoPath;
 
   const effectiveBadge = badgeConfig ?? guild?.badge ?? {};
