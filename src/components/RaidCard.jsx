@@ -73,8 +73,8 @@ export default function RaidCard({ raid, counts, mine }) {
       className="relative block card overflow-hidden hover:-translate-y-0.5 transition-all"
       style={{
         backgroundColor: diff.soft,
-        // 미신청: 같은 색 옅게(거의 안 보이게) · 신청: 같은 색 진하게(눈에 띄게)
-        border: `2px solid ${mine ? diff.color : `${diff.color}22`}`,
+        // 신청 여부와 무관하게 테두리 고정 (신청 표시는 우측 상단 배지로)
+        border: `2px solid ${diff.color}22`,
       }}
     >
       <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
