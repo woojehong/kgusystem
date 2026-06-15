@@ -127,8 +127,8 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                       <div className="truncate text-[11px] sm:text-xs font-semibold text-outline" style={{ color: diff.color }}>
                         {time}{prefix ? ` · [${prefix}]` : ''}
                       </div>
-                      {/* 줄 2: 제목 (최대 2줄, 넘으면 …) */}
-                      <div className="line-clamp-2 text-[11px] sm:text-sm font-bold text-white text-outline mt-0.5">
+                      {/* 줄 2: 제목 (최대 3줄, 넘으면 …) */}
+                      <div className="line-clamp-3 text-[11px] sm:text-sm font-bold text-white text-outline mt-0.5">
                         {r.title || diff.label}
                       </div>
                       {/* 줄 3: 탱/힐/딜 */}
