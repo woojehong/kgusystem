@@ -637,6 +637,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
   const [page, setPage] = useState(normalizePage(guild.page, guild.color));
   const [logoPath, setLogoPath] = useState(guild.logoPath || '');
   const [showInFilter, setShowInFilter] = useState(guild.showInFilter !== false);
+  const [showFlag, setShowFlag] = useState(guild.showFlag !== false);
 
   // ── 뱃지수정 tab state ─────────────────────────────────────────
   const eb = guild.badge || {};
@@ -696,6 +697,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
         logoPath: logoPath.trim(),
         isNone: !!guild.isNone,
         showInFilter,
+        showFlag,
         page,
         ...(isNew ? { order: nextOrder } : {}),
         badge: {
@@ -812,6 +814,20 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
                 className="w-4 h-4 accent-indigo-500"
                 checked={showInFilter}
                 onChange={(e) => setShowInFilter(e.target.checked)}
+              />
+            </label>
+          )}
+          {!guild.isNone && (
+            <label className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700 cursor-pointer">
+              <div>
+                <p className="text-sm font-medium">길드 소개 깃발에 표시</p>
+                <p className="text-[11px] text-base-400 mt-0.5">"한국길드연합 소속 길드 소개" 깃발 목록에 이 길드를 노출합니다</p>
+              </div>
+              <input
+                type="checkbox"
+                className="w-4 h-4 accent-indigo-500"
+                checked={showFlag}
+                onChange={(e) => setShowFlag(e.target.checked)}
               />
             </label>
           )}

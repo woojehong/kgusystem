@@ -97,12 +97,16 @@ function Flag({ guild, index, widthStyle }) {
 }
 
 // 첫 줄은 4개, 둘째 줄부터는 6개씩 (각 줄 가운데 정렬, 왼쪽부터 채움).
+// 모든 줄의 깃발 크기를 동일하게 유지 (maxWidth 통일). 첫 줄은 4개, 둘째 줄부터
+// 6개로 '개수'만 다르고 각 깃발의 최대 크기는 같다.
 const WIDTH_4 = { width: 'calc(25% - 24px)', maxWidth: 150, minWidth: 0 };
-const WIDTH_6 = { width: 'calc(16.666% - 20px)', maxWidth: 112, minWidth: 0 };
+const WIDTH_6 = { width: 'calc(16.666% - 20px)', maxWidth: 150, minWidth: 0 };
 
 export default function GuildFlags() {
   const { guilds } = useApp();
-  const list = sortGuilds(guilds.filter((g) => !g.isNone));
+  // Default-true: a guild only disappears from the flag list when showFlag is
+  // explicitly set to false in the super-admin guild editor.
+  const list = sortGuilds(guilds.filter((g) => !g.isNone && g.showFlag !== false));
   if (list.length === 0) return null;
 
   const first = list.slice(0, 4);
