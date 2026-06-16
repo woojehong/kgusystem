@@ -105,9 +105,11 @@ export default function IndexPage() {
     [raids, now]
   );
 
-  // Guilds with showInFilter=true for the category filter
+  // Guilds shown in the category filter. Default-true: a guild only disappears
+  // from the filter when showInFilter is explicitly set to false (the "전체"
+  // view still shows its raids — this only controls the filter buttons).
   const filterGuilds = useMemo(
-    () => guilds.filter((g) => !g.isNone && g.showInFilter),
+    () => guilds.filter((g) => !g.isNone && g.showInFilter !== false),
     [guilds]
   );
 
@@ -206,7 +208,7 @@ export default function IndexPage() {
         {/* ── 섹션 타이틀 ── */}
         <div className="flex items-center gap-3 mb-5">
           <span className="flex-1 h-px bg-base-700/70" />
-          <h2 className="text-sm font-bold text-base-400 tracking-wider">레이드 일정</h2>
+          <h2 className="text-sm font-bold text-base-400 tracking-wider">길드 레이드 일정</h2>
           <span className="flex-1 h-px bg-base-700/70" />
         </div>
 
