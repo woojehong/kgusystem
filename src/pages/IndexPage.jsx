@@ -109,7 +109,7 @@ export default function IndexPage() {
   // from the filter when showInFilter is explicitly set to false (the "전체"
   // view still shows its raids — this only controls the filter buttons).
   const filterGuilds = useMemo(
-    () => guilds.filter((g) => !g.isNone && g.showInFilter !== false),
+    () => guilds.filter((g) => !g.isNone && !g.isUnion && g.showInFilter !== false),
     [guilds]
   );
 

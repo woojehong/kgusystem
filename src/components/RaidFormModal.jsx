@@ -78,7 +78,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const { guilds, profile } = useApp();
   const isEdit = !!raid;
 
-  const sortedGuilds = useMemo(() => sortGuilds(guilds).filter((g) => !g.isNone), [guilds]);
+  const sortedGuilds = useMemo(() => sortGuilds(guilds).filter((g) => !g.isNone && !g.isUnion), [guilds]);
 
   // ── Form state ──
   const [localDateKey, setLocalDateKey] = useState('');

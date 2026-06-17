@@ -220,12 +220,17 @@ export const SERVERS = [
 
 // ── Initial guilds ──────────────────────────────────────────────────
 
+// 연합 레이드 전용 뱃지 문서 ID (슈퍼관리자만 편집).
+export const UNION_GUILD_ID = '__union__';
+
 export const SEED_GUILDS = [
   { id: 'starfall-forest', name: 'Starfall Forest', color: '#7dd3fc', logoPath: '', isNone: false },
   { id: 'gyochaero', name: '교차로', color: '#f59e0b', logoPath: '', isNone: false },
   { id: 'wowfactory', name: '와우팩토리', color: '#34d399', logoPath: '', isNone: false },
   { id: 'ieyo', name: '이에요', color: '#f472b6', logoPath: '', isNone: false },
   { id: 'none', name: '소속 없음', color: '#64748b', logoPath: '', isNone: true },
+  // 연합 레이드 뱃지. 일반 길드 목록/필터/깃발에는 노출하지 않음.
+  { id: UNION_GUILD_ID, name: '연합', badgeName: '연합', color: '#a78bfa', logoPath: '', isUnion: true, isNone: false },
 ];
 
 // ── Nickname policy ─────────────────────────────────────────────────

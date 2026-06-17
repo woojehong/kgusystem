@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { DIFFICULTIES } from '../lib/constants';
-import { formatTimeRange, getCaps } from '../lib/utils';
+import { formatTimeRange, getCaps, getUnionGuild } from '../lib/utils';
+import GuildBadge from './GuildBadge';
 
 // Role colours shared across the app (tank / healer / dps).
 const ROLE_META = [
@@ -11,11 +12,9 @@ const ROLE_META = [
 ];
 const GOLD = '#fbbf24';
 
-/** Returns the display label for a raid's party type. */
-function partyTypeLabel(partyType, guilds) {
-  if (!partyType || partyType === 'union') return '연합 길드 레이드';
-  const g = guilds.find((guild) => guild.id === partyType);
-  return g ? `${g.name} 길드 레이드` : '길드 레이드';
+/** True when a raid is a 연합(union) raid rather than a single-guild raid. */
+function isUnionRaid(partyType) {
+  return !partyType || partyType === 'union';
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -100,10 +99,17 @@ export default function RaidCard({ raid, counts, mine }) {
       )}
 
       <div className="p-4 pl-5">
-        {/* Category (가운데 · 크게) */}
-        <p className="text-sm font-bold tracking-wide text-base-300 uppercase mb-1 text-center">
-          {partyTypeLabel(raid.partyType, guilds)}
-        </p>
+        {/* 파티 성격 뱃지 — 연합이면 연합 뱃지, 단일 길드면 그 길드 뱃지 (실시간) */}
+        <div className="flex justify-center mb-2">
+          {isUnionRaid(raid.partyType) ? (
+            (() => {
+              const u = getUnionGuild(guilds);
+              return <GuildBadge guildName={u.badgeName || u.name} guildColor={u.color} badgeConfig={u.badge} size="sm" />;
+            })()
+          ) : (
+            <GuildBadge guildId={raid.partyType} size="sm" />
+          )}
+        </div>
 
         {/* Title */}
         <p className="font-bold text-base leading-snug break-keep">

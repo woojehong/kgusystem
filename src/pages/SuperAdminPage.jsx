@@ -19,7 +19,7 @@ import {
   resetPinBySuper,
 } from '../lib/auth';
 import { seedInitialData, isSeeded, saveGuild, deleteGuild, softDeleteRaid, restoreRaid, hardDeleteRaid } from '../lib/db';
-import { DIFFICULTIES, PIN_RULE } from '../lib/constants';
+import { DIFFICULTIES, PIN_RULE, UNION_GUILD_ID } from '../lib/constants';
 import {
   formatDateLabel,
   formatTimeRange,
@@ -143,7 +143,7 @@ function UsersTab({ guilds, gamedata }) {
   const noneGuild = guilds.find((g) => g.isNone);
   const filterTabs = [
     { id: 'all', name: '전체' },
-    ...sortGuilds(guilds.filter((g) => !g.isNone)).map((g) => ({ id: g.id, name: g.name })),
+    ...sortGuilds(guilds.filter((g) => !g.isNone && !g.isUnion)).map((g) => ({ id: g.id, name: g.name })),
     { id: '__none', name: '소속없음' },
   ];
 
@@ -407,8 +407,11 @@ function GuildsTab({ guilds, reload }) {
   const [busy, setBusy] = useState(false);
 
   const ordered = sortGuilds(guilds);
-  const movable = ordered.filter((g) => !g.isNone);
+  const movable = ordered.filter((g) => !g.isNone && !g.isUnion);
   const noneGuild = ordered.find((g) => g.isNone);
+  const unionGuild = ordered.find((g) => g.isUnion) || {
+    id: UNION_GUILD_ID, name: '연합', badgeName: '연합', color: '#a78bfa', badge: {}, isUnion: true,
+  };
 
   // Persist the new sequence as a 0..n-1 `order` on every movable guild.
   const move = async (index, dir) => {
@@ -462,6 +465,20 @@ function GuildsTab({ guilds, reload }) {
           {rowInner(noneGuild, true)}
         </div>
       )}
+
+      {/* 연합 레이드 전용 뱃지 — 슈퍼관리자만 편집 */}
+      <div className="w-full flex items-center gap-2 p-3 card opacity-90 border border-violet-500/30">
+        <span className="w-6 shrink-0" />
+        <button
+          type="button"
+          onClick={() => setTarget(unionGuild)}
+          className="flex-1 flex items-center gap-3 text-left min-w-0 hover:opacity-90 transition"
+        >
+          <span className="w-5 h-5 rounded-full border border-base-600 shrink-0" style={{ backgroundColor: unionGuild.color }} />
+          <span className="font-bold truncate" style={{ color: unionGuild.color }}>{unionGuild.name || '연합'}</span>
+          <span className="text-xs text-base-400 shrink-0">(연합 레이드 뱃지)</span>
+        </button>
+      </div>
 
       <button
         type="button"
@@ -626,6 +643,7 @@ function BadgeSection({ label, children }) {
 
 function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
   const isNew = !guild.id;
+  const isUnion = !!guild.isUnion;
   const [activeTab, setActiveTab] = useState('info');
 
   // ── 기본정보 tab state ─────────────────────────────────────────
@@ -676,38 +694,49 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
 
   const save = async () => {
     setError('');
-    if (!name.trim()) { setError('길드명을 입력해주세요.'); return; }
+    if (!name.trim()) { setError(isUnion ? '표시명을 입력해주세요.' : '길드명을 입력해주세요.'); return; }
     const sn = shortName.trim();
     const snLen = [...sn].length;
-    if (sn && snLen > 4) { setError('약식명은 한글/영문 4자 이하로 입력해주세요.'); return; }
+    if (!isUnion && sn && snLen > 4) { setError('약식명은 한글/영문 4자 이하로 입력해주세요.'); return; }
     const en = englishName.trim();
-    if (en) {
+    if (!isUnion && en) {
       const enErr = validateEnglishName(en);
       if (enErr) { setError(enErr); return; }
     }
     setBusy(true);
     try {
       const id = guild.id || randomId('guild_');
-      await saveGuild(id, {
-        name: name.trim(),
-        shortName: sn,
-        englishName: en,
-        badgeName: badgeName.trim(),
-        color,
-        logoPath: logoPath.trim(),
-        isNone: !!guild.isNone,
-        showInFilter,
-        showFlag,
-        page,
-        ...(isNew ? { order: nextOrder } : {}),
-        badge: {
-          shape: badgeShape, bgType: badgeBgType,
-          color2: badgeColor2, color3: badgeColor3,
-          border: badgeBorder, borderColor: badgeBorderColor,
-          effect: badgeEffect, textColor: badgeTextColor,
-          textCustomColor: badgeTextCustomColor, textStyle: badgeTextStyle_,
-        },
-      });
+      const badge = {
+        shape: badgeShape, bgType: badgeBgType,
+        color2: badgeColor2, color3: badgeColor3,
+        border: badgeBorder, borderColor: badgeBorderColor,
+        effect: badgeEffect, textColor: badgeTextColor,
+        textCustomColor: badgeTextCustomColor, textStyle: badgeTextStyle_,
+      };
+      const payload = isUnion
+        ? {
+            // 연합 뱃지 문서: 뱃지 디자인 + 표시명/색만 저장.
+            name: name.trim(),
+            badgeName: name.trim(),
+            color,
+            isUnion: true,
+            badge,
+          }
+        : {
+            name: name.trim(),
+            shortName: sn,
+            englishName: en,
+            badgeName: badgeName.trim(),
+            color,
+            logoPath: logoPath.trim(),
+            isNone: !!guild.isNone,
+            showInFilter,
+            showFlag,
+            page,
+            ...(isNew ? { order: nextOrder } : {}),
+            badge,
+          };
+      await saveGuild(id, payload);
       onClose(true);
     } catch {
       setError('저장에 실패했습니다.');
@@ -725,7 +754,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
     <Modal open onClose={() => onClose(false)} title={isNew ? '길드 추가' : `길드 수정 · ${guild.name}`}>
       {/* ── Tab selector ── */}
       <div className="flex gap-1 p-1 rounded-xl bg-base-850 border border-base-700 mb-4">
-        {[['info', '기본 정보'], ['badge', '뱃지 수정'], ['page', '소개글']].map(([key, label]) => (
+        {(isUnion ? [['info', '기본 정보'], ['badge', '뱃지 수정']] : [['info', '기본 정보'], ['badge', '뱃지 수정'], ['page', '소개글']]).map(([key, label]) => (
           <button
             key={key}
             type="button"
@@ -743,9 +772,10 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
       {activeTab === 'info' && (
         <div className="space-y-4">
           <div>
-            <label className="label-sm">길드명</label>
-            <input className="input-base" value={name} onChange={(e) => setName(e.target.value)} />
+            <label className="label-sm">{isUnion ? '표시명 (뱃지에 표시되는 글자)' : '길드명'}</label>
+            <input className="input-base" value={name} onChange={(e) => setName(e.target.value)} placeholder={isUnion ? '예: 연합' : ''} />
           </div>
+          {!isUnion && (
           <div>
             <label className="label-sm">약식명 <span className="text-base-500 font-normal">(한글/영문 4자 이하 · 달력 표시용)</span></label>
             <input
@@ -756,6 +786,8 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
               maxLength={8}
             />
           </div>
+          )}
+          {!isUnion && (
           <div>
             <label className="label-sm">뱃지명 <span className="text-base-500 font-normal">(뱃지에 표시 · 이모지/줄임 가능)</span></label>
             <input
@@ -766,6 +798,8 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
               maxLength={16}
             />
           </div>
+          )}
+          {!isUnion && (
           <div>
             <label className="label-sm">영문명 <span className="text-base-500 font-normal">(로고 파일명 · 페이지 주소 · 슈퍼관리자만 변경)</span></label>
             <input
@@ -778,6 +812,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
               영문 소문자·숫자·하이픈(-)만. 로고는 <code className="text-base-300">public/guildflag/영문명.png</code>, 주소는 <code className="text-base-300">/guild/영문명</code>.
             </p>
           </div>
+          )}
           <div>
             <label className="label-sm">시그니처 컬러</label>
             <div className="flex items-center gap-3">
@@ -790,6 +825,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
               <input className="input-base flex-1" value={color} onChange={(e) => setColor(e.target.value)} />
             </div>
           </div>
+          {!isUnion && (
           <div>
             <label className="label-sm">로고 경로 (repo 내 정적 파일)</label>
             <input
@@ -803,7 +839,13 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
               <br />규격 — 로고: <b className="text-base-300">512 × 512</b> · 깃발: <b className="text-base-300">512 × 640</b> (배경 투명)
             </p>
           </div>
-          {!guild.isNone && (
+          )}
+          {isUnion && (
+            <p className="text-[11px] text-base-400 leading-relaxed p-3 rounded-xl bg-base-850 border border-base-700">
+              이 뱃지는 <b className="text-base-300">연합 레이드</b>의 달력/카드뷰 상단에 표시됩니다. 표시명·색·뱃지 디자인만 설정하면 됩니다.
+            </p>
+          )}
+          {!guild.isNone && !isUnion && (
             <label className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700 cursor-pointer">
               <div>
                 <p className="text-sm font-medium">메인 화면 필터에 표시</p>
@@ -817,7 +859,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
               />
             </label>
           )}
-          {!guild.isNone && (
+          {!guild.isNone && !isUnion && (
             <label className="flex items-center justify-between p-3 rounded-xl bg-base-850 border border-base-700 cursor-pointer">
               <div>
                 <p className="text-sm font-medium">길드 소개 깃발에 표시</p>
@@ -1026,7 +1068,7 @@ function GuildEditModal({ guild, onClose, nextOrder = 0 }) {
       <div className="mt-4 space-y-3">
         {error && <p className="text-sm text-red-400 text-center">{error}</p>}
         <div className="flex gap-2">
-          {!isNew && !guild.isNone &&
+          {!isNew && !guild.isNone && !isUnion &&
             (confirmDelete ? (
               <button type="button" className="btn-danger flex-1" disabled={busy} onClick={remove}>
                 정말 삭제할까요?

@@ -1,4 +1,4 @@
-import { DIFFICULTIES, TANK_CAP, SERVERS } from './constants';
+import { DIFFICULTIES, TANK_CAP, SERVERS, UNION_GUILD_ID } from './constants';
 
 // ── Class / spec lookups ────────────────────────────────────────────
 
@@ -122,6 +122,8 @@ export function armoryUrl(serverKo, characterName) {
 
 export function sortGuilds(guilds) {
   return [...guilds].sort((a, b) => {
+    // 연합 뱃지 문서는 일반 목록에서 항상 맨 뒤(보통은 호출부에서 제외됨).
+    if (a.isUnion !== b.isUnion) return a.isUnion ? 1 : -1;
     // '소속 없음' always last.
     if (a.isNone !== b.isNone) return a.isNone ? 1 : -1;
     // Manual order (set by the super admin) takes priority when present.
@@ -136,6 +138,22 @@ export function sortGuilds(guilds) {
     if (aEng !== bEng) return aEng ? -1 : 1;
     return a.name.localeCompare(b.name, aEng ? 'en' : 'ko');
   });
+}
+
+// 연합 레이드 뱃지 문서를 반환. 아직 Firestore에 저장 전이면 기본값으로 대체해
+// 항상 렌더 가능한 객체를 보장한다(슈퍼관리자가 저장하면 실시간 반영).
+export function getUnionGuild(guilds) {
+  const found = (guilds || []).find((g) => g.isUnion || g.id === UNION_GUILD_ID);
+  return (
+    found || {
+      id: UNION_GUILD_ID,
+      name: '연합',
+      badgeName: '연합',
+      color: '#a78bfa',
+      badge: {},
+      isUnion: true,
+    }
+  );
 }
 
 // ── Misc ────────────────────────────────────────────────────────────

@@ -106,7 +106,7 @@ export default function GuildFlags() {
   const { guilds } = useApp();
   // Default-true: a guild only disappears from the flag list when showFlag is
   // explicitly set to false in the super-admin guild editor.
-  const list = sortGuilds(guilds.filter((g) => !g.isNone && g.showFlag !== false));
+  const list = sortGuilds(guilds.filter((g) => !g.isNone && !g.isUnion && g.showFlag !== false));
   if (list.length === 0) return null;
 
   const first = list.slice(0, 4);
