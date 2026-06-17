@@ -62,54 +62,134 @@ function formatDate(dateKey) {
   return m ? `${m[1]}년 ${m[2]}월 ${m[3]}일` : String(dateKey);
 }
 
-// ── 채널 1: 레이드 삭제 (소프트 삭제 감지) ──────────────────────
+// ── 공통 포맷 헬퍼 ───────────────────────────────────────────────
+const DIFF_LABEL       = { normal: '일반', heroic: '영웅', mythic: '신화' };
+const ROLE_KO          = { tank: '탱커', healer: '힐러', dps: '딜러' };
+const ROLE_ICON        = { tank: '🛡', healer: '💚', dps: '⚔️' };
+const ROLE_SWAP_PREFIX = { tank: '탱', healer: '힐', dps: '딜' };
+const STATUS_LABEL     = { active: '확정', wait: '대기', bench: '벤치' };
+
+// 알림은 연합 레이드(partyType 'union' 또는 미지정)에만 발송한다.
+function isUnionRaid(raid) {
+  return !!raid && (!raid.partyType || raid.partyType === 'union');
+}
+
+// 레이드 상세 페이지 (HashRouter).
+function raidUrl(raidId) {
+  return `${SITE_URL}/#/raid/${raidId}`;
+}
+
+function diffLabel(raid) {
+  return DIFF_LABEL[raid.difficulty] || '일반';
+}
+
+// "6월 19일(금) 오후 9시" (Asia/Seoul · 분은 0이 아닐 때만 표기).
+// 오전/오후는 ICU 로캘 의존을 피하려고 24시간 값에서 직접 계산한다.
+function formatWhen(startAt) {
+  const d = startAt && startAt.toDate ? startAt.toDate() : new Date(startAt);
+  if (!d || isNaN(d.getTime())) return '';
+  const dp = new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', weekday: 'short',
+  }).formatToParts(d);
+  const g = (t) => (dp.find((p) => p.type === t) || {}).value || '';
+  const hp = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const hg = (t) => (hp.find((p) => p.type === t) || {}).value || '';
+  const h24 = parseInt(hg('hour'), 10) % 24;
+  const min = parseInt(hg('minute'), 10);
+  const period = h24 < 12 ? '오전' : '오후';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  const time = min === 0 ? `${period} ${h12}시` : `${period} ${h12}시 ${min}분`;
+  return `${g('month')}월 ${g('day')}일(${g('weekday')}) ${time}`;
+}
+
+// "연합 길드 레이드, 6월 19일(금) 오후 9시, 신화"
+function unionHeader(raid) {
+  return `연합 길드 레이드, ${formatWhen(raid.startAt)}, ${diffLabel(raid)}`;
+}
+
+function hexToInt(hex, fallback) {
+  if (!hex) return fallback;
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+// 공지 채널: 헤더 줄 + 레이드 제목 줄(둘 다 크게·링크) → 공격대장 → 탱/힐/딜.
+function noticeEmbed({ headWord, raid, raidId, color, counts }) {
+  const url = raidUrl(raidId);
+  const { tankCap, healerCap, dpsCap } = getCaps(raid);
+  const c = counts || { tank: 0, healer: 0, dps: 0 };
+  return {
+    color,
+    description:
+      `## [${headWord}: ${unionHeader(raid)}](${url})\n` +
+      `## [${raid.title || '공격대'}](${url})\n\n` +
+      `공격대장: ${raid.leader || '미정'}`,
+    fields: [
+      { name: '🛡 탱커', value: `${c.tank} / ${tankCap}`, inline: true },
+      { name: '💚 힐러', value: `${c.healer} / ${healerCap}`, inline: true },
+      { name: '⚔️ 딜러', value: `${c.dps} / ${dpsCap}`, inline: true },
+    ],
+  };
+}
+
+// 알림 채널: (역할아이콘) 캐릭터명 + 동작 제목(크게·링크) → 캐릭터-서버 → 역할/스왑/특성·클래스/아이템레벨.
+function appEmbed({ verb, raid, raidId, app }) {
+  const url  = raidUrl(raidId);
+  const role = app.role || 'dps';
+  const icon = ROLE_ICON[role] || '';
+  const swap = (app.swap && Array.isArray(app.swapRoles) && app.swapRoles.length)
+    ? `${app.swapRoles.map((r) => ROLE_SWAP_PREFIX[r] || r).join('/')}스왑 가능, `
+    : '';
+  const specClass = [app.specName, app.className].filter(Boolean).join(' ');
+  return {
+    color: hexToInt(app.classColor, 0x6366f1),
+    description:
+      `## [${icon} ${app.charName || '?'} ${verb}: ${unionHeader(raid)}](${url})\n\n` +
+      `${app.charName || '?'} - ${app.server || ''}\n` +
+      `${ROLE_KO[role] || role}, ${swap}${specClass}, 아이템 레벨 ${app.ilvl ?? '-'}`,
+  };
+}
+
+// ── 채널 1(공지): 레이드 삭제 — 일정 취소 (소프트 삭제 감지) ──────
 exports.notifyRaidDeleted = onDocumentUpdated(
   { document: 'raids/{raidId}', secrets: [WEBHOOK_ANNOUNCE] },
   async (event) => {
     const before = event.data.before.data();
     const after  = event.data.after.data();
     if (before.deleted || !after.deleted) return;
+    if (!isUnionRaid(after)) return;
 
-    await sendEmbed(WEBHOOK_ANNOUNCE.value(), {
-      title: `🗑️ 레이드 삭제 — ${after.title || '공격대'}`,
-      url: SITE_URL,
-      description: `**${after.title || '공격대'}** (${formatDate(after.dateKey)}) 레이드가 삭제됐습니다.`,
+    const counts = await getRaidCounts(event.params.raidId);
+    await sendEmbed(WEBHOOK_ANNOUNCE.value(), noticeEmbed({
+      headWord: '일정 취소',
+      raid: after,
+      raidId: event.params.raidId,
       color: 0xef4444,
-      fields: [
-        { name: '공격대장', value: after.leader || '미정', inline: true },
-        { name: '일정', value: formatDate(after.dateKey) || '미정', inline: true },
-      ],
-      footer: { text: FOOTER },
-      timestamp: new Date().toISOString(),
-    });
+      counts,
+    }));
   }
 );
 
-// ── 채널 1: 레이드 생성 ──────────────────────────────────────────
+// ── 채널 1(공지): 레이드 생성 — 새로운 일정 ──────────────────────
 exports.notifyRaidCreated = onDocumentCreated(
   { document: 'raids/{raidId}', secrets: [WEBHOOK_ANNOUNCE] },
   async (event) => {
     const raid = event.data.data();
-    if (raid.deleted) return;
-    const { tankCap, healerCap, dpsCap } = getCaps(raid);
+    if (raid.deleted || !isUnionRaid(raid)) return;
 
-    await sendEmbed(WEBHOOK_ANNOUNCE.value(), {
-      title: `⚔️ 새 레이드 등록 — ${raid.title || '공격대'}`,
-      url: SITE_URL,
-      description: `${formatDate(raid.dateKey)} · 공격대장: **${raid.leader || '미정'}**${raid.minIlvl ? ` · 최소 아이템레벨 **${raid.minIlvl}**` : ''}`,
+    await sendEmbed(WEBHOOK_ANNOUNCE.value(), noticeEmbed({
+      headWord: '새로운 일정',
+      raid,
+      raidId: event.params.raidId,
       color: 0x6366f1,
-      fields: [
-        { name: '🛡 탱커', value: `0 / ${tankCap}`, inline: true },
-        { name: '💚 힐러', value: `0 / ${healerCap}`, inline: true },
-        { name: '⚔️ 딜러', value: `0 / ${dpsCap}`, inline: true },
-      ],
-      footer: { text: FOOTER },
-      timestamp: new Date().toISOString(),
-    });
+      counts: { tank: 0, healer: 0, dps: 0 },
+    }));
   }
 );
 
-// ── 채널 2: 신청 알림 + 채널 1: 모두 마감 체크 ─────────────────
+// ── 채널 2(알림): 신청 + 채널 1(공지): 모두 마감 체크 ─────────────
 exports.notifyAppCreated = onDocumentCreated(
   { document: 'raids/{raidId}/apps/{userId}', secrets: [WEBHOOK_ANNOUNCE, WEBHOOK_NOTIFY] },
   async (event) => {
@@ -117,55 +197,32 @@ exports.notifyAppCreated = onDocumentCreated(
     if (app.status === 'bench') return; // 벤치(예비)는 알림 제외
     const { raidId } = event.params;
     const [raid, counts] = await Promise.all([getRaid(raidId), getRaidCounts(raidId)]);
-    if (!raid || raid.deleted) return;
+    if (!raid || raid.deleted || !isUnionRaid(raid)) return;
 
     const role = app.role || 'dps';
     const { tankCap, healerCap, dpsCap } = getCaps(raid);
-    const capMap = { tank: tankCap, healer: healerCap, dps: dpsCap };
-    const specNames = (app.allSpecNames?.length ? app.allSpecNames : [app.specName]).filter(Boolean).join(' · ');
 
-    // 채널 2: 신청 알림
-    await sendEmbed(WEBHOOK_NOTIFY.value(), {
-      title: `${app.isReservation ? '📌 예약 신청' : '✅ 신규 신청'} — ${ROLE_LABEL[role] || role}`,
-      url: SITE_URL,
-      description: `**${app.charName}** — ${app.server || ''}${specNames ? `\n${specNames}` : ''}${app.ilvl ? ` · 아이템레벨 **${app.ilvl}**` : ''}`,
-      color: ROLE_COLOR[role] || 0x6366f1,
-      fields: [
-        { name: '상태', value: app.status === 'active' ? '✅ 참가 확정' : '⏳ 대기 중', inline: true },
-        { name: ROLE_LABEL[role], value: `${counts[role]} / ${capMap[role]}`, inline: true },
-        { name: '레이드', value: raid.title || '공격대', inline: true },
-      ],
-      footer: { text: FOOTER },
-      timestamp: new Date().toISOString(),
-    });
+    // 채널 2: 신청/예약 알림
+    await sendEmbed(WEBHOOK_NOTIFY.value(), appEmbed({
+      verb: app.isReservation ? '예약 신청' : '참가 신청',
+      raid, raidId, app,
+    }));
 
-    // 채널 1: 탱/힐/딜 모두 마감 체크.
-    // 미마감 → 마감으로 "전환"되는 순간에만 1회 발송한다. (중복 발송 방지)
-    // 이번 신청 문서가 확정(active)이면 그 인원을 빼서 직전 상태를 재구성하고,
-    // 직전엔 미마감이었는데 지금은 마감이면 그때만 공지한다.
+    // 채널 1: 탱/힐/딜 모두 마감되는 "순간"에만 1회 공지 (중복 방지)
     const before = { ...counts };
     if (app.status === 'active' && before[role] !== undefined) before[role] -= 1;
     const fullBefore = before.tank >= tankCap && before.healer >= healerCap && before.dps >= dpsCap;
     const fullAfter  = counts.tank >= tankCap && counts.healer >= healerCap && counts.dps >= dpsCap;
     if (fullAfter && !fullBefore) {
-      await sendEmbed(WEBHOOK_ANNOUNCE.value(), {
-        title: `🎉 인원 마감 — ${raid.title || '공격대'}`,
-        url: SITE_URL,
-        description: `**${raid.title || '공격대'}** (${formatDate(raid.dateKey)}) 탱커·힐러·딜러 모두 마감됐습니다!`,
-        color: 0xfbbf24,
-        fields: [
-          { name: '🛡 탱커', value: `${counts.tank} / ${tankCap} ✓`, inline: true },
-          { name: '💚 힐러', value: `${counts.healer} / ${healerCap} ✓`, inline: true },
-          { name: '⚔️ 딜러', value: `${counts.dps} / ${dpsCap} ✓`, inline: true },
-        ],
-        footer: { text: FOOTER },
-        timestamp: new Date().toISOString(),
-      });
+      await sendEmbed(WEBHOOK_ANNOUNCE.value(), noticeEmbed({
+        headWord: '인원 마감',
+        raid, raidId, color: 0xfbbf24, counts,
+      }));
     }
   }
 );
 
-// ── 채널 2: 취소 알림 ────────────────────────────────────────────
+// ── 채널 2(알림): 신청 취소 ──────────────────────────────────────
 exports.notifyAppDeleted = onDocumentDeleted(
   { document: 'raids/{raidId}/apps/{userId}', secrets: [WEBHOOK_NOTIFY] },
   async (event) => {
@@ -173,68 +230,48 @@ exports.notifyAppDeleted = onDocumentDeleted(
     if (app.status === 'bench') return; // 벤치(예비)는 알림 제외
     const { raidId } = event.params;
     const raid = await getRaid(raidId);
-    if (!raid || raid.deleted) return;
+    if (!raid || raid.deleted || !isUnionRaid(raid)) return;
 
-    await sendEmbed(WEBHOOK_NOTIFY.value(), {
-      title: `❌ 신청 취소 — ${ROLE_LABEL[app.role] || app.role}`,
-      url: SITE_URL,
-      description: `**${app.charName}** — ${app.server || ''} 님이 신청을 취소했습니다.`,
-      color: 0x6b7280,
-      fields: [
-        { name: '레이드', value: raid.title || '공격대', inline: true },
-        { name: '역할', value: ROLE_LABEL[app.role] || app.role, inline: true },
-      ],
-      footer: { text: FOOTER },
-      timestamp: new Date().toISOString(),
-    });
+    await sendEmbed(WEBHOOK_NOTIFY.value(), appEmbed({
+      verb: '신청 취소',
+      raid, raidId, app,
+    }));
   }
 );
 
-// ── 채널 2: 대기 → 확정 전환 알림 ───────────────────────────────
+// ── 채널 2(알림): 상태 전환 (확정/대기/벤치 사이 모든 변경) ────────
 exports.notifyAppConfirmed = onDocumentUpdated(
   { document: 'raids/{raidId}/apps/{userId}', secrets: [WEBHOOK_NOTIFY] },
   async (event) => {
     const before = event.data.before.data();
     const after  = event.data.after.data();
-    if (before.status !== 'wait' || after.status !== 'active') return;
+    if (!before || !after) return;
+    if (before.status === after.status) return;
+    const b = STATUS_LABEL[before.status];
+    const a = STATUS_LABEL[after.status];
+    if (!b || !a) return;
 
     const { raidId } = event.params;
     const raid = await getRaid(raidId);
-    if (!raid || raid.deleted) return;
+    if (!raid || raid.deleted || !isUnionRaid(raid)) return;
 
-    await sendEmbed(WEBHOOK_NOTIFY.value(), {
-      title: `🆙 대기 → 확정 전환 — ${ROLE_LABEL[after.role] || after.role}`,
-      url: SITE_URL,
-      description: `**${after.charName}** — ${after.server || ''} 님이 대기에서 참가 확정으로 전환됐습니다.`,
-      color: 0xa78bfa,
-      fields: [
-        { name: '레이드', value: raid.title || '공격대', inline: true },
-        { name: '역할', value: ROLE_LABEL[after.role] || after.role, inline: true },
-      ],
-      footer: { text: FOOTER },
-      timestamp: new Date().toISOString(),
-    });
+    await sendEmbed(WEBHOOK_NOTIFY.value(), appEmbed({
+      verb: `${b} → ${a} 전환`,
+      raid, raidId, app: after,
+    }));
   }
 );
 
-// ── 채널 2: 72h/48h/24h/12h/6h/3h/1h 전 미마감 알림 (30분마다 실행) ──
+// ── 채널 1(공지): 72/48/24/12/6/3/1시간 전 미마감 리마인드 (30분마다) ──
 exports.scheduledRaidAlerts = onSchedule(
-  { schedule: 'every 30 minutes', timeZone: 'Asia/Seoul', secrets: [WEBHOOK_NOTIFY] },
+  { schedule: 'every 30 minutes', timeZone: 'Asia/Seoul', secrets: [WEBHOOK_ANNOUNCE] },
   async () => {
     const db = getFirestore();
     const now = new Date();
 
-    const THRESHOLDS = [
-      { hours: 72, label: '72시간' },
-      { hours: 48, label: '48시간' },
-      { hours: 24, label: '24시간' },
-      { hours: 12, label: '12시간' },
-      { hours: 6,  label: '6시간'  },
-      { hours: 3,  label: '3시간'  },
-      { hours: 1,  label: '1시간'  },
-    ];
+    const THRESHOLDS = [72, 48, 24, 12, 6, 3, 1];
 
-    for (const { hours, label } of THRESHOLDS) {
+    for (const hours of THRESHOLDS) {
       const targetMs  = now.getTime() + hours * 60 * 60 * 1000;
       const windowMin = new Date(targetMs - 15 * 60 * 1000);
       const windowMax = new Date(targetMs + 15 * 60 * 1000);
@@ -247,7 +284,7 @@ exports.scheduledRaidAlerts = onSchedule(
 
       for (const raidDoc of snap.docs) {
         const raid = raidDoc.data();
-        if (raid.deleted) continue;
+        if (raid.deleted || !isUnionRaid(raid)) continue;
 
         const counts = await getRaidCounts(raidDoc.id);
         const { tankCap, healerCap, dpsCap } = getCaps(raid);
@@ -255,24 +292,10 @@ exports.scheduledRaidAlerts = onSchedule(
         const allFull = counts.tank >= tankCap && counts.healer >= healerCap && counts.dps >= dpsCap;
         if (allFull) continue;
 
-        const missing = [];
-        if (counts.tank   < tankCap)   missing.push(`🛡 탱커 ${tankCap - counts.tank}명`);
-        if (counts.healer < healerCap) missing.push(`💚 힐러 ${healerCap - counts.healer}명`);
-        if (counts.dps    < dpsCap)    missing.push(`⚔️ 딜러 ${dpsCap - counts.dps}명`);
-
-        await sendEmbed(WEBHOOK_NOTIFY.value(), {
-          title: `⏰ 레이드 ${label} 전 — 아직 자리 있어요!`,
-          url: SITE_URL,
-          description: `**${raid.title || '공격대'}** (${formatDate(raid.dateKey)})\n모집 중: ${missing.join(', ')}`,
-          color: 0xf59e0b,
-          fields: [
-            { name: '🛡 탱커', value: `${counts.tank} / ${tankCap}`, inline: true },
-            { name: '💚 힐러', value: `${counts.healer} / ${healerCap}`, inline: true },
-            { name: '⚔️ 딜러', value: `${counts.dps} / ${dpsCap}`, inline: true },
-          ],
-          footer: { text: FOOTER },
-          timestamp: new Date().toISOString(),
-        });
+        await sendEmbed(WEBHOOK_ANNOUNCE.value(), noticeEmbed({
+          headWord: `${hours}시간 후 출발 파티 인원 부족 알림`,
+          raid, raidId: raidDoc.id, color: 0xf59e0b, counts,
+        }));
       }
     }
   }
