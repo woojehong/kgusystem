@@ -221,7 +221,8 @@ export const SERVERS = [
 // ── Initial guilds ──────────────────────────────────────────────────
 
 // 연합 레이드 전용 뱃지 문서 ID (슈퍼관리자만 편집).
-export const UNION_GUILD_ID = '__union__';
+// 주의: Firestore는 앞뒤 이중밑줄(__x__) 형식 ID를 예약어로 막으므로 사용 금지.
+export const UNION_GUILD_ID = 'union-badge';
 
 export const SEED_GUILDS = [
   { id: 'starfall-forest', name: 'Starfall Forest', color: '#7dd3fc', logoPath: '', isNone: false },
