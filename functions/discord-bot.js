@@ -120,8 +120,10 @@ async function buildScheduleEmbed() {
 }
 
 // ── 상호작용 수신 엔드포인트 ───────────────────────────────────────────────
+// minInstances:1 — 인스턴스를 항상 깨워둬 콜드스타트 지연/타임아웃을 제거한다.
+// (그래서 결과를 바로 응답해도 3초를 넘지 않음 → "생각 중"/"응답없음" 안 뜸)
 exports.discordInteractions = onRequest(
-  { secrets: [DISCORD_PUBLIC_KEY] },
+  { secrets: [DISCORD_PUBLIC_KEY], minInstances: 1 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method Not Allowed');
@@ -167,6 +169,7 @@ exports.discordInteractions = onRequest(
           const code = opt ? String(opt.value).trim() : '';
           const discordUser = (body.member && body.member.user) || body.user || {};
           const discordUserId = discordUser.id;
+          const discordName = discordUser.global_name || discordUser.username || null;
           if (!code) { reply('6자리 코드를 입력해주세요.'); return; }
           if (!discordUserId) { reply('디스코드 사용자 정보를 확인할 수 없어요.'); return; }
 
@@ -181,8 +184,10 @@ exports.discordInteractions = onRequest(
             return;
           }
           const userId = data.userId;
-          await db.collection('discordLinks').doc(discordUserId).set({ userId, linkedAt: Timestamp.now() });
-          await db.collection('users').doc(userId).set({ discordId: discordUserId }, { merge: true });
+          await Promise.all([
+            db.collection('discordLinks').doc(discordUserId).set({ userId, discordName, linkedAt: Timestamp.now() }),
+            db.collection('users').doc(userId).set({ discordId: discordUserId, discordName }, { merge: true }),
+          ]);
           await ref.delete();
           reply(`✅ 연동 완료! 이제 디스코드에서 바로 신청·조회할 수 있어요.${data.nickname ? `\n계정: **${data.nickname}**` : ''}`);
         } catch (e) {
