@@ -125,3 +125,144 @@
 [debug] [2026-06-19T07:35:00.405Z] Checked if tokens are valid: true, expires at: 1781855624079
 [debug] [2026-06-19T07:35:00.405Z] Checked if tokens are valid: true, expires at: 1781855624079
 [debug] [2026-06-19T07:35:00.405Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_PUBLIC_KEY/versions/latest [none]
+[debug] [2026-06-19T07:35:00.638Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_PUBLIC_KEY/versions/latest 200
+[debug] [2026-06-19T07:35:00.638Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_PUBLIC_KEY/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_PUBLIC_KEY/versions/1","createTime":"2026-06-19T06:53:52.403409Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165495c16f07d1\""}
+[debug] [2026-06-19T07:35:00.639Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:00.639Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:00.639Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_BOT_TOKEN [none]
+[debug] [2026-06-19T07:35:00.829Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_BOT_TOKEN 200
+[debug] [2026-06-19T07:35:00.829Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_BOT_TOKEN {"name":"projects/1087593117434/secrets/DISCORD_BOT_TOKEN","replication":{"automatic":{}},"createTime":"2026-06-19T06:55:11.715696Z","labels":{"firebase-managed":"functions"},"etag":"\"165495c638c9a0\""}
+[debug] [2026-06-19T07:35:00.829Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:00.829Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:00.829Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_BOT_TOKEN/versions/latest [none]
+[debug] [2026-06-19T07:35:01.057Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_BOT_TOKEN/versions/latest 200
+[debug] [2026-06-19T07:35:01.058Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_BOT_TOKEN/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_BOT_TOKEN/versions/1","createTime":"2026-06-19T06:55:20.561808Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165495c6b03890\""}
+[debug] [2026-06-19T07:35:01.058Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:01.058Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:01.058Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_APP_ID [none]
+[debug] [2026-06-19T07:35:01.260Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_APP_ID 200
+[debug] [2026-06-19T07:35:01.260Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_APP_ID {"name":"projects/1087593117434/secrets/DISCORD_APP_ID","replication":{"automatic":{}},"createTime":"2026-06-19T06:54:50.971576Z","labels":{"firebase-managed":"functions"},"etag":"\"165495c507b3f0\""}
+[debug] [2026-06-19T07:35:01.260Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:01.260Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:01.260Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_APP_ID/versions/latest [none]
+[debug] [2026-06-19T07:35:01.464Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_APP_ID/versions/latest 200
+[debug] [2026-06-19T07:35:01.464Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_APP_ID/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_APP_ID/versions/1","createTime":"2026-06-19T06:54:56.827738Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165495c546115a\""}
+[debug] [2026-06-19T07:35:01.465Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:01.465Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:01.465Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_GUILD_ID [none]
+[debug] [2026-06-19T07:35:01.668Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_GUILD_ID 200
+[debug] [2026-06-19T07:35:01.669Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_GUILD_ID {"name":"projects/1087593117434/secrets/DISCORD_GUILD_ID","replication":{"automatic":{}},"createTime":"2026-06-19T06:55:30.040371Z","labels":{"firebase-managed":"functions"},"etag":"\"165495c7503b65\""}
+[debug] [2026-06-19T07:35:01.669Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:01.669Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:01.669Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_GUILD_ID/versions/latest [none]
+[debug] [2026-06-19T07:35:01.876Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_GUILD_ID/versions/latest 200
+[debug] [2026-06-19T07:35:01.877Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_GUILD_ID/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_GUILD_ID/versions/1","createTime":"2026-06-19T06:55:34.343890Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165495c78284d2\""}
+[debug] [2026-06-19T07:35:01.877Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:01.877Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:01.877Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/BOT_REGISTER_KEY [none]
+[debug] [2026-06-19T07:35:02.082Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/BOT_REGISTER_KEY 200
+[debug] [2026-06-19T07:35:02.082Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/BOT_REGISTER_KEY {"name":"projects/1087593117434/secrets/BOT_REGISTER_KEY","replication":{"automatic":{}},"createTime":"2026-06-19T06:55:39.753507Z","labels":{"firebase-managed":"functions"},"etag":"\"165495c7e95beb\""}
+[debug] [2026-06-19T07:35:02.083Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:02.083Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:02.083Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/BOT_REGISTER_KEY/versions/latest [none]
+[debug] [2026-06-19T07:35:02.286Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/BOT_REGISTER_KEY/versions/latest 200
+[debug] [2026-06-19T07:35:02.287Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/BOT_REGISTER_KEY/versions/latest {"name":"projects/1087593117434/secrets/BOT_REGISTER_KEY/versions/1","createTime":"2026-06-19T06:55:43.607171Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165495c80fdd83\""}
+[debug] [2026-06-19T07:35:02.287Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:02.287Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:02.287Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_ANNOUNCE [none]
+[debug] [2026-06-19T07:35:02.490Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_ANNOUNCE 200
+[debug] [2026-06-19T07:35:02.490Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_ANNOUNCE {"name":"projects/1087593117434/secrets/DISCORD_WEBHOOK_ANNOUNCE","replication":{"automatic":{}},"createTime":"2026-06-13T12:44:34.197745Z","labels":{"firebase-managed":"functions"},"etag":"\"165421f4a2a0b3\""}
+[debug] [2026-06-19T07:35:02.490Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:02.490Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:02.490Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_ANNOUNCE/versions/latest [none]
+[debug] [2026-06-19T07:35:02.694Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_ANNOUNCE/versions/latest 200
+[debug] [2026-06-19T07:35:02.694Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_ANNOUNCE/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_WEBHOOK_ANNOUNCE/versions/2","createTime":"2026-06-13T12:58:03.385824Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"16542224ce4fe0\""}
+[debug] [2026-06-19T07:35:02.694Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:02.695Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:02.695Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_NOTIFY [none]
+[debug] [2026-06-19T07:35:02.903Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_NOTIFY 200
+[debug] [2026-06-19T07:35:02.903Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_NOTIFY {"name":"projects/1087593117434/secrets/DISCORD_WEBHOOK_NOTIFY","replication":{"automatic":{}},"createTime":"2026-06-13T12:45:08.924122Z","labels":{"firebase-managed":"functions"},"etag":"\"165421f6b4836d\""}
+[debug] [2026-06-19T07:35:02.903Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:02.903Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:02.904Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_NOTIFY/versions/latest [none]
+[debug] [2026-06-19T07:35:03.104Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_NOTIFY/versions/latest 200
+[debug] [2026-06-19T07:35:03.105Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_NOTIFY/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_WEBHOOK_NOTIFY/versions/2","createTime":"2026-06-13T12:59:07.901123Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"16542228a6bcc3\""}
+[info] i  functions: preparing functions directory for uploading... 
+[info] i  functions: packaged C:\VibeCoding Claude\kgusystem\functions (39.45 KB) for uploading 
+[debug] [2026-06-19T07:35:03.145Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:03.145Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:03.146Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/kgusystem/databases/(default) [none]
+[debug] [2026-06-19T07:35:03.246Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/kgusystem/databases/(default) 200
+[debug] [2026-06-19T07:35:03.246Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/kgusystem/databases/(default) {"name":"projects/kgusystem/databases/(default)","uid":"9d8e1964-0bfc-40d5-a323-f8eb76d2fe1d","createTime":"2026-06-12T09:59:07.565006Z","updateTime":"2026-06-12T09:59:07.565006Z","locationId":"asia-northeast3","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-06-19T06:35:03.554972Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"v","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","etag":"IPiZ56XlkpUDMJqLp7W8gZUD"}
+[info] i  functions: ensuring required API cloudscheduler.googleapis.com is enabled... 
+[info] i  functions: ensuring required API run.googleapis.com is enabled... 
+[info] i  functions: ensuring required API eventarc.googleapis.com is enabled... 
+[info] i  functions: ensuring required API pubsub.googleapis.com is enabled... 
+[info] i  functions: ensuring required API storage.googleapis.com is enabled... 
+[info] i  functions: generating the service identity for pubsub.googleapis.com... 
+[debug] [2026-06-19T07:35:03.250Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:03.250Z] Checked if tokens are valid: true, expires at: 1781855624079
+[info] i  functions: generating the service identity for eventarc.googleapis.com... 
+[debug] [2026-06-19T07:35:03.250Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:03.251Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:03.251Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1beta1/projects/1087593117434/services/pubsub.googleapis.com:generateServiceIdentity [none]
+[debug] [2026-06-19T07:35:03.251Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1beta1/projects/1087593117434/services/pubsub.googleapis.com:generateServiceIdentity  x-goog-user-project=1087593117434
+[debug] [2026-06-19T07:35:03.251Z] >>> [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/1087593117434/services/pubsub.googleapis.com:generateServiceIdentity {}
+[debug] [2026-06-19T07:35:03.252Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1beta1/projects/1087593117434/services/eventarc.googleapis.com:generateServiceIdentity [none]
+[debug] [2026-06-19T07:35:03.252Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1beta1/projects/1087593117434/services/eventarc.googleapis.com:generateServiceIdentity  x-goog-user-project=1087593117434
+[debug] [2026-06-19T07:35:03.252Z] >>> [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/1087593117434/services/eventarc.googleapis.com:generateServiceIdentity {}
+[debug] [2026-06-19T07:35:04.473Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1beta1/projects/1087593117434/services/pubsub.googleapis.com:generateServiceIdentity 200
+[debug] [2026-06-19T07:35:04.474Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/1087593117434/services/pubsub.googleapis.com:generateServiceIdentity {"name":"operations/finished.DONE_OPERATION","done":true,"response":{"@type":"type.googleapis.com/google.api.serviceusage.v1beta1.ServiceIdentity","email":"service-1087593117434@gcp-sa-pubsub.iam.gserviceaccount.com","uniqueId":"108243262893315245686"}}
+[debug] [2026-06-19T07:35:04.525Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1beta1/projects/1087593117434/services/eventarc.googleapis.com:generateServiceIdentity 200
+[debug] [2026-06-19T07:35:04.525Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/1087593117434/services/eventarc.googleapis.com:generateServiceIdentity {"name":"operations/finished.DONE_OPERATION","done":true,"response":{"@type":"type.googleapis.com/google.api.serviceusage.v1beta1.ServiceIdentity","email":"service-1087593117434@gcp-sa-eventarc.iam.gserviceaccount.com","uniqueId":"110206774216249683106"}}
+[info] i  functions: ensuring required API secretmanager.googleapis.com is enabled... 
+[debug] [2026-06-19T07:35:04.532Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.532Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.532Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.532Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.532Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.533Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.533Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.533Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.533Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.533Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.534Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.534Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.534Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.534Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:04.535Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_PUBLIC_KEY/versions/latest [none]
+[debug] [2026-06-19T07:35:04.535Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_BOT_TOKEN/versions/latest [none]
+[debug] [2026-06-19T07:35:04.538Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_APP_ID/versions/latest [none]
+[debug] [2026-06-19T07:35:04.540Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_GUILD_ID/versions/latest [none]
+[debug] [2026-06-19T07:35:04.541Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/BOT_REGISTER_KEY/versions/latest [none]
+[debug] [2026-06-19T07:35:04.543Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_ANNOUNCE/versions/latest [none]
+[debug] [2026-06-19T07:35:04.546Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_NOTIFY/versions/latest [none]
+[debug] [2026-06-19T07:35:04.762Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_PUBLIC_KEY/versions/latest 200
+[debug] [2026-06-19T07:35:04.762Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_PUBLIC_KEY/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_PUBLIC_KEY/versions/1","createTime":"2026-06-19T06:53:52.403409Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165495c16f07d1\""}
+[debug] [2026-06-19T07:35:04.762Z] Resolved secret version of DISCORD_PUBLIC_KEY to 1.
+[debug] [2026-06-19T07:35:04.816Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_APP_ID/versions/latest 200
+[debug] [2026-06-19T07:35:04.816Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_APP_ID/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_APP_ID/versions/1","createTime":"2026-06-19T06:54:56.827738Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165495c546115a\""}
+[debug] [2026-06-19T07:35:04.816Z] Resolved secret version of DISCORD_APP_ID to 1.
+[debug] [2026-06-19T07:35:04.817Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_NOTIFY/versions/latest 200
+[debug] [2026-06-19T07:35:04.817Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_NOTIFY/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_WEBHOOK_NOTIFY/versions/2","createTime":"2026-06-13T12:59:07.901123Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"16542228a6bcc3\""}
+[debug] [2026-06-19T07:35:04.817Z] Resolved secret version of DISCORD_WEBHOOK_NOTIFY to 2.
+[debug] [2026-06-19T07:35:04.818Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_GUILD_ID/versions/latest 200
+[debug] [2026-06-19T07:35:04.818Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_GUILD_ID/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_GUILD_ID/versions/1","createTime":"2026-06-19T06:55:34.343890Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165495c78284d2\""}
+[debug] [2026-06-19T07:35:04.818Z] Resolved secret version of DISCORD_GUILD_ID to 1.
+[debug] [2026-06-19T07:35:04.827Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_BOT_TOKEN/versions/latest 200
+[debug] [2026-06-19T07:35:04.827Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_BOT_TOKEN/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_BOT_TOKEN/versions/1","createTime":"2026-06-19T06:55:20.561808Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165495c6b03890\""}
+[debug] [2026-06-19T07:35:04.827Z] Resolved secret version of DISCORD_BOT_TOKEN to 1.
+[debug] [2026-06-19T07:35:05.118Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_ANNOUNCE/versions/latest 200
+[debug] [2026-06-19T07:35:05.118Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/DISCORD_WEBHOOK_ANNOUNCE/versions/latest {"name":"projects/1087593117434/secrets/DISCORD_WEBHOOK_ANNOUNCE/versions/2","createTime":"2026-06-13T12:58:03.385824Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"16542224ce4fe0\""}
+[debug] [2026-06-19T07:35:05.118Z] Resolved secret version of DISCORD_WEBHOOK_ANNOUNCE to 2.
+[debug] [2026-06-19T07:35:05.278Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/BOT_REGISTER_KEY/versions/latest 200
+[debug] [2026-06-19T07:35:05.278Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/kgusystem/secrets/BOT_REGISTER_KEY/versions/latest {"name":"projects/1087593117434/secrets/BOT_REGISTER_KEY/versions/1","createTime":"2026-06-19T06:55:43.607171Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165495c80fdd83\""}
+[debug] [2026-06-19T07:35:05.278Z] Resolved secret version of BOT_REGISTER_KEY to 1.
+[debug] [2026-06-19T07:35:05.280Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:05.280Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:05.280Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/kgusystem [none]
+[debug] [2026-06-19T07:35:05.527Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/kgusystem 200
+[debug] [2026-06-19T07:35:05.527Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/kgusystem {"projectNumber":"1087593117434","projectId":"kgusystem","lifecycleState":"ACTIVE","name":"kgusystem","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-06-12T09:47:36.720Z"}
+[debug] [2026-06-19T07:35:05.527Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:05.528Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:05.528Z] >>> [apiv2][query] GET https://compute.googleapis.com/compute/v1/projects/1087593117434 [none]
