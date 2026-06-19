@@ -6,6 +6,9 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 initializeApp();
 
+// ── 디스코드 봇 (Interactions 엔드포인트 + 명령어 등록) ──
+Object.assign(exports, require('./discord-bot'));
+
 const WEBHOOK_ANNOUNCE = defineSecret('DISCORD_WEBHOOK_ANNOUNCE');
 const WEBHOOK_NOTIFY   = defineSecret('DISCORD_WEBHOOK_NOTIFY');
 

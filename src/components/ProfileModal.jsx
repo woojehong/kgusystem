@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useApp } from '../context/AppContext';
 import { changePin } from '../lib/auth';
@@ -158,6 +158,29 @@ function BasicTab({ onClose }) {
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  // 디스코드 연동 코드
+  const [linkCode, setLinkCode] = useState(null);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkErr, setLinkErr] = useState(null);
+
+  const genLinkCode = async () => {
+    setLinkErr(null);
+    setLinkBusy(true);
+    try {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      await setDoc(doc(db, 'linkCodes', code), {
+        userId,
+        nickname: profile.nickname,
+        expiresAt: Date.now() + 10 * 60 * 1000, // 10분
+      });
+      setLinkCode(code);
+    } catch {
+      setLinkErr('코드 생성에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setLinkBusy(false);
+    }
+  };
+
   const save = async () => {
     setMsg(null);
     setBusy(true);
@@ -245,6 +268,31 @@ function BasicTab({ onClose }) {
             onChange={(e) => setNewPin2(e.target.value.replace(/\D/g, ''))}
           />
         </div>
+      </div>
+
+      {/* 디스코드 연동 */}
+      <div className="p-3 rounded-xl bg-base-850 border border-base-700 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="font-medium text-sm">디스코드 연동</p>
+          {profile.discordId ? (
+            <span className="text-[11px] text-green-400 font-bold">✓ 연동됨</span>
+          ) : (
+            <span className="text-[11px] text-base-500">미연동</span>
+          )}
+        </div>
+        <p className="text-xs text-base-400 leading-relaxed">
+          코드를 생성한 뒤, 디스코드에서 <code className="text-base-300">/연동 코드</code> 를 입력하면 연결됩니다. (10분 유효)
+        </p>
+        {linkCode && (
+          <div className="text-center py-2 rounded-lg bg-base-900/60 border border-base-700">
+            <p className="text-2xl font-black tracking-[0.3em] text-indigo-300">{linkCode}</p>
+            <p className="text-[11px] text-base-500 mt-1">디스코드에 입력: <span className="text-base-300">/연동 {linkCode}</span></p>
+          </div>
+        )}
+        <button type="button" className="btn-ghost w-full" disabled={linkBusy} onClick={genLinkCode}>
+          {linkBusy ? '생성 중...' : linkCode ? '새 코드 생성' : (profile.discordId ? '다시 연동하기 (새 코드)' : '연동 코드 생성')}
+        </button>
+        {linkErr && <p className="text-xs text-red-400 text-center">{linkErr}</p>}
       </div>
 
       {msg && (

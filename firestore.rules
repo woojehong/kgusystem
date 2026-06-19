@@ -114,6 +114,15 @@ service cloud.firestore {
       allow write: if isSuper() || isGuildMasterOf(guildId);
     }
 
+    // ── 디스코드 연동 코드 ──────────────────────────────────────────
+    // 웹(로그인 사용자)이 자기 계정용 코드를 생성. 읽기/삭제는 봇(Admin SDK)이 우회.
+    match /linkCodes/{code} {
+      allow read: if false;
+      allow create: if isSignedIn() && request.resource.data.userId == myUserId();
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.userId == myUserId();
+    }
+
     // ── Raids ───────────────────────────────────────────────────────
 
     match /raids/{raidId} {
