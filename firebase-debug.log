@@ -332,3 +332,15 @@
 [debug] [2026-06-19T07:35:08.346Z] Checked if tokens are valid: true, expires at: 1781855624079
 [debug] [2026-06-19T07:35:08.346Z] Checked if tokens are valid: true, expires at: 1781855624079
 [debug] [2026-06-19T07:35:08.347Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/kgusystem/releases pageSize=10&pageToken=
+[debug] [2026-06-19T07:35:08.904Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/kgusystem/releases 200
+[debug] [2026-06-19T07:35:08.904Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/kgusystem/releases {"releases":[{"name":"projects/kgusystem/releases/cloud.firestore","rulesetName":"projects/kgusystem/rulesets/ea9be641-f410-4085-af96-ba6c44f3aee8","createTime":"2026-06-12T09:59:11.355032Z","updateTime":"2026-06-13T23:32:01.844453Z"}]}
+[debug] [2026-06-19T07:35:08.905Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:08.905Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:08.905Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/kgusystem/rulesets/ea9be641-f410-4085-af96-ba6c44f3aee8 [none]
+[debug] [2026-06-19T07:35:10.000Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/kgusystem/rulesets/ea9be641-f410-4085-af96-ba6c44f3aee8 200
+[debug] [2026-06-19T07:35:10.001Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/kgusystem/rulesets/ea9be641-f410-4085-af96-ba6c44f3aee8 [omitted]
+[info] i  firestore: uploading rules firestore.rules... 
+[debug] [2026-06-19T07:35:10.003Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:10.003Z] Checked if tokens are valid: true, expires at: 1781855624079
+[debug] [2026-06-19T07:35:10.003Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/kgusystem/rulesets [none]
+[debug] [2026-06-19T07:35:10.003Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/kgusystem/rulesets [omitted]
