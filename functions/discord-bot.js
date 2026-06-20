@@ -205,7 +205,7 @@ async function createSignup(db, userId, raidId, charIndex, mode) {
 // 다가오는 연합 레이드 목록 임베드 (raids를 받아서 렌더)
 async function buildScheduleEmbed(db, raids) {
   if (!raids || raids.length === 0) {
-    return { title: '📅 다가오는 연합 레이드', description: '예정된 연합 레이드가 없어요.', color: 0x6366f1 };
+    return { title: '📅 다가오는 레이드', description: '예정된 연합 레이드가 없어요.', color: 0x6366f1 };
   }
   const counts = await Promise.all(raids.map((r) => getRaidCounts(db, r.id)));
   const lines = raids.map((r, i) => {
@@ -215,7 +215,7 @@ async function buildScheduleEmbed(db, raids) {
       + `${r.title || '공격대'}\n`
       + `🛡 ${c.tank}/${caps.tankCap}  💚 ${c.healer}/${caps.healerCap}  ⚔️ ${c.dps}/${caps.dpsCap}`;
   });
-  return { title: '📅 다가오는 연합 레이드', description: lines.join('\n\n'), color: 0x6366f1 };
+  return { title: '📅 다가오는 레이드', description: lines.join('\n\n'), color: 0x6366f1 };
 }
 
 // 레이드 상세 임베드 (로스터 — 웹 상세페이지의 디스코드판)
@@ -336,7 +336,8 @@ exports.discordInteractions = onRequest(
       if (name === '일정') {
         try {
           const db = getFirestore();
-          const raids = await upcomingUnionRaids(db, 25);
+          const filter = channelFilter(body.channel_id);
+          const raids = (await upcomingRaids(db, 50)).filter((r) => raidMatchesFilter(r, filter));
           const embed = await buildScheduleEmbed(db, raids.slice(0, 8));
           const components = [];
           if (raids.length > 0) {
@@ -400,9 +401,10 @@ exports.discordInteractions = onRequest(
             res.json({ type: REPLY.MESSAGE, data: { content: '먼저 `/연동` 으로 웹 계정을 연결해주세요.', flags: EPHEMERAL } });
             return;
           }
-          const raids = await upcomingUnionRaids(db, 25);
+          const filter = channelFilter(body.channel_id);
+          const raids = (await upcomingRaids(db, 50)).filter((r) => raidMatchesFilter(r, filter));
           if (raids.length === 0) {
-            res.json({ type: REPLY.MESSAGE, data: { content: '지금 신청할 수 있는 연합 레이드가 없어요.', flags: EPHEMERAL } });
+            res.json({ type: REPLY.MESSAGE, data: { content: '지금 신청할 수 있는 레이드가 없어요.', flags: EPHEMERAL } });
             return;
           }
           const options = raids.map((r) => ({
@@ -432,7 +434,7 @@ exports.discordInteractions = onRequest(
             return;
           }
           const userId = linkSnap.data().userId;
-          const raids = await upcomingUnionRaids(db, 25);
+          const raids = await upcomingRaids(db, 100);
           const apps = await Promise.all(raids.map((r) => db.collection('raids').doc(r.id).collection('apps').doc(userId).get()));
           const mine = [];
           raids.forEach((r, i) => { if (apps[i].exists) mine.push({ raid: r, app: apps[i].data() }); });
@@ -653,44 +655,86 @@ exports.discordInteractions = onRequest(
 );
 
 // ── 채널 라이브 카드 (출발순 게시판) ─────────────────────────────────────────
-const CARD_SECRETS = [DISCORD_BOT_TOKEN, DISCORD_RAID_CHANNEL_ID];
+const CARD_SECRETS = [DISCORD_BOT_TOKEN];
 
+// 채널 ↔ 필터 매핑 (채널 ID는 비밀 아님 → 코드 상수)
+//   'union'   = 연합 레이드 / '<길드ID>' = 그 길드 레이드
+const CARD_CHANNELS = [
+  { channelId: '1517678646343635064', filter: 'union' },           // 한길련 서버 · 연합 (기존)
+  { channelId: '1517705693371830322', filter: 'union' },           // 스타폴 서버 · 연합
+  { channelId: '1517705660903587970', filter: 'starfall-forest' }, // 스타폴 서버 · 스타폴 길드
+];
+const LEGACY_UNION_CHANNEL = '1517678646343635064';
+
+function raidMatchesFilter(raid, filter) {
+  if (filter === 'union') return isUnionRaid(raid);
+  return raid.partyType === filter;
+}
+function channelFilter(channelId) {
+  const ch = CARD_CHANNELS.find((c) => c.channelId === channelId);
+  return ch ? ch.filter : 'union';
+}
 function raidTimeMillis(r) {
   return r && r.startAt && r.startAt.toMillis ? r.startAt.toMillis() : 0;
 }
-// 카드 표시에 영향 주는 필드가 바뀌었는지 (제목/난이도/공대장/힐러정원)
 function displayChanged(b, a) {
   return b.title !== a.title || b.difficulty !== a.difficulty
     || b.leader !== a.leader || (b.healerCap ?? null) !== (a.healerCap ?? null);
 }
 
-async function getBoardCardIds(db) {
-  const snap = await db.collection('meta').doc('discordBoard').get();
-  return (snap.exists && snap.data().cardIds) || [];
+// 다가오는 모든 레이드(연합·길드 포함, 출발 오름차순)
+async function upcomingRaids(db, limit) {
+  const snap = await db.collection('raids')
+    .where('endAt', '>', Timestamp.now())
+    .orderBy('endAt', 'asc')
+    .limit(limit || 100)
+    .get();
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((r) => !r.deleted)
+    .sort((a, b) => a.startAt.toMillis() - b.startAt.toMillis());
 }
 
-// 채널을 출발순으로 재구성: 기존 카드 전부 삭제 → 먼 미래부터 게시
-// (마지막 게시 = 가장 가까운 이벤트 = 채널 맨 아래에 보임)
-async function rebuildBoard(db, token, channel) {
-  const raids = await upcomingUnionRaids(db, 50); // 출발 오름차순
-  // 삭제 대상: 게시판 목록 + 각 레이드에 저장된 기존 카드ID(이전 방식 잔재 포함)
-  const old = new Set(await getBoardCardIds(db));
-  raids.forEach((r) => { if (r.discordCardId) old.add(r.discordCardId); });
-  for (const id of old) {
-    await deleteChannelMessage(token, channel, id);
+// 각 채널을 자기 필터로 출발순 재구성 (먼 미래부터 게시 = 가까운 게 맨 아래)
+async function rebuildBoard(db, token) {
+  const boardSnap = await db.collection('meta').doc('discordBoard').get();
+  const board = (boardSnap.exists && boardSnap.data()) || {};
+  // 구버전 flat 카드(cardIds) 1회 정리 — 기존 한길련 채널
+  if (Array.isArray(board.cardIds)) {
+    for (const id of board.cardIds) await deleteChannelMessage(token, LEGACY_UNION_CHANNEL, id);
   }
-  const ordered = [...raids].reverse();           // 먼 미래 → 가까운 순으로 게시
-  const newIds = [];
-  for (const r of ordered) {
-    const card = await buildRaidCard(db, r.id);
-    if (!card) continue;
-    const msg = await postToChannel(token, channel, card);
-    if (msg && msg.id) {
-      newIds.push(msg.id);
-      await db.collection('raids').doc(r.id).set({ discordCardId: msg.id }, { merge: true });
+  const all = await upcomingRaids(db, 100);
+  const newBoard = {};
+  for (const ch of CARD_CHANNELS) {
+    for (const id of (board[ch.channelId] || [])) {
+      await deleteChannelMessage(token, ch.channelId, id);
     }
+    const matching = all.filter((r) => raidMatchesFilter(r, ch.filter));
+    const ordered = [...matching].reverse();
+    const ids = [];
+    for (const r of ordered) {
+      const card = await buildRaidCard(db, r.id);
+      if (!card) continue;
+      const msg = await postToChannel(token, ch.channelId, card);
+      if (msg && msg.id) {
+        ids.push(msg.id);
+        await db.collection('raids').doc(r.id).set({ discordCards: { [ch.channelId]: msg.id } }, { merge: true });
+      }
+    }
+    newBoard[ch.channelId] = ids;
   }
-  await db.collection('meta').doc('discordBoard').set({ cardIds: newIds }, { merge: true });
+  await db.collection('meta').doc('discordBoard').set(newBoard); // 전체 덮어쓰기 (구버전 cardIds 제거)
+}
+
+// 레이드의 모든 채널 카드 갱신
+async function refreshRaidCards(db, token, raidId, cards) {
+  const entries = Object.entries(cards || {});
+  if (!entries.length) return;
+  const card = await buildRaidCard(db, raidId);
+  if (!card) return;
+  for (const [channelId, msgId] of entries) {
+    await editChannelMessage(token, channelId, msgId, card);
+  }
 }
 
 // 레이드 생성 → 게시판 재구성
@@ -698,12 +742,12 @@ exports.cardOnRaidCreated = onDocumentCreated(
   { document: 'raids/{raidId}', secrets: CARD_SECRETS },
   async (event) => {
     const raid = event.data.data();
-    if (!raid || raid.deleted || !isUnionRaid(raid)) return;
-    await rebuildBoard(getFirestore(), DISCORD_BOT_TOKEN.value(), DISCORD_RAID_CHANNEL_ID.value());
+    if (!raid || raid.deleted) return;
+    await rebuildBoard(getFirestore(), DISCORD_BOT_TOKEN.value());
   }
 );
 
-// 레이드 수정/삭제 → 시간변경·삭제면 재구성, 그 외 편집은 제자리 갱신
+// 레이드 수정/삭제 → 시간·삭제·파티변경이면 재구성, 그 외는 카드 제자리 갱신
 exports.cardOnRaidUpdated = onDocumentUpdated(
   { document: 'raids/{raidId}', secrets: CARD_SECRETS },
   async (event) => {
@@ -712,23 +756,20 @@ exports.cardOnRaidUpdated = onDocumentUpdated(
     if (!before || !after) return;
     const db = getFirestore();
     const token = DISCORD_BOT_TOKEN.value();
-    const channel = DISCORD_RAID_CHANNEL_ID.value();
-
     const timeChanged = raidTimeMillis(before) !== raidTimeMillis(after);
     const deletedToggled = (!!before.deleted) !== (!!after.deleted);
-    if (timeChanged || deletedToggled) {
-      await rebuildBoard(db, token, channel);
+    const partyChanged = (before.partyType || '') !== (after.partyType || '');
+    if (timeChanged || deletedToggled || partyChanged) {
+      await rebuildBoard(db, token);
       return;
     }
-    // 그 외 편집(제목 등) → 해당 카드만 제자리 갱신. discordCardId만 바뀐 경우(재구성의 자기 쓰기)는 스킵.
-    if (after.deleted || !isUnionRaid(after) || !after.discordCardId) return;
-    if (!displayChanged(before, after)) return;
-    const card = await buildRaidCard(db, event.params.raidId);
-    if (card) await editChannelMessage(token, channel, after.discordCardId, card);
+    if (after.deleted) return;
+    if (!displayChanged(before, after)) return; // discordCards만 바뀐 경우(재구성 자기쓰기) 스킵
+    await refreshRaidCards(db, token, event.params.raidId, after.discordCards);
   }
 );
 
-// 신청 변동(생성/취소/수정) → 그 레이드 카드의 로스터만 제자리 갱신 (재구성 X)
+// 신청 변동 → 그 레이드의 모든 채널 카드 로스터 갱신 (재구성 X)
 exports.cardOnAppChange = onDocumentWritten(
   { document: 'raids/{raidId}/apps/{appId}', secrets: CARD_SECRETS },
   async (event) => {
@@ -737,9 +778,8 @@ exports.cardOnAppChange = onDocumentWritten(
     const raidSnap = await db.collection('raids').doc(raidId).get();
     if (!raidSnap.exists) return;
     const raid = raidSnap.data();
-    if (raid.deleted || !isUnionRaid(raid) || !raid.discordCardId) return;
-    const card = await buildRaidCard(db, raidId);
-    if (card) await editChannelMessage(DISCORD_BOT_TOKEN.value(), DISCORD_RAID_CHANNEL_ID.value(), raid.discordCardId, card);
+    if (raid.deleted) return;
+    await refreshRaidCards(db, DISCORD_BOT_TOKEN.value(), raidId, raid.discordCards);
   }
 );
 
@@ -761,6 +801,9 @@ const COMMANDS = [
   { name: '내신청', description: '내가 신청한 레이드를 보고 변경/취소합니다', type: 1 },
 ];
 
+// 명령을 등록할 서버(길드) 목록 — DISCORD_GUILD_ID(한길련) + 아래 추가 서버들
+const EXTRA_GUILD_IDS = ['1430130051734704259']; // 스타폴 서버
+
 exports.discordRegisterCommands = onRequest(
   { secrets: [DISCORD_BOT_TOKEN, DISCORD_APP_ID, DISCORD_GUILD_ID, BOT_REGISTER_KEY] },
   async (req, res) => {
@@ -768,22 +811,22 @@ exports.discordRegisterCommands = onRequest(
       res.status(403).send('forbidden — ?key= 값이 올바르지 않습니다.');
       return;
     }
-    const appId   = DISCORD_APP_ID.value();
-    const guildId = DISCORD_GUILD_ID.value();
-    const url = `https://discord.com/api/v10/applications/${appId}/guilds/${guildId}/commands`;
-    try {
-      const resp = await fetch(url, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bot ${DISCORD_BOT_TOKEN.value()}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(COMMANDS),
-      });
-      const text = await resp.text();
-      res.status(resp.ok ? 200 : resp.status).send(`등록 결과 [${resp.status}]\n${text}`);
-    } catch (e) {
-      res.status(500).send(`등록 실패: ${e.message}`);
+    const appId = DISCORD_APP_ID.value();
+    const token = DISCORD_BOT_TOKEN.value();
+    const guildIds = [DISCORD_GUILD_ID.value(), ...EXTRA_GUILD_IDS];
+    const out = [];
+    for (const gid of guildIds) {
+      try {
+        const resp = await fetch(`https://discord.com/api/v10/applications/${appId}/guilds/${gid}/commands`, {
+          method: 'PUT',
+          headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(COMMANDS),
+        });
+        out.push(`${gid}: [${resp.status}]${resp.ok ? ' OK' : ' ' + (await resp.text()).slice(0, 200)}`);
+      } catch (e) {
+        out.push(`${gid}: 실패 ${e.message}`);
+      }
     }
+    res.status(200).send('등록 결과\n' + out.join('\n'));
   }
 );
