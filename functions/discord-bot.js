@@ -127,7 +127,8 @@ function findSpec(classes, classId, specId) {
 }
 
 // 캐릭터로 신청 문서 생성 (웹 buildAppData와 동일 규칙)
-async function createSignup(db, userId, raidId, charIndex) {
+// mode: 'active'(일반 참가) | 'bench'(예비) | 'swap'(스왑 가능 참가)
+async function createSignup(db, userId, raidId, charIndex, mode) {
   const [userSnap, raidSnap, classes] = await Promise.all([
     db.collection('users').doc(userId).get(),
     db.collection('raids').doc(raidId).get(),
@@ -158,10 +159,17 @@ async function createSignup(db, userId, raidId, charIndex) {
     .map((sid) => ((cls.specs || []).find((s) => s.id === sid) || {}).name)
     .filter(Boolean);
 
-  const counts = await getRaidCounts(db, raidId);
-  const caps = getCaps(raid);
-  const capMap = { tank: caps.tankCap, healer: caps.healerCap, dps: caps.dpsCap };
-  const status = counts[spec.role] >= capMap[spec.role] ? 'wait' : 'active';
+  let status;
+  let swapFlag = false;
+  if (mode === 'bench') {
+    status = 'bench';
+  } else {
+    const counts = await getRaidCounts(db, raidId);
+    const caps = getCaps(raid);
+    const capMap = { tank: caps.tankCap, healer: caps.healerCap, dps: caps.dpsCap };
+    status = counts[spec.role] >= capMap[spec.role] ? 'wait' : 'active';
+    swapFlag = mode === 'swap' && swapSet.size > 0;
+  }
 
   const app = {
     userId,
@@ -183,7 +191,7 @@ async function createSignup(db, userId, raidId, charIndex) {
     ilvl: Number(char.ilvl) || 0,
     leaderCapable: !!user.leaderCapable,
     isGuildMaster: !!user.isGuildMaster,
-    swap: false,
+    swap: swapFlag,
     swapRoles: [...swapSet],
     status,
     seq: Date.now(),
@@ -191,7 +199,7 @@ async function createSignup(db, userId, raidId, charIndex) {
     via: 'discord',
   };
   await db.collection('raids').doc(raidId).collection('apps').doc(userId).set(app);
-  return { ok: true, raid, char, status, role: spec.role };
+  return { ok: true, raid, char, status, role: spec.role, swap: swapFlag };
 }
 
 // 다가오는 연합 레이드 목록 임베드 (raids를 받아서 렌더)
@@ -592,11 +600,40 @@ exports.discordInteractions = onRequest(
         if (cid.startsWith('signup_char:')) {
           const raidId = cid.slice('signup_char:'.length);
           const charIndex = parseInt(values[0], 10);
-          const r = await createSignup(db, userId, raidId, charIndex);
+          const userSnap = await db.collection('users').doc(userId).get();
+          const char = ((userSnap.exists && userSnap.data().characters) || [])[charIndex];
+          if (!char) { update('캐릭터를 찾을 수 없어요.'); return; }
+          // 스왑 가능 역할 계산 (스왑 버튼 노출 여부)
+          const classes = await loadClasses(db);
+          const cls = (classes || []).find((c) => c.id === char.classId);
+          const primary = cls ? (cls.specs || []).find((s) => s.id === (char.specs || [])[0]) : null;
+          const swapRoles = new Set();
+          if (cls && primary) (char.specs || []).forEach((sid) => {
+            const sp = (cls.specs || []).find((s) => s.id === sid);
+            if (sp && sp.role !== primary.role) swapRoles.add(sp.role);
+          });
+          const btns = [
+            { type: 2, style: 3, label: '✅ 참가', custom_id: `signup_go:${raidId}:${charIndex}:active` },
+            { type: 2, style: 2, label: '🪑 벤치(예비)', custom_id: `signup_go:${raidId}:${charIndex}:bench` },
+          ];
+          if (swapRoles.size) {
+            const prefix = [...swapRoles].map((x) => (x === 'tank' ? '탱' : x === 'healer' ? '힐' : '딜')).join('/');
+            btns.splice(1, 0, { type: 2, style: 1, label: `🔄 ${prefix}스왑 가능`, custom_id: `signup_go:${raidId}:${charIndex}:swap` });
+          }
+          update(`**${char.name}** (으)로 어떻게 신청할까요?`, [{ type: 1, components: btns }]);
+          return;
+        }
+
+        if (cid.startsWith('signup_go:')) {
+          const parts = cid.split(':'); // ['signup_go', raidId, charIndex, mode]
+          const raidId = parts[1];
+          const charIndex = parseInt(parts[2], 10);
+          const mode = parts[3] || 'active';
+          const r = await createSignup(db, userId, raidId, charIndex, mode);
           if (r.error) { update(`⚠️ ${r.error}`); return; }
           const roleKo = ROLE_KO[r.role] || r.role;
-          const statusKo = r.status === 'active' ? '✅ 참가 확정' : '⏳ 대기';
-          update(`🎉 신청 완료!\n**${r.char.name}** (${roleKo}) → ${r.raid.title || '공격대'}\n상태: ${statusKo}`);
+          const statusKo = r.status === 'active' ? '✅ 참가 확정' : r.status === 'wait' ? '⏳ 대기' : '🪑 벤치';
+          update(`🎉 신청 완료!\n**${r.char.name}** (${roleKo}) → ${r.raid.title || '공격대'}\n상태: ${statusKo}${r.swap ? ' · 🔄 스왑 가능' : ''}`);
           return;
         }
 
