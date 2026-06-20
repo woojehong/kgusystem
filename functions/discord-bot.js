@@ -414,6 +414,45 @@ exports.discordInteractions = onRequest(
         }
         return;
       }
+      if (name === '내신청') {
+        try {
+          const db = getFirestore();
+          const discordUserId = ((body.member && body.member.user) || body.user || {}).id;
+          const linkSnap = await db.collection('discordLinks').doc(discordUserId).get();
+          if (!linkSnap.exists) {
+            res.json({ type: REPLY.MESSAGE, data: { content: '먼저 `/연동` 으로 계정을 연결해주세요.', flags: EPHEMERAL } });
+            return;
+          }
+          const userId = linkSnap.data().userId;
+          const raids = await upcomingUnionRaids(db, 25);
+          const apps = await Promise.all(raids.map((r) => db.collection('raids').doc(r.id).collection('apps').doc(userId).get()));
+          const mine = [];
+          raids.forEach((r, i) => { if (apps[i].exists) mine.push({ raid: r, app: apps[i].data() }); });
+          if (mine.length === 0) {
+            res.json({ type: REPLY.MESSAGE, data: { content: '아직 신청한 연합 레이드가 없어요.', flags: EPHEMERAL } });
+            return;
+          }
+          const lines = mine.map((m) => {
+            const st = m.app.status === 'active' ? '✅ 확정' : m.app.status === 'wait' ? '⏳ 대기' : '🪑 벤치';
+            return `**${formatWhen(m.raid.startAt)}** · ${m.raid.title || '공격대'}\n→ ${m.app.charName} (${st})`;
+          });
+          const options = mine.map((m) => ({
+            label: `${formatWhen(m.raid.startAt)} · ${m.raid.title || '공격대'}`.slice(0, 100),
+            value: m.raid.id,
+          }));
+          res.json({
+            type: REPLY.MESSAGE,
+            data: {
+              embeds: [{ title: '📋 내 신청 현황', description: lines.join('\n\n'), color: 0x6366f1 }],
+              components: [{ type: 1, components: [{ type: 3, custom_id: 'mysignup_manage', placeholder: '관리할 레이드 선택 (변경/취소)', options }] }],
+              flags: EPHEMERAL,
+            },
+          });
+        } catch (e) {
+          res.json({ type: REPLY.MESSAGE, data: { content: `오류: ${e.message}`, flags: EPHEMERAL } });
+        }
+        return;
+      }
       res.json({
         type: REPLY.MESSAGE,
         data: { content: `알 수 없는 명령: ${name}`, flags: EPHEMERAL },
@@ -506,6 +545,25 @@ exports.discordInteractions = onRequest(
           });
           update('변경할 캐릭터를 선택하세요.', [
             { type: 1, components: [{ type: 3, custom_id: `signup_char:${raidId}`, placeholder: '캐릭터 선택', options }] },
+          ]);
+          return;
+        }
+
+        // /내신청에서 레이드 선택 → 그 신청의 변경/취소 버튼
+        if (cid === 'mysignup_manage') {
+          const raidId = values[0];
+          const link = await db.collection('discordLinks').doc(discordUserId).get();
+          if (!link.exists) { update('먼저 `/연동` 으로 계정을 연결해주세요.'); return; }
+          const uid = link.data().userId;
+          const appSnap = await db.collection('raids').doc(raidId).collection('apps').doc(uid).get();
+          if (!appSnap.exists) { update('그 레이드엔 신청 내역이 없어요 (이미 취소됐나요?).'); return; }
+          const a = appSnap.data();
+          const st = a.status === 'active' ? '참가 확정' : a.status === 'wait' ? '대기' : '벤치';
+          update(`**${a.charName}** (으)로 신청됨 (상태: ${st})`, [
+            { type: 1, components: [
+              { type: 2, style: 1, label: '🔄 캐릭터 변경', custom_id: `card_change:${raidId}` },
+              { type: 2, style: 4, label: '❌ 신청 취소', custom_id: `card_cancel:${raidId}` },
+            ] },
           ]);
           return;
         }
@@ -663,6 +721,7 @@ const COMMANDS = [
     ],
   },
   { name: '신청', description: '연합 레이드에 신청합니다 (클릭으로 선택)', type: 1 },
+  { name: '내신청', description: '내가 신청한 레이드를 보고 변경/취소합니다', type: 1 },
 ];
 
 exports.discordRegisterCommands = onRequest(
