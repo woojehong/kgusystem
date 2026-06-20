@@ -337,7 +337,8 @@ exports.discordInteractions = onRequest(
         try {
           const db = getFirestore();
           const filter = channelFilter(body.channel_id);
-          const raids = (await upcomingRaids(db, 50)).filter((r) => raidMatchesFilter(r, filter));
+          const gmap = await loadGuildIdByEnglish(db);
+          const raids = (await upcomingRaids(db, 50)).filter((r) => raidMatchesFilter(r, filter, gmap));
           const embed = await buildScheduleEmbed(db, raids.slice(0, 8));
           const components = [];
           if (raids.length > 0) {
@@ -402,7 +403,8 @@ exports.discordInteractions = onRequest(
             return;
           }
           const filter = channelFilter(body.channel_id);
-          const raids = (await upcomingRaids(db, 50)).filter((r) => raidMatchesFilter(r, filter));
+          const gmap = await loadGuildIdByEnglish(db);
+          const raids = (await upcomingRaids(db, 50)).filter((r) => raidMatchesFilter(r, filter, gmap));
           if (raids.length === 0) {
             res.json({ type: REPLY.MESSAGE, data: { content: '지금 신청할 수 있는 레이드가 없어요.', flags: EPHEMERAL } });
             return;
@@ -660,14 +662,27 @@ const CARD_SECRETS = [DISCORD_BOT_TOKEN];
 // 채널 ↔ 필터 매핑 (채널 ID는 비밀 아님 → 코드 상수)
 //   'union'   = 연합 레이드 / '<길드ID>' = 그 길드 레이드
 const CARD_CHANNELS = [
-  { channelId: '1517678646343635064', filter: 'union' },           // 한길련 서버 · 연합 (기존)
-  { channelId: '1517705693371830322', filter: 'union' },           // 스타폴 서버 · 연합
-  { channelId: '1517705660903587970', filter: 'starfall-forest' }, // 스타폴 서버 · 스타폴 길드
+  { channelId: '1517678646343635064', filter: 'union' },          // 한길련 서버 · 연합 (기존)
+  { channelId: '1517705693371830322', filter: 'union' },          // 스타폴 서버 · 연합
+  { channelId: '1517705660903587970', filter: 'guild:starfall' }, // 스타폴 서버 · 스타폴 길드(영문명)
 ];
 const LEGACY_UNION_CHANNEL = '1517678646343635064';
 
-function raidMatchesFilter(raid, filter) {
+// 영문명 → 길드 doc ID 매핑 (실제 ID가 랜덤이어도 영문명으로 안정 매칭)
+async function loadGuildIdByEnglish(db) {
+  const snap = await db.collection('guilds').get();
+  const map = {};
+  snap.forEach((d) => { const g = d.data(); if (g.englishName) map[g.englishName] = d.id; });
+  return map;
+}
+
+// filter: 'union' | 'guild:<영문명>' | '<길드ID>'  (gmap = 영문명→ID)
+function raidMatchesFilter(raid, filter, gmap) {
   if (filter === 'union') return isUnionRaid(raid);
+  if (filter.indexOf('guild:') === 0) {
+    const gid = gmap && gmap[filter.slice(6)];
+    return gid ? raid.partyType === gid : false;
+  }
   return raid.partyType === filter;
 }
 function channelFilter(channelId) {
@@ -695,21 +710,31 @@ async function upcomingRaids(db, limit) {
     .sort((a, b) => a.startAt.toMillis() - b.startAt.toMillis());
 }
 
-// 각 채널을 자기 필터로 출발순 재구성 (먼 미래부터 게시 = 가까운 게 맨 아래)
-async function rebuildBoard(db, token) {
+// 해당 레이드가 속하는(필터에 맞는) 채널 목록
+function channelsForRaid(raid, gmap) {
+  return CARD_CHANNELS.filter((ch) => raidMatchesFilter(raid, ch.filter, gmap));
+}
+
+// 지정한 채널만 출발순 재구성 (channels 미지정 시 전체). 다른 채널 상태는 유지.
+// 먼 미래부터 게시 = 가까운 게 맨 아래.
+async function rebuildBoard(db, token, channels) {
+  const targets = channels || CARD_CHANNELS;
+  if (!targets.length) return;
   const boardSnap = await db.collection('meta').doc('discordBoard').get();
   const board = (boardSnap.exists && boardSnap.data()) || {};
-  // 구버전 flat 카드(cardIds) 1회 정리 — 기존 한길련 채널
-  if (Array.isArray(board.cardIds)) {
+  const newBoard = { ...board };
+  // 구버전 flat 카드(cardIds)는 레거시 채널을 재구성할 때만 정리
+  if (targets.some((c) => c.channelId === LEGACY_UNION_CHANNEL) && Array.isArray(board.cardIds)) {
     for (const id of board.cardIds) await deleteChannelMessage(token, LEGACY_UNION_CHANNEL, id);
+    delete newBoard.cardIds;
   }
   const all = await upcomingRaids(db, 100);
-  const newBoard = {};
-  for (const ch of CARD_CHANNELS) {
+  const gmap = await loadGuildIdByEnglish(db);
+  for (const ch of targets) {
     for (const id of (board[ch.channelId] || [])) {
       await deleteChannelMessage(token, ch.channelId, id);
     }
-    const matching = all.filter((r) => raidMatchesFilter(r, ch.filter));
+    const matching = all.filter((r) => raidMatchesFilter(r, ch.filter, gmap));
     const ordered = [...matching].reverse();
     const ids = [];
     for (const r of ordered) {
@@ -723,7 +748,7 @@ async function rebuildBoard(db, token) {
     }
     newBoard[ch.channelId] = ids;
   }
-  await db.collection('meta').doc('discordBoard').set(newBoard); // 전체 덮어쓰기 (구버전 cardIds 제거)
+  await db.collection('meta').doc('discordBoard').set(newBoard);
 }
 
 // 레이드의 모든 채널 카드 갱신
@@ -743,7 +768,9 @@ exports.cardOnRaidCreated = onDocumentCreated(
   async (event) => {
     const raid = event.data.data();
     if (!raid || raid.deleted) return;
-    await rebuildBoard(getFirestore(), DISCORD_BOT_TOKEN.value());
+    const db = getFirestore();
+    const gmap = await loadGuildIdByEnglish(db);
+    await rebuildBoard(db, DISCORD_BOT_TOKEN.value(), channelsForRaid(raid, gmap));
   }
 );
 
@@ -760,7 +787,10 @@ exports.cardOnRaidUpdated = onDocumentUpdated(
     const deletedToggled = (!!before.deleted) !== (!!after.deleted);
     const partyChanged = (before.partyType || '') !== (after.partyType || '');
     if (timeChanged || deletedToggled || partyChanged) {
-      await rebuildBoard(db, token);
+      const gmap = await loadGuildIdByEnglish(db);
+      const affected = new Map();
+      [...channelsForRaid(before, gmap), ...channelsForRaid(after, gmap)].forEach((c) => affected.set(c.channelId, c));
+      await rebuildBoard(db, token, [...affected.values()]);
       return;
     }
     if (after.deleted) return;
