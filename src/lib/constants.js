@@ -7,28 +7,29 @@ export const ROLES = {
   dps: { id: 'dps', label: '딜러' },
 };
 
+// 난이도 색 통일: 일반=회색 / 영웅=파랑 / 신화=금색
 export const DIFFICULTIES = {
   normal: {
     id: 'normal',
     label: '일반',
-    color: '#1eff00',
-    soft: 'rgba(30,255,0,0.08)',
+    color: '#9ca3af',
+    soft: 'rgba(156,163,175,0.10)',
     totalCap: 30,
     defaultHealers: 6,
   },
   heroic: {
     id: 'heroic',
     label: '영웅',
-    color: '#a335ee',
-    soft: 'rgba(163,53,238,0.10)',
+    color: '#3b82f6',
+    soft: 'rgba(59,130,246,0.10)',
     totalCap: 30,
     defaultHealers: 6,
   },
   mythic: {
     id: 'mythic',
     label: '신화',
-    color: '#ff8000',
-    soft: 'rgba(255,128,0,0.10)',
+    color: '#fbbf24',
+    soft: 'rgba(251,191,36,0.12)',
     totalCap: 20,
     defaultHealers: 4,
   },
