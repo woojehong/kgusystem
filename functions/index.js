@@ -38,8 +38,9 @@ const TANK_CAP = 2;
 function getCaps(raid) {
   const diff      = DIFF_CAPS[raid.difficulty] || DIFF_CAPS.normal;
   const tankCap   = TANK_CAP;
+  const totalCap  = raid.totalCap ?? diff.totalCap;
   const healerCap = raid.healerCap ?? diff.defaultHealers;
-  const dpsCap    = Math.max(0, diff.totalCap - tankCap - healerCap);
+  const dpsCap    = Math.max(0, totalCap - tankCap - healerCap);
   return { tankCap, healerCap, dpsCap };
 }
 
@@ -329,6 +330,9 @@ exports.logAppCreated = onDocumentCreated('raids/{raidId}/apps/{appId}', async (
     action: 'apply',
     actor: app.nickname || app.charName || '?',
     char: app.charName || '',
+    classColor: app.classColor || null,
+    guildName: app.guildName || '',
+    nickname: app.nickname || '',
     detail: `${kind} 등록${app.specName ? ` (${app.specName})` : ''}`,
   });
 });
@@ -340,6 +344,9 @@ exports.logAppDeleted = onDocumentDeleted('raids/{raidId}/apps/{appId}', async (
     action: 'cancel',
     actor: app.nickname || app.charName || '?',
     char: app.charName || '',
+    classColor: app.classColor || null,
+    guildName: app.guildName || '',
+    nickname: app.nickname || '',
     detail: '신청 취소',
   });
 });
@@ -360,6 +367,9 @@ exports.logAppUpdated = onDocumentUpdated('raids/{raidId}/apps/{appId}', async (
     action: 'change',
     actor: after.nickname || after.charName || '?',
     char: after.charName || '',
+    classColor: after.classColor || null,
+    guildName: after.guildName || '',
+    nickname: after.nickname || '',
     detail: changes.join(', '),
   });
 });

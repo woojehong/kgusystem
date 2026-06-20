@@ -87,13 +87,14 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const [startTime, setStartTime] = useState('20:00');
   const [endTime, setEndTime] = useState('23:00');
   const [healerCap, setHealerCap] = useState(DIFFICULTIES.normal.defaultHealers);
+  const [totalCap, setTotalCap] = useState(DIFFICULTIES.normal.totalCap);
   const [leader, setLeader] = useState(UNION_LEADER_LABEL);
   const [noIlvlLimit, setNoIlvlLimit] = useState(true);
   const [minIlvl, setMinIlvl] = useState('');
   const [description, setDescription] = useState('');
   const [partyType, setPartyType] = useState('union');
   const [allowedGuilds, setAllowedGuilds] = useState('all');
-  const [allowNoGuild, setAllowNoGuild] = useState(true);
+  const [allowNoGuild, setAllowNoGuild] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -116,6 +117,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setStartTime(fmt(s));
       setEndTime(fmt(e));
       setHealerCap(raid.healerCap);
+      setTotalCap(raid.totalCap ?? DIFFICULTIES[raid.difficulty].totalCap);
       setLeader(raid.leader);
       setNoIlvlLimit(raid.minIlvl == null);
       setMinIlvl(raid.minIlvl == null ? '' : String(raid.minIlvl));
@@ -130,12 +132,14 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setStartTime('20:00');
       setEndTime('23:00');
       setHealerCap(DIFFICULTIES.normal.defaultHealers);
+      setTotalCap(DIFFICULTIES.normal.totalCap);
       setLeader(UNION_LEADER_LABEL);
       setNoIlvlLimit(true);
       setMinIlvl('');
       setDescription('');
       setPartyType('union');
       setAllowedGuilds('all');
+      setAllowNoGuild(false);
     }
   }, [open, raid]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -168,7 +172,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
 
   const effectiveDateKey = isEdit ? raid.dateKey : (localDateKey || defaultDateKey);
   const diff = DIFFICULTIES[difficulty];
-  const dpsCap = diff.totalCap - TANK_CAP - healerCap;
+  const dpsCap = totalCap - TANK_CAP - healerCap;
 
   // Normalize "시:분" string before validation
   const normalizeTimeStr = (t) => {
@@ -198,8 +202,12 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setError('최소 아이템레벨은 정수로 입력해주세요.');
       return;
     }
+    if (totalCap < 10 || totalCap > 31) {
+      setError('총원은 10~31명 사이로 설정해주세요.');
+      return;
+    }
     if (healerCap < 0 || dpsCap < 0) {
-      setError('힐러 수가 정원을 초과합니다.');
+      setError('힐러 수가 총원을 초과합니다.');
       return;
     }
     setBusy(true);
@@ -212,6 +220,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
         startAt,
         endAt,
         difficulty,
+        totalCap,
         healerCap,
         leader,
         minIlvl: noIlvlLimit ? null : Number(minIlvl),
@@ -370,7 +379,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
               <button
                 key={d.id}
                 type="button"
-                onClick={() => { setDifficulty(d.id); setHealerCap(d.defaultHealers); }}
+                onClick={() => { setDifficulty(d.id); setHealerCap(d.defaultHealers); setTotalCap(d.totalCap); }}
                 className={`py-2.5 rounded-xl font-bold text-sm border transition ${
                   difficulty === d.id ? 'border-current' : 'border-base-700 opacity-50 hover:opacity-80'
                 }`}
@@ -398,6 +407,29 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           />
         </div>
 
+        {/* 총원 */}
+        <div>
+          <label className="label-sm">총원 <span className="text-base-500 font-normal">(10~31명 · 1명 단위)</span></label>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="w-10 h-10 rounded-xl bg-base-700 hover:bg-base-600 font-bold text-lg transition"
+              onClick={() => setTotalCap(Math.max(10, totalCap - 1))}
+            >
+              −
+            </button>
+            <span className="text-xl font-bold w-8 text-center">{totalCap}</span>
+            <button
+              type="button"
+              className="w-10 h-10 rounded-xl bg-base-700 hover:bg-base-600 font-bold text-lg transition"
+              onClick={() => setTotalCap(Math.min(31, totalCap + 1))}
+            >
+              +
+            </button>
+            <span className="text-sm text-base-300 ml-2">기본 {diff.totalCap}인 (난이도)</span>
+          </div>
+        </div>
+
         {/* 힐러 수 */}
         <div>
           <label className="label-sm">힐러 수</label>
@@ -418,7 +450,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
               +
             </button>
             <span className="text-sm text-base-300 ml-2">
-              탱 {TANK_CAP} · 힐 {healerCap} · 딜 {dpsCap} = 총 {diff.totalCap}인
+              탱 {TANK_CAP} · 힐 {healerCap} · 딜 {dpsCap} = 총 {totalCap}인
             </span>
           </div>
         </div>

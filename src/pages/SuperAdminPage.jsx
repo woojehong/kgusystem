@@ -1340,7 +1340,14 @@ function RosterModal({ raid, onClose }) {
               <div key={lg.id} className="flex items-start gap-2 text-xs py-1 border-b border-base-800/70">
                 <span className="text-base-500 tabular-nums shrink-0">{fmtLogTime(lg.at)}</span>
                 <span className={`font-bold shrink-0 ${a.color}`}>{a.label}</span>
-                <span className="text-base-200 font-semibold shrink-0">{lg.actor}</span>
+                <span className="font-bold shrink-0 break-keep" style={{ color: lg.classColor || '#cbd5e1' }}>
+                  {lg.char || lg.actor}
+                </span>
+                {(lg.guildName || lg.nickname) && (
+                  <span className="text-[11px] text-base-500 shrink-0">
+                    {[lg.guildName, lg.nickname].filter(Boolean).join(' · ')}
+                  </span>
+                )}
                 <span className="text-base-400 break-words">{lg.detail}</span>
               </div>
             );

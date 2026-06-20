@@ -79,7 +79,7 @@ export function buildCalendarWeeks(today = new Date()) {
 
 export function getCaps(raid) {
   const diff = DIFFICULTIES[raid.difficulty];
-  const totalCap = diff ? diff.totalCap : 30;
+  const totalCap = raid.totalCap ?? (diff ? diff.totalCap : 30);
   const healerCap = raid.healerCap ?? (diff ? diff.defaultHealers : 6);
   return {
     totalCap,
