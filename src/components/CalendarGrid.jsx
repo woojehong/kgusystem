@@ -120,9 +120,21 @@ function RaidChip({ r, count: c, mine, unionGuild }) {
           )}
         </>
       ) : (
-        /* 접힘: 제목 1줄만(…) */
-        <div className="mt-1.5 text-center text-[11px] sm:text-sm font-bold text-white text-outline truncate">
-          {r.title || diff.label}
+        /* 접힘: 제목 1줄 + 시간 + 탱힐딜 간략(역할 색) */
+        <div className="mt-1.5 text-center">
+          <div className="text-[11px] sm:text-sm font-bold text-white text-outline truncate">
+            {r.title || diff.label}
+          </div>
+          <div className="text-[9px] sm:text-[11px] font-semibold text-base-300 mt-0.5">
+            {formatTimeRange(r.startAt.toDate(), r.endAt.toDate())}
+          </div>
+          {c && (
+            <div className="flex justify-center gap-1.5 mt-0.5 text-[9px] sm:text-[11px] font-bold tabular-nums text-outline">
+              <span style={{ color: ROLE_COLORS.tank }}>{c.tank}/{caps.tank}</span>
+              <span style={{ color: ROLE_COLORS.healer }}>{c.healer}/{caps.healer}</span>
+              <span style={{ color: ROLE_COLORS.dps }}>{c.dps}/{caps.dps}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
