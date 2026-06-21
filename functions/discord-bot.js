@@ -6,7 +6,7 @@
 // 의존성 추가 없이 Node 내장 crypto로 Ed25519 서명검증.
 // ─────────────────────────────────────────────────────────────────────────
 const { onRequest } = require('firebase-functions/v2/https');
-const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentUpdated, onDocumentWritten, onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const { defineSecret } = require('firebase-functions/params');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const crypto = require('crypto');
@@ -99,6 +99,76 @@ function formatWhen(startAt) {
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   const time = min === 0 ? `${period} ${h12}시` : `${period} ${h12}시 ${min}분`;
   return `${g('month')}월 ${g('day')}일(${g('weekday')}) ${time}`;
+}
+
+// ── 디스코드 동적 타임스탬프 ────────────────────────────────────────
+// 보는 사람의 시간대로 자동 변환 + "3시간 후" 상대시간을 클라이언트가 렌더한다.
+// (셀렉트/버튼 라벨에는 렌더되지 않으므로 그쪽은 formatWhen 텍스트를 유지)
+function unixSec(startAt) {
+  const ms = startAt && startAt.toMillis
+    ? startAt.toMillis()
+    : startAt && startAt.toDate
+    ? startAt.toDate().getTime()
+    : new Date(startAt).getTime();
+  return ms && !isNaN(ms) ? Math.floor(ms / 1000) : null;
+}
+function dtFull(startAt) {
+  const s = unixSec(startAt);
+  return s ? `<t:${s}:F> · <t:${s}:R>` : formatWhen(startAt);
+}
+function dtShort(startAt) {
+  const s = unixSec(startAt);
+  return s ? `<t:${s}:f> (<t:${s}:R>)` : formatWhen(startAt);
+}
+
+// ── 클래스 아이콘 (로스터 가시성) ───────────────────────────────────
+// 커스텀 이모지를 디스코드 서버에 올리고 아래 맵에 ID를 채우면 그걸 우선 사용한다.
+//   형식: '<:slug:1234567890>' (애니메이션 이모지는 '<a:slug:id>')
+// 비어 있으면 클래스 시그니처 색과 가장 가까운 유니코드 사각형으로 자동 대체한다.
+const CLASS_EMOJI = {
+  warrior: '<:warrioremoji:1518103765075623966>',
+  paladin: '<:paladinemoji:1518103784922939493>',
+  hunter: '<:hunteremoji:1518103777285111968>',
+  rogue: '<:rogueemoji:1518103788156616766>',
+  priest: '<:priestemoji:1518103786927820860>',
+  deathknight: '<:deathknightemoji:1518103767613046904>',
+  shaman: '<:shamanemoji:1518103790534922353>',
+  mage: '<:mageemoji:1518103779348713654>',
+  warlock: '<:warlockemoji:1518103792728670339>',
+  monk: '<:monkemoji:1518103781441802393>',
+  druid: '<:druidemoji:1518103772658929775>',
+  demonhunter: '<:demonhunteremoji:1518103770255327252>',
+  evoker: '<:evokeremoji:1518103775292952646>',
+};
+const SQUARES = [
+  { e: '🟥', r: 231, g: 76, b: 60 },
+  { e: '🟧', r: 230, g: 126, b: 34 },
+  { e: '🟨', r: 241, g: 196, b: 15 },
+  { e: '🟩', r: 46, g: 204, b: 113 },
+  { e: '🟦', r: 52, g: 152, b: 219 },
+  { e: '🟪', r: 155, g: 89, b: 182 },
+  { e: '🟫', r: 121, g: 85, b: 72 },
+  { e: '⬜', r: 236, g: 240, b: 241 },
+  { e: '⬛', r: 30, g: 30, b: 30 },
+];
+function squareForColor(hex) {
+  if (!hex || typeof hex !== 'string') return '⬜';
+  const c = hex.replace('#', '');
+  if (c.length < 6) return '⬜';
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  let best = SQUARES[0];
+  let bestD = Infinity;
+  for (const s of SQUARES) {
+    const d = (s.r - r) ** 2 + (s.g - g) ** 2 + (s.b - b) ** 2;
+    if (d < bestD) { bestD = d; best = s; }
+  }
+  return best.e;
+}
+function classIcon(a) {
+  const custom = a && a.classId && CLASS_EMOJI[a.classId];
+  return custom || squareForColor(a && a.classColor);
 }
 
 // 다가오는 연합 레이드 목록 (정렬·필터)
@@ -226,8 +296,8 @@ async function buildScheduleEmbed(db, raids) {
   const lines = raids.map((r, i) => {
     const caps = getCaps(r);
     const c = counts[i];
-    return `**${formatWhen(r.startAt)}** · ${DIFF_LABEL[r.difficulty] || ''}\n`
-      + `${r.title || '공격대'}\n`
+    return `${dtShort(r.startAt)} · ${DIFF_LABEL[r.difficulty] || ''}\n`
+      + `**${r.title || '공격대'}**\n`
       + `🛡 ${c.tank}/${caps.tankCap}  💚 ${c.healer}/${caps.healerCap}  ⚔️ ${c.dps}/${caps.dpsCap}`;
   });
   return { title: '📅 다가오는 레이드', description: lines.join('\n\n'), color: 0x6366f1 };
@@ -252,7 +322,7 @@ async function buildDetailEmbed(db, raidId) {
   });
   // 정렬감 있는 로스터: `아이템레벨` **캐릭명** · 특성  (아이템레벨은 모노스페이스로 칸 맞춤)
   const fmt = (arr) => (arr.length
-    ? arr.map((a) => `\`${String(a.ilvl || '—').padStart(3)}\` **${a.charName}**${a.specName ? ` · ${a.specName}` : ''}`).join('\n').slice(0, 1024)
+    ? arr.map((a) => `${classIcon(a)} \`${String(a.ilvl || '—').padStart(3)}\` **${a.charName}**${a.specName ? ` · ${a.specName}` : ''}`).join('\n').slice(0, 1024)
     : '—');
 
   const fields = [
@@ -266,7 +336,7 @@ async function buildDetailEmbed(db, raidId) {
   return {
     embed: {
       title: raid.title || '공격대',
-      description: `📅 ${formatWhen(raid.startAt)} · ${DIFF_LABEL[raid.difficulty] || ''}\n👑 공격대장: ${raid.leader || '미정'}`,
+      description: `📅 ${dtFull(raid.startAt)} · ${DIFF_LABEL[raid.difficulty] || ''}\n👑 공격대장: ${raid.leader || '미정'}`,
       color: DIFF_COLOR[raid.difficulty] || 0x9ca3af,
       fields,
     },
@@ -461,7 +531,7 @@ exports.discordInteractions = onRequest(
           }
           const lines = mine.map((m) => {
             const st = m.app.status === 'active' ? '✅ 확정' : m.app.status === 'wait' ? '⏳ 대기' : '🪑 벤치';
-            return `**${formatWhen(m.raid.startAt)}** · ${m.raid.title || '공격대'}\n→ ${m.app.charName} (${st})`;
+            return `${dtShort(m.raid.startAt)} · **${m.raid.title || '공격대'}**\n→ ${m.app.charName} (${st})`;
           });
           const options = mine.map((m) => ({
             label: `${formatWhen(m.raid.startAt)} · ${m.raid.title || '공격대'}`.slice(0, 100),
@@ -942,6 +1012,27 @@ exports.cardOnRaidUpdated = onDocumentUpdated(
     if (after.deleted) return;
     if (!displayChanged(before, after)) return; // discordCards만 바뀐 경우(재구성 자기쓰기) 스킵
     await refreshRaidCards(db, token, event.params.raidId, after.discordCards);
+  }
+);
+
+// 레이드 완전삭제(하드삭제) → 남아있던 카드 제거 + 해당 채널 재구성
+exports.cardOnRaidDeleted = onDocumentDeleted(
+  { document: 'raids/{raidId}', secrets: CARD_SECRETS },
+  async (event) => {
+    const raid = event.data && event.data.data();
+    if (!raid) return;
+    const db = getFirestore();
+    const token = DISCORD_BOT_TOKEN.value();
+    const gmap = await loadGuildIdByEnglish(db);
+    // 필터상 속했던 채널 + 실제 카드가 박혀있던 채널을 합쳐 정리
+    const affected = new Map();
+    channelsForRaid(raid, gmap).forEach((c) => affected.set(c.channelId, c));
+    Object.keys(raid.discordCards || {}).forEach((channelId) => {
+      const ch = CARD_CHANNELS.find((c) => c.channelId === channelId);
+      if (ch) affected.set(ch.channelId, ch);
+    });
+    if (!affected.size) return;
+    await rebuildBoard(db, token, [...affected.values()]);
   }
 );
 

@@ -113,6 +113,21 @@ function unionHeader(raid) {
   return `연합 길드 레이드, ${formatWhen(raid.startAt)}, ${diffLabel(raid)}`;
 }
 
+// 디스코드 동적 타임스탬프 — 보는 사람 시간대 자동 변환 + 상대시간.
+// (마스크 링크 `[...](url)` 안에서는 렌더되지 않으므로 반드시 링크 밖 별도 줄에 사용)
+function unixSec(startAt) {
+  const ms = startAt && startAt.toMillis
+    ? startAt.toMillis()
+    : startAt && startAt.toDate
+    ? startAt.toDate().getTime()
+    : new Date(startAt).getTime();
+  return ms && !isNaN(ms) ? Math.floor(ms / 1000) : null;
+}
+function dtFull(startAt) {
+  const s = unixSec(startAt);
+  return s ? `<t:${s}:F> · <t:${s}:R>` : formatWhen(startAt);
+}
+
 function hexToInt(hex, fallback) {
   if (!hex) return fallback;
   const n = parseInt(String(hex).replace('#', ''), 16);
@@ -128,7 +143,8 @@ function noticeEmbed({ headWord, raid, raidId, color, counts }) {
     color,
     description:
       `## [${headWord}: ${unionHeader(raid)}](${url})\n` +
-      `## [${raid.title || '공격대'}](${url})\n\n` +
+      `## [${raid.title || '공격대'}](${url})\n` +
+      `📅 ${dtFull(raid.startAt)}\n\n` +
       `공격대장: ${raid.leader || '미정'}`,
     fields: [
       { name: '🛡 탱커', value: `${c.tank} / ${tankCap}`, inline: true },
