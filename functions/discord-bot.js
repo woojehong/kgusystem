@@ -171,6 +171,20 @@ function classIcon(a) {
   return custom || squareForColor(a && a.classColor);
 }
 
+// 특성 근딜/원딜 분류 — wow-data의 range 사용. (classId|특성명 키로 동명 특성 충돌 방지)
+const SPEC_RANGE = {};
+CLASSES.forEach((c) => (c.specs || []).forEach((s) => {
+  if (s.range) SPEC_RANGE[`${c.id}|${s.name}`] = s.range;
+}));
+function isRangedApp(a) {
+  return !!a && SPEC_RANGE[`${a.classId}|${a.specName}`] === 'ranged';
+}
+// 클래스 분포 표기용 가나다 순서
+const CLASS_GANADA = [
+  'evoker', 'rogue', 'druid', 'mage', 'hunter', 'priest', 'paladin',
+  'monk', 'demonhunter', 'warrior', 'shaman', 'deathknight', 'warlock',
+];
+
 // 다가오는 연합 레이드 목록 (정렬·필터)
 async function upcomingUnionRaids(db, limit) {
   const snap = await db.collection('raids')
@@ -325,13 +339,29 @@ async function buildDetailEmbed(db, raidId) {
     ? arr.map((a) => `${classIcon(a)} \`${String(a.ilvl || '—').padStart(3)}\` **${a.charName}**${a.specName ? ` · ${a.specName}` : ''}`).join('\n').slice(0, 1024)
     : '—');
 
+  // 딜러는 근딜/원딜로 나눠서 표기 (헤더 숫자는 전체 딜러 합계 그대로)
+  const meleeDps = active.dps.filter((a) => !isRangedApp(a));
+  const rangedDps = active.dps.filter((a) => isRangedApp(a));
+  const dpsValue = `**▸ 근딜 ${meleeDps.length}**\n${fmt(meleeDps)}\n\n**▸ 원딜 ${rangedDps.length}**\n${fmt(rangedDps)}`;
+
   const fields = [
     { name: `🛡 탱커 ${active.tank.length}/${caps.tankCap}`, value: fmt(active.tank) },
     { name: `💚 힐러 ${active.healer.length}/${caps.healerCap}`, value: fmt(active.healer) },
-    { name: `⚔️ 딜러 ${active.dps.length}/${caps.dpsCap}`, value: fmt(active.dps) },
+    { name: `⚔️ 딜러 ${active.dps.length}/${caps.dpsCap}`, value: dpsValue.slice(0, 1024) },
   ];
   if (wait.length) fields.push({ name: `⏳ 대기 ${wait.length}`, value: fmt(wait) });
   if (bench.length) fields.push({ name: `🪑 벤치 ${bench.length}`, value: fmt(bench) });
+
+  // 클래스 분포 — 활성 인원 기준, 가나다순. (아이콘이 클래스 색, 숫자는 볼드)
+  const clsCount = {};
+  [...active.tank, ...active.healer, ...active.dps].forEach((a) => {
+    if (a.classId) clsCount[a.classId] = (clsCount[a.classId] || 0) + 1;
+  });
+  const tally = CLASS_GANADA
+    .filter((id) => clsCount[id])
+    .map((id) => `${CLASS_EMOJI[id] || ''} **${clsCount[id]}**`)
+    .join(' ');
+  if (tally) fields.push({ name: '​', value: `**클래스 분포**\n${tally}` });
 
   return {
     embed: {
@@ -353,7 +383,11 @@ async function postToChannel(token, channelId, payload) {
     headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!resp.ok) return null;
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    console.error('[postToChannel] 실패 channel=', channelId, 'status=', resp.status, 'body=', body.slice(0, 300));
+    return null;
+  }
   return resp.json(); // { id, ... }
 }
 async function editChannelMessage(token, channelId, messageId, payload) {
@@ -881,6 +915,7 @@ const CARD_CHANNELS = [
   { channelId: '1517678646343635064', filter: 'union' },          // 한길련 서버 · 연합 (기존)
   { channelId: '1517705693371830322', filter: 'union' },          // 스타폴 서버 · 연합
   { channelId: '1517705660903587970', filter: 'guild:starfall' }, // 스타폴 서버 · 스타폴 길드(영문명)
+  { channelId: '1519867938671165490', filter: 'guild:e-ayo' },    // 이에요 서버 · 이에요 길드(영문명)
 ];
 const LEGACY_UNION_CHANNEL = '1517678646343635064';
 
@@ -1070,7 +1105,7 @@ const COMMANDS = [
 ];
 
 // 명령을 등록할 서버(길드) 목록 — DISCORD_GUILD_ID(한길련) + 아래 추가 서버들
-const EXTRA_GUILD_IDS = ['1430130051734704259']; // 스타폴 서버
+const EXTRA_GUILD_IDS = ['1430130051734704259', '861086826637557821']; // 스타폴 서버, 이에요 서버
 
 exports.discordRegisterCommands = onRequest(
   { secrets: [DISCORD_BOT_TOKEN, DISCORD_APP_ID, DISCORD_GUILD_ID, BOT_REGISTER_KEY] },
