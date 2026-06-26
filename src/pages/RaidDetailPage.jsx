@@ -37,6 +37,14 @@ function sortByClass(list) {
   });
 }
 
+// 신청자의 특성이 원거리 딜인지 (gamedata의 range 사용; 클래스+특성명으로 조회).
+// 같은 클래스 안에서 특성명은 유일하므로 동명 특성(냉기 등) 충돌 없음.
+function isRangedDps(classes, a) {
+  const cls = (classes || []).find((c) => c.id === a.classId);
+  const spec = cls && (cls.specs || []).find((s) => s.name === a.specName);
+  return !!spec && spec.range === 'ranged';
+}
+
 const ROLE_COLORS = { tank: '#38bdf8', healer: '#34d399', dps: '#fb7185' };
 
 const STATUS_META = {
@@ -85,7 +93,7 @@ function useCanEdit(raid, profile, isAdmin, isSuper, adminMode) {
 
 export default function RaidDetailPage() {
   const { raidId } = useParams();
-  const { userId, isAdmin, isSuper, adminMode, profile } = useApp();
+  const { userId, isAdmin, isSuper, adminMode, profile, gamedata } = useApp();
   const toast = useToast();
   const adminView = isAdmin && adminMode;
 
@@ -148,10 +156,16 @@ export default function RaidDetailPage() {
     rankRole(healers, 'H');
     rankRole(dps, 'D');
 
+    // 딜러를 근딜/원딜로 분리 (정렬·순번은 그대로 유지)
+    const meleeDps = dps.filter((a) => !isRangedDps(gamedata.classes, a));
+    const rangedDps = dps.filter((a) => isRangedDps(gamedata.classes, a));
+
     return {
       tanks,
       healers,
       dps,
+      meleeDps,
+      rangedDps,
       waitTanks,
       waitHealers,
       waitDps,
@@ -159,7 +173,7 @@ export default function RaidDetailPage() {
       activeRank,
       counts: { tank: tanks.length, healer: healers.length, dps: dps.length },
     };
-  }, [apps]);
+  }, [apps, gamedata]);
 
   const canEdit = useCanEdit(raid, profile, isAdmin, isSuper, adminMode);
 
@@ -463,8 +477,29 @@ export default function RaidDetailPage() {
               adminMode={adminView}
               onAdd={() => setReserveRole('dps')}
             />
-            <div className="flex flex-wrap justify-center gap-1.5">
-              {renderCards(derived.dps, (a) => derived.activeRank[a.id])}
+
+            {/* 근딜 */}
+            <div className="mb-1">
+              <p className="text-xs font-bold text-base-400 mb-1.5">
+                근딜 <span className="text-base-300">{derived.meleeDps.length}</span>
+              </p>
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {derived.meleeDps.length
+                  ? renderCards(derived.meleeDps, (a) => derived.activeRank[a.id])
+                  : <span className="text-xs text-base-600 py-2">없음</span>}
+              </div>
+            </div>
+
+            {/* 원딜 */}
+            <div className="mt-3 pt-3 border-t border-base-700/60">
+              <p className="text-xs font-bold text-base-400 mb-1.5">
+                원딜 <span className="text-base-300">{derived.rangedDps.length}</span>
+              </p>
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {derived.rangedDps.length
+                  ? renderCards(derived.rangedDps, (a) => derived.activeRank[a.id])
+                  : <span className="text-xs text-base-600 py-2">없음</span>}
+              </div>
             </div>
           </div>
 
