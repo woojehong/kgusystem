@@ -318,7 +318,7 @@ export default function IndexPage() {
                 {filteredRaids.map((raid) => (
                   <div
                     key={raid.id}
-                    className="w-[calc(50%-0.375rem)] sm:w-[calc(25%-0.75rem)] min-w-[150px]"
+                    className="w-full sm:w-[calc(25%-0.75rem)] sm:min-w-[150px]"
                   >
                     <RaidCard raid={raid} counts={counts[raid.id]} mine={myStatus[raid.id]} />
                   </div>
