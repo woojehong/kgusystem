@@ -88,13 +88,15 @@ export default function GuildMemberManager({ guild }) {
     }
   };
 
-  const charLine = (m) =>
-    (m.characters || [])
+  const charLine = (m) => {
+    const list = (m.characters || [])
+      .filter((c) => c && c.name)
       .map((c) => {
         const cls = getClass(gamedata.classes, c.classId);
         return `${c.name}${cls ? ` (${cls.name})` : ''}`;
-      })
-      .join(' · ') || '등록된 캐릭터 없음';
+      });
+    return list.length ? list.join(' · ') : '등록된 캐릭터 없음';
+  };
 
   const Row = ({ m }) => {
     const self = m.id === userId;
@@ -180,7 +182,6 @@ export default function GuildMemberManager({ guild }) {
             members.map((m) => <Row key={m.id} m={m} />)
           )}
 
-          {/* 소속없음 데려오기 — 작고 눈에 덜 띄게 */}
           <div className="pt-2">
             <button
               type="button"

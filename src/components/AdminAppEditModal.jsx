@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { formatDateLabel } from '../lib/utils';
+import { useApp } from '../context/AppContext';
+import { formatDateLabel, badgeTextStyle } from '../lib/utils';
 import { updateApplication, cancelApplication, fetchMemo, setUserNotice } from '../lib/db';
 import Modal from './Modal';
 
@@ -20,7 +21,10 @@ function positionKey(app) {
  * and removal. Nickname and spec are intentionally not editable.
  */
 export default function AdminAppEditModal({ open, onClose, raid, app }) {
+  const { gamedata } = useApp();
   const [ilvl, setIlvl] = useState('');
+  const [classId, setClassId] = useState('');
+  const [specId, setSpecId] = useState('');
   const [memoText, setMemoText] = useState('');
   const [position, setPosition] = useState('tank');
   const [status, setStatus] = useState('active');
@@ -31,6 +35,8 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
   useEffect(() => {
     if (!open || !app) return;
     setIlvl(app.ilvl != null ? String(app.ilvl) : '');
+    setClassId(app.classId || '');
+    setSpecId(app.specId || '');
     setPosition(positionKey(app));
     setStatus(app.status);
     setError('');
@@ -43,6 +49,11 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
   }, [open, app?.id]);
 
   if (!app) return null;
+
+  const selCls = gamedata.classes.find((c) => c.id === classId) || null;
+  const roleSpecs = selCls ? selCls.specs.filter((s) => s.role === position) : [];
+  const selSpec = roleSpecs.find((s) => s.id === specId) || null;
+  const classesForRole = gamedata.classes.filter((c) => c.specs.some((s) => s.role === position));
 
   const raidTitle = `${formatDateLabel(raid.dateKey)} ${
     raid.difficulty === 'mythic' ? '신화' : raid.difficulty === 'heroic' ? '영웅' : '일반'
@@ -62,7 +73,12 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
       const payload = {
         ilvl: ilvl ? Number(ilvl) : null,
         role: opt.role,
-        range: opt.role === 'dps' ? app.range ?? null : null,
+        classId: classId || null,
+        className: selCls?.name || null,
+        classColor: selCls?.color || app.classColor || '#94a3b8',
+        specId: selSpec?.id || null,
+        specName: selSpec?.name || null,
+        range: opt.role === 'dps' ? (selSpec ? selSpec.range : null) : null,
         status,
       };
       // A position or status change re-enters at the back of the queue.
@@ -105,14 +121,12 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
             <span className="font-semibold">{app.nickname}</span>
             {app.isReservation && <span className="ml-2 text-amber-300 text-xs font-bold">예약</span>}
           </p>
-          <p>
-            <span className="text-base-400">클래스/특성</span>{' '}
-            <span className="font-semibold">
-              {app.className || '미지정'}
-              {app.specName ? ` | ${app.specName}` : ''}
-            </span>
-            <span className="ml-2 text-xs text-base-400">(수정 불가)</span>
-          </p>
+          {app.charName && app.charName !== app.nickname && (
+            <p>
+              <span className="text-base-400">캐릭터</span>{' '}
+              <span className="font-semibold">{app.charName}</span>
+            </p>
+          )}
         </div>
 
         <div>
@@ -133,7 +147,7 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
               <button
                 key={o.key}
                 type="button"
-                onClick={() => setPosition(o.key)}
+                onClick={() => { setPosition(o.key); setSpecId(''); }}
                 className={`py-2 rounded-lg text-sm font-medium border transition ${
                   position === o.key
                     ? 'border-indigo-400 bg-indigo-500/15'
@@ -148,6 +162,65 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
             변경 시 기존 슬롯은 즉시 반환되고 새 포지션의 최후순위로 배정됩니다.
           </p>
         </div>
+
+        <div>
+          <label className="label-sm">
+            클래스 <span className="text-base-400 font-normal">(시너지·표시용 · 수정 가능)</span>
+          </label>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+            <button
+              type="button"
+              onClick={() => { setClassId(''); setSpecId(''); }}
+              className={`px-1 py-2 rounded-lg text-xs font-semibold border transition ${
+                !classId ? 'border-indigo-400 bg-base-700' : 'border-base-700 bg-base-800 hover:bg-base-700'
+              }`}
+            >
+              미지정
+            </button>
+            {classesForRole.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => { setClassId(c.id); setSpecId(''); }}
+                className={`px-1 py-2 rounded-lg text-xs font-semibold border transition ${
+                  classId === c.id ? 'border-indigo-400 bg-base-700' : 'border-base-700 bg-base-800 hover:bg-base-700'
+                }`}
+                style={badgeTextStyle(c.color)}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {selCls && roleSpecs.length > 0 && (
+          <div>
+            <label className="label-sm">특성 <span className="text-base-400 font-normal">(선택)</span></label>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSpecId('')}
+                className={`px-3 py-2 rounded-lg text-sm font-medium border transition ${
+                  !specId ? 'border-indigo-400 bg-indigo-500/15' : 'border-base-700 bg-base-850 hover:bg-base-700'
+                }`}
+              >
+                미지정
+              </button>
+              {roleSpecs.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSpecId(s.id)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium border transition ${
+                    specId === s.id ? 'border-indigo-400 bg-indigo-500/15' : 'border-base-700 bg-base-850 hover:bg-base-700'
+                  }`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="label-sm">상태</label>

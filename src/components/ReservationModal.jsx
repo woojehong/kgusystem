@@ -17,6 +17,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
   const [nickname, setNickname] = useState('');
   const [classId, setClassId] = useState('');
   const [specId, setSpecId] = useState('');
+  const [ilvl, setIlvl] = useState('');
   const [memoText, setMemoText] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -26,6 +27,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
       setNickname('');
       setClassId('');
       setSpecId('');
+      setIlvl('');
       setMemoText('');
       setError('');
     }
@@ -65,7 +67,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
           specName: spec?.name || null,
           role,
           range: role === 'dps' ? (spec ? spec.range : null) : null,
-          ilvl: null,
+          ilvl: ilvl ? Number(ilvl) : null,
           leaderCapable: false,
           swap: false,
           swapRoles: [],
@@ -169,6 +171,17 @@ export default function ReservationModal({ open, onClose, raid, role }) {
             </div>
           </div>
         )}
+
+        <div>
+          <label className="label-sm">아이템 레벨 <span className="text-base-400 font-normal">(선택)</span></label>
+          <input
+            className="input-base"
+            value={ilvl}
+            onChange={(e) => setIlvl(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            inputMode="numeric"
+            placeholder="예: 639"
+          />
+        </div>
 
         <div>
           <label className="label-sm">관리자 메모 (선택)</label>
