@@ -20,6 +20,7 @@ import BenchCard from '../components/BenchCard';
 import { useToast } from '../components/Toast';
 import ApplyModal from '../components/ApplyModal';
 import ReservationModal from '../components/ReservationModal';
+import AdminMemberAddModal from '../components/AdminMemberAddModal';
 import AdminAppEditModal from '../components/AdminAppEditModal';
 import RaidFormModal from '../components/RaidFormModal';
 import Modal from '../components/Modal';
@@ -104,6 +105,7 @@ export default function RaidDetailPage() {
   const [applyOpen, setApplyOpen] = useState(false);
   const [editApply, setEditApply] = useState(false);
   const [reserveRole, setReserveRole] = useState(null);
+  const [memberAddOpen, setMemberAddOpen] = useState(false);
   const [adminTarget, setAdminTarget] = useState(null);
   const [raidEditOpen, setRaidEditOpen] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
@@ -438,6 +440,20 @@ export default function RaidDetailPage() {
           </div>
         )}
 
+        {/* ── 길드 마스터 전용: 내 길드원 직접 추가 (관리자 모드 ON, 연합/자기 길드 레이드만) ── */}
+        {profile?.isGuildMaster && adminMode &&
+          (!raid.partyType || raid.partyType === 'union' || raid.partyType === profile.guildId) && (
+          <div className="mt-8 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setMemberAddOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-sm font-semibold transition"
+            >
+              👑 길드원 추가
+            </button>
+          </div>
+        )}
+
         {/* ── Roster (primary) ── */}
         <div className="mt-10 space-y-4">
           <div className="card p-3">
@@ -582,6 +598,12 @@ export default function RaidDetailPage() {
         onClose={() => setAdminTarget(null)}
         raid={raid}
         app={adminTarget}
+      />
+      <AdminMemberAddModal
+        open={memberAddOpen}
+        onClose={() => setMemberAddOpen(false)}
+        raid={raid}
+        apps={apps}
       />
       <RaidFormModal
         open={raidEditOpen}
