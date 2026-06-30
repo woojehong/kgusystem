@@ -334,34 +334,50 @@ async function buildDetailEmbed(db, raidId) {
     else if (a.status === 'wait') wait.push(a);
     else if (a.status === 'bench') bench.push(a);
   });
-  // 정렬감 있는 로스터: `아이템레벨` **캐릭명** · 특성  (아이템레벨은 모노스페이스로 칸 맞춤)
-  const fmt = (arr) => (arr.length
-    ? arr.map((a) => `${classIcon(a)} \`${String(a.ilvl || '—').padStart(3)}\` **${a.charName}**${a.specName ? ` · ${a.specName}` : ''}`).join('\n').slice(0, 1024)
-    : '—');
+  const NL = `
+`;
+  const ZWS = '​';
+  // 로스터 한 줄: (클래스아이콘) **아이디** 특성2글자  (아이템레벨·스왑 미표기)
+  const entry = (a) => `${classIcon(a)} **${a.charName}**${a.specName ? ` ${a.specName}` : ''}`;
+  const col = (arr) => (arr.length ? arr.map(entry).join(NL).slice(0, 1024) : '—');
 
-  // 딜러는 근딜/원딜로 나눠서 표기 (헤더 숫자는 전체 딜러 합계 그대로)
+  const fields = [];
+  // 한 섹션을 좌/우 2단으로: 전체폭 헤더 + 인라인 필드 2개(좌단/우단).
+  const pushTwoCol = (label, arr) => {
+    if (!arr.length) { fields.push({ name: label, value: '—', inline: false }); return; }
+    const half = Math.ceil(arr.length / 2);
+    fields.push({ name: label, value: ZWS, inline: false });
+    fields.push({ name: ZWS, value: col(arr.slice(0, half)), inline: true });
+    const right = arr.slice(half);
+    fields.push({ name: ZWS, value: right.length ? col(right) : ZWS, inline: true });
+  };
+
   const meleeDps = active.dps.filter((a) => !isRangedApp(a));
   const rangedDps = active.dps.filter((a) => isRangedApp(a));
-  const dpsValue = `**▸ 근딜 ${meleeDps.length}**\n${fmt(meleeDps)}\n\n**▸ 원딜 ${rangedDps.length}**\n${fmt(rangedDps)}`;
 
-  const fields = [
-    { name: `🛡 탱커 ${active.tank.length}/${caps.tankCap}`, value: fmt(active.tank) },
-    { name: `💚 힐러 ${active.healer.length}/${caps.healerCap}`, value: fmt(active.healer) },
-    { name: `⚔️ 딜러 ${active.dps.length}/${caps.dpsCap}`, value: dpsValue.slice(0, 1024) },
-  ];
-  if (wait.length) fields.push({ name: `⏳ 대기 ${wait.length}`, value: fmt(wait) });
-  if (bench.length) fields.push({ name: `🪑 벤치 ${bench.length}`, value: fmt(bench) });
+  pushTwoCol(`🛡 탱커 ${active.tank.length}/${caps.tankCap}`, active.tank);
+  pushTwoCol(`💚 힐러 ${active.healer.length}/${caps.healerCap}`, active.healer);
+  pushTwoCol(`⚔️ 딜러 ${active.dps.length}/${caps.dpsCap} · 근딜 ${meleeDps.length}`, meleeDps);
+  pushTwoCol(`🏹 원딜 ${rangedDps.length}`, rangedDps);
+  if (wait.length) pushTwoCol(`⏳ 대기 ${wait.length}`, wait);
+  if (bench.length) pushTwoCol(`🪑 벤치 ${bench.length}`, bench);
 
-  // 클래스 분포 — 활성 인원 기준, 가나다순. (아이콘이 클래스 색, 숫자는 볼드)
+  // 클래스 분포 — 보유(이모지+수, 7개씩) / 결여(이모지만, 한 줄 균등 간격). 가나다순.
   const clsCount = {};
   [...active.tank, ...active.healer, ...active.dps].forEach((a) => {
     if (a.classId) clsCount[a.classId] = (clsCount[a.classId] || 0) + 1;
   });
-  const tally = CLASS_GANADA
-    .filter((id) => clsCount[id])
-    .map((id) => `${CLASS_EMOJI[id] || ''} **${clsCount[id]}**`)
-    .join(' ');
-  if (tally) fields.push({ name: '​', value: `**클래스 분포**\n${tally}` });
+  const heldRows = (arr) => {
+    const out = [];
+    for (let i = 0; i < arr.length; i += 7) out.push(arr.slice(i, i + 7).join(' '));
+    return out.join(NL);
+  };
+  const held = CLASS_GANADA.filter((id) => clsCount[id]);
+  const lack = CLASS_GANADA.filter((id) => !clsCount[id]);
+  const distParts = [];
+  if (held.length) distParts.push(`**보유**${NL}${heldRows(held.map((id) => `${CLASS_EMOJI[id] || ''} **${clsCount[id]}**`))}`);
+  if (lack.length) distParts.push(`**결여**${NL}${lack.map((id) => CLASS_EMOJI[id] || '').join(' ')}`);
+  if (distParts.length) fields.push({ name: '클래스 분포', value: distParts.join(NL + NL), inline: false });
 
   return {
     embed: {
@@ -916,6 +932,7 @@ const CARD_CHANNELS = [
   { channelId: '1517705693371830322', filter: 'union' },          // 스타폴 서버 · 연합
   { channelId: '1517705660903587970', filter: 'guild:starfall' }, // 스타폴 서버 · 스타폴 길드(영문명)
   { channelId: '1519867938671165490', filter: 'guild:e-ayo' },    // 이에요 서버 · 이에요 길드(영문명)
+  { channelId: '1521323489573994586', filter: 'guild:gyocharo' }, // 교차로 서버 · 교차로 길드(영문명)
 ];
 const LEGACY_UNION_CHANNEL = '1517678646343635064';
 
@@ -1105,7 +1122,7 @@ const COMMANDS = [
 ];
 
 // 명령을 등록할 서버(길드) 목록 — DISCORD_GUILD_ID(한길련) + 아래 추가 서버들
-const EXTRA_GUILD_IDS = ['1430130051734704259', '861086826637557821']; // 스타폴 서버, 이에요 서버
+const EXTRA_GUILD_IDS = ['1430130051734704259', '861086826637557821', '1264845965387501630']; // 스타폴, 이에요, 교차로 서버
 
 exports.discordRegisterCommands = onRequest(
   { secrets: [DISCORD_BOT_TOKEN, DISCORD_APP_ID, DISCORD_GUILD_ID, BOT_REGISTER_KEY] },

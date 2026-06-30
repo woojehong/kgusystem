@@ -3,6 +3,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
+  where,
   setDoc,
   addDoc,
   updateDoc,
@@ -177,4 +179,28 @@ export function setUserNotice(userId, notice) {
 
 export function clearUserNotice(userId) {
   return updateDoc(doc(db, 'users', userId), { notice: null });
+}
+
+// ── 길드원 관리 (길드 마스터 전용) ──────────────────────────────────
+
+/** 특정 길드에 소속된 회원 목록. */
+export async function fetchUsersByGuild(guildId) {
+  const q = query(collection(db, 'users'), where('guildId', '==', guildId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/** 회원 역할 변경 (user ↔ admin). super는 이 경로로 설정 불가. */
+export function setMemberRole(userId, role) {
+  return updateDoc(doc(db, 'users', userId), { role });
+}
+
+/** 공대장 가능 토글. */
+export function setMemberLeaderCapable(userId, leaderCapable) {
+  return updateDoc(doc(db, 'users', userId), { leaderCapable: !!leaderCapable });
+}
+
+/** 회원 소속 길드 변경 (제명 = none, 데려오기 = 내 길드). */
+export function setMemberGuild(userId, guildId) {
+  return updateDoc(doc(db, 'users', userId), { guildId });
 }

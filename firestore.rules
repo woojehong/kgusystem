@@ -44,6 +44,12 @@ service cloud.firestore {
         && myUserDoc().guildId == guildId;
     }
 
+    // Whether a guild document is the "소속 없음" (unassigned) guild.
+    function isNoneGuild(gid) {
+      return exists(/databases/$(database)/documents/guilds/$(gid))
+        && get(/databases/$(database)/documents/guilds/$(gid)).data.isNone == true;
+    }
+
     // ── Nickname → account mapping (public lookup for login) ───────
 
     match /nicknames/{nickname} {
@@ -86,6 +92,29 @@ service cloud.firestore {
         || (myUserId() == userId && request.resource.data.role == resource.data.role)
         // Admins may only touch the notice field (promotion popups).
         || (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notice']))
+        // Guild master managing a member of their own guild:
+        // may change role (user/admin only), leaderCapable, or kick to '소속 없음'.
+        // Never their own account, never a super, never grants super.
+        || (
+          myUserDoc().isGuildMaster == true
+          && myUserId() != userId
+          && resource.data.role != 'super'
+          && resource.data.guildId == myUserDoc().guildId
+          && request.resource.data.role in ['user', 'admin']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'leaderCapable', 'guildId'])
+          && (
+            request.resource.data.guildId == resource.data.guildId
+            || isNoneGuild(request.resource.data.guildId)
+          )
+        )
+        // Guild master claiming a '소속 없음' member into their own guild (guildId only).
+        || (
+          myUserDoc().isGuildMaster == true
+          && resource.data.role != 'super'
+          && isNoneGuild(resource.data.guildId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['guildId'])
+          && request.resource.data.guildId == myUserDoc().guildId
+        )
       );
 
       allow delete: if isSuper();

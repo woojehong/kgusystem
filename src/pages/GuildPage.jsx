@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import { buildBadgeStyles } from '../components/GuildBadge';
+import GuildMemberManager from '../components/GuildMemberManager';
 import {
   blockTextStyle,
   imgWidthValue,
@@ -149,6 +150,9 @@ export default function GuildPage() {
             </p>
           )}
         </div>
+
+        {/* ── 길드원 관리 (길드 마스터 전용, 일반 길드만) ── */}
+        {!guild.isUnion && !guild.isNone && <GuildMemberManager guild={guild} />}
       </main>
     </div>
   );
