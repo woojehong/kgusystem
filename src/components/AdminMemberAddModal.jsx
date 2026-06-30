@@ -12,6 +12,7 @@ export default function AdminMemberAddModal({ open, onClose, raid, apps = [] }) 
   const { profile, guilds, gamedata } = useApp();
 
   const [members, setMembers] = useState(null);
+  const [query, setQuery] = useState('');
   const [memberId, setMemberId] = useState('');
   const [charIndex, setCharIndex] = useState(0);
   const [specId, setSpecId] = useState('');
@@ -21,13 +22,13 @@ export default function AdminMemberAddModal({ open, onClose, raid, apps = [] }) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  // 이미 신청한 회원 userId 집합 (중복 방지 안내)
   const appliedIds = useMemo(() => new Set(apps.map((a) => a.userId).filter(Boolean)), [apps]);
 
   useEffect(() => {
     if (!open) return;
     setMembers(null);
     setMemberId('');
+    setQuery('');
     setError('');
     fetchUsersByGuild(profile.guildId)
       .then((list) => {
@@ -135,6 +136,14 @@ export default function AdminMemberAddModal({ open, onClose, raid, apps = [] }) 
     }
   };
 
+  const q = query.trim().toLowerCase();
+  const filteredMembers = (members || []).filter(
+    (m) =>
+      !q ||
+      (m.nickname || '').toLowerCase().includes(q) ||
+      (m.characters || []).some((c) => (c.name || '').toLowerCase().includes(q))
+  );
+
   return (
     <Modal open={open} onClose={() => onClose(false)} title="길드원 추가">
       <div className="space-y-4">
@@ -142,38 +151,55 @@ export default function AdminMemberAddModal({ open, onClose, raid, apps = [] }) 
           내 길드원을 이 레이드에 직접 추가합니다. (그 회원이 직접 신청한 것과 동일하게 처리되며, 회원 본인도 수정·취소할 수 있습니다)
         </p>
 
-        {/* 1) 길드원 선택 */}
         <div>
-          <label className="label-sm">길드원 (로그인 ID)</label>
+          <label className="label-sm">길드원 (로그인 ID · 캐릭터명 검색)</label>
+          <input
+            className="input-base mb-2"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="로그인 ID 또는 캐릭터명 검색 (예: 그늘)"
+          />
           {members === null ? (
             <p className="text-sm text-base-400 py-3 text-center">불러오는 중…</p>
           ) : members.length === 0 ? (
             <p className="text-sm text-base-400 py-3 text-center">소속 길드원이 없습니다.</p>
+          ) : filteredMembers.length === 0 ? (
+            <p className="text-sm text-base-400 py-3 text-center">검색 결과가 없습니다.</p>
           ) : (
-            <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
-              {members.map((m) => (
+            <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
+              {filteredMembers.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => selectMember(m.id)}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left transition ${
+                  className={`w-full px-3 py-2 rounded-xl border text-left transition ${
                     memberId === m.id ? 'border-indigo-400 bg-indigo-500/10' : 'border-base-700 bg-base-850 hover:bg-base-700'
                   }`}
                 >
-                  <span className="font-bold text-sm text-white truncate">{m.nickname}</span>
-                  <span className="flex items-center gap-1 shrink-0">
-                    <span className="text-[11px] text-base-400">{(m.characters || []).length}캐릭</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm text-white truncate">{m.nickname}</span>
                     {appliedIds.has(m.id) && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">신청됨</span>
+                      <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">신청됨</span>
                     )}
-                  </span>
+                  </div>
+                  {(m.characters || []).length > 0 && (
+                    <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 mt-0.5">
+                      {m.characters.map((c) => {
+                        const cCls = getClass(gamedata.classes, c.classId);
+                        return (
+                          <span key={c.id} className="text-[11px] font-semibold leading-tight" style={{ color: cCls?.color || '#cbd5e1' }}>
+                            {c.name}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* 2) 캐릭터 + 특성 + 템렙 + 스왑 + 상태 */}
         {member && (
           <>
             <div>
