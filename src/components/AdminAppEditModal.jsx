@@ -23,6 +23,7 @@ function positionKey(app) {
 export default function AdminAppEditModal({ open, onClose, raid, app }) {
   const { gamedata } = useApp();
   const [ilvl, setIlvl] = useState('');
+  const [server, setServer] = useState('');
   const [classId, setClassId] = useState('');
   const [specId, setSpecId] = useState('');
   const [memoText, setMemoText] = useState('');
@@ -35,6 +36,7 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
   useEffect(() => {
     if (!open || !app) return;
     setIlvl(app.ilvl != null ? String(app.ilvl) : '');
+    setServer(app.server || '');
     setClassId(app.classId || '');
     setSpecId(app.specId || '');
     setPosition(positionKey(app));
@@ -72,6 +74,7 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
       const statusChanged = app.status !== status;
       const payload = {
         ilvl: ilvl ? Number(ilvl) : null,
+        server: server || null,
         role: opt.role,
         classId: classId || null,
         className: selCls?.name || null,
@@ -138,6 +141,16 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
             inputMode="numeric"
             placeholder="미입력"
           />
+        </div>
+
+        <div>
+          <label className="label-sm">서버 <span className="text-base-400 font-normal">(예약자 서버 지정 가능)</span></label>
+          <select className="input-base" value={server} onChange={(e) => setServer(e.target.value)}>
+            <option value="">미지정</option>
+            {(gamedata.servers || []).map((s) => (
+              <option key={s.slug || s.ko} value={s.ko}>{s.ko}</option>
+            ))}
+          </select>
         </div>
 
         <div>

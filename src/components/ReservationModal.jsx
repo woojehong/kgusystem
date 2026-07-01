@@ -15,6 +15,7 @@ import Modal from './Modal';
 export default function ReservationModal({ open, onClose, raid, role }) {
   const { gamedata } = useApp();
   const [nickname, setNickname] = useState('');
+  const [server, setServer] = useState('');
   const [classId, setClassId] = useState('');
   const [specId, setSpecId] = useState('');
   const [ilvl, setIlvl] = useState('');
@@ -25,6 +26,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
   useEffect(() => {
     if (open) {
       setNickname('');
+      setServer('');
       setClassId('');
       setSpecId('');
       setIlvl('');
@@ -59,7 +61,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
           guildColor: '#f59e0b',
           charId: null,
           charName: nickname.trim(),
-          server: null,
+          server: server || null,
           classId: classId || null,
           className: cls?.name || null,
           classColor: cls?.color || '#94a3b8',
@@ -97,6 +99,20 @@ export default function ReservationModal({ open, onClose, raid, role }) {
             placeholder="예약자 닉네임"
             maxLength={24}
           />
+        </div>
+
+        <div>
+          <label className="label-sm">서버 <span className="text-base-400 font-normal">(선택)</span></label>
+          <select
+            className="input-base"
+            value={server}
+            onChange={(e) => setServer(e.target.value)}
+          >
+            <option value="">미지정</option>
+            {(gamedata.servers || []).map((s) => (
+              <option key={s.slug || s.ko} value={s.ko}>{s.ko}</option>
+            ))}
+          </select>
         </div>
 
         <div>
