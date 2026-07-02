@@ -16,6 +16,7 @@ import Header from '../components/Header';
 import SynergyBoard from '../components/SynergyBoard';
 import SwapList from '../components/SwapList';
 import ApplicantCard from '../components/ApplicantCard';
+import MobileRosterRow from '../components/MobileRosterRow';
 import BenchCard from '../components/BenchCard';
 import { useToast } from '../components/Toast';
 import ApplyModal from '../components/ApplyModal';
@@ -251,6 +252,18 @@ export default function RaidDetailPage() {
       </div>
     ));
 
+  // 모바일 전용: 전체폭 1줄 리스트 (이름 크기 통일)
+  const renderMobile = (list, rankFn) =>
+    list.map((app) => (
+      <MobileRosterRow
+        key={app.id}
+        app={app}
+        rank={rankFn(app)}
+        adminView={adminView}
+        onAdminClick={setAdminTarget}
+      />
+    ));
+
   // 대기자/벤치는 한 줄에 2명 (절반 폭)
   const renderCards2 = (list, rankFn) =>
     list.map((app) => (
@@ -465,8 +478,13 @@ export default function RaidDetailPage() {
               adminMode={adminView}
               onAdd={() => setReserveRole('tank')}
             />
-            <div className="flex flex-wrap justify-center gap-1.5">
+            <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
               {renderCards(derived.tanks, (a) => derived.activeRank[a.id])}
+            </div>
+            <div className="sm:hidden space-y-1.5">
+              {derived.tanks.length
+                ? renderMobile(derived.tanks, (a) => derived.activeRank[a.id])
+                : <p className="text-xs text-base-600 text-center py-2">없음</p>}
             </div>
           </div>
 
@@ -479,8 +497,13 @@ export default function RaidDetailPage() {
               adminMode={adminView}
               onAdd={() => setReserveRole('healer')}
             />
-            <div className="flex flex-wrap justify-center gap-1.5">
+            <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
               {renderCards(derived.healers, (a) => derived.activeRank[a.id])}
+            </div>
+            <div className="sm:hidden space-y-1.5">
+              {derived.healers.length
+                ? renderMobile(derived.healers, (a) => derived.activeRank[a.id])
+                : <p className="text-xs text-base-600 text-center py-2">없음</p>}
             </div>
           </div>
 
@@ -499,10 +522,15 @@ export default function RaidDetailPage() {
               <p className="text-xs font-bold text-base-400 mb-1.5">
                 근딜 <span className="text-base-300">{derived.meleeDps.length}</span>
               </p>
-              <div className="flex flex-wrap justify-center gap-1.5">
+              <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
                 {derived.meleeDps.length
                   ? renderCards(derived.meleeDps, (a) => derived.activeRank[a.id])
                   : <span className="text-xs text-base-600 py-2">없음</span>}
+              </div>
+              <div className="sm:hidden space-y-1.5">
+                {derived.meleeDps.length
+                  ? renderMobile(derived.meleeDps, (a) => derived.activeRank[a.id])
+                  : <p className="text-xs text-base-600 py-2">없음</p>}
               </div>
             </div>
 
@@ -511,10 +539,15 @@ export default function RaidDetailPage() {
               <p className="text-xs font-bold text-base-400 mb-1.5">
                 원딜 <span className="text-base-300">{derived.rangedDps.length}</span>
               </p>
-              <div className="flex flex-wrap justify-center gap-1.5">
+              <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
                 {derived.rangedDps.length
                   ? renderCards(derived.rangedDps, (a) => derived.activeRank[a.id])
                   : <span className="text-xs text-base-600 py-2">없음</span>}
+              </div>
+              <div className="sm:hidden space-y-1.5">
+                {derived.rangedDps.length
+                  ? renderMobile(derived.rangedDps, (a) => derived.activeRank[a.id])
+                  : <p className="text-xs text-base-600 py-2">없음</p>}
               </div>
             </div>
           </div>

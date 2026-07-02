@@ -7,10 +7,7 @@ import Modal from './Modal';
 
 /**
  * Admin reservation form. A reservation occupies a slot in the chosen
- * position. Class and spec are optional:
- * - spec chosen     → synergy counted, DPS column auto-assigned
- * - class only      → synergy counted, DPS column undecided
- * - nothing chosen  → headcount only
+ * position. Class and spec are optional.
  */
 export default function ReservationModal({ open, onClose, raid, role }) {
   const { gamedata } = useApp();
@@ -103,11 +100,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
 
         <div>
           <label className="label-sm">서버 <span className="text-base-400 font-normal">(선택)</span></label>
-          <select
-            className="input-base"
-            value={server}
-            onChange={(e) => setServer(e.target.value)}
-          >
+          <select className="input-base" value={server} onChange={(e) => setServer(e.target.value)}>
             <option value="">미지정</option>
             {(gamedata.servers || []).map((s) => (
               <option key={s.slug || s.ko} value={s.ko}>{s.ko}</option>
@@ -122,10 +115,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
             <button
               type="button"
-              onClick={() => {
-                setClassId('');
-                setSpecId('');
-              }}
+              onClick={() => { setClassId(''); setSpecId(''); }}
               className={`px-1 py-2 rounded-lg text-xs font-semibold border transition ${
                 !classId ? 'border-indigo-400 bg-base-700' : 'border-base-700 bg-base-800 hover:bg-base-700'
               }`}
@@ -138,14 +128,9 @@ export default function ReservationModal({ open, onClose, raid, role }) {
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => {
-                    setClassId(c.id);
-                    setSpecId('');
-                  }}
+                  onClick={() => { setClassId(c.id); setSpecId(''); }}
                   className={`px-1 py-2 rounded-lg text-xs font-semibold border transition ${
-                    classId === c.id
-                      ? 'border-indigo-400 bg-base-700'
-                      : 'border-base-700 bg-base-800 hover:bg-base-700'
+                    classId === c.id ? 'border-indigo-400 bg-base-700' : 'border-base-700 bg-base-800 hover:bg-base-700'
                   }`}
                   style={badgeTextStyle(c.color)}
                 >
@@ -155,11 +140,9 @@ export default function ReservationModal({ open, onClose, raid, role }) {
           </div>
         </div>
 
-        {role === 'dps' && cls && (
+        {cls && roleSpecs.length > 0 && (
           <div>
-            <label className="label-sm">
-              특성 <span className="text-base-400 font-normal">(선택)</span>
-            </label>
+            <label className="label-sm">특성 <span className="text-base-400 font-normal">(선택)</span></label>
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
@@ -176,9 +159,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
                   type="button"
                   onClick={() => setSpecId(s.id)}
                   className={`px-3 py-2 rounded-lg text-sm font-medium border transition ${
-                    specId === s.id
-                      ? 'border-indigo-400 bg-indigo-500/15'
-                      : 'border-base-700 bg-base-850 hover:bg-base-700'
+                    specId === s.id ? 'border-indigo-400 bg-indigo-500/15' : 'border-base-700 bg-base-850 hover:bg-base-700'
                   }`}
                 >
                   {s.name}
