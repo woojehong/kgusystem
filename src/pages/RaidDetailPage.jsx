@@ -574,8 +574,11 @@ export default function RaidDetailPage() {
                     list.length === 0 ? null : (
                       <div key={label}>
                         <p className="text-xs font-semibold text-base-400 mb-1.5">{label}</p>
-                        <div className="flex flex-wrap justify-center gap-1.5">
+                        <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
                           {renderCards2(list, (a) => list.indexOf(a) + 1)}
+                        </div>
+                        <div className="sm:hidden space-y-1.5">
+                          {renderMobile(list, (a) => list.indexOf(a) + 1)}
                         </div>
                       </div>
                     )
@@ -593,19 +596,24 @@ export default function RaidDetailPage() {
               {derived.bench.length === 0 ? (
                 <p className="text-sm text-base-400 text-center py-2">벤치 인원이 없습니다.</p>
               ) : (
-                <div className="flex flex-wrap justify-center gap-1.5">
-                  {derived.bench.map((app) => (
-                    <div key={app.id} style={{ flexBasis: 'calc(50% - 3px)', flexShrink: 0, minWidth: 0 }}>
-                      <BenchCard
-                        app={app}
-                        memo={adminView ? memos[app.id] : undefined}
-                        adminView={adminView}
-                        onAdminClick={setAdminTarget}
-                        highlight={app.id === userId}
-                      />
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
+                    {derived.bench.map((app) => (
+                      <div key={app.id} style={{ flexBasis: 'calc(50% - 3px)', flexShrink: 0, minWidth: 0 }}>
+                        <BenchCard
+                          app={app}
+                          memo={adminView ? memos[app.id] : undefined}
+                          adminView={adminView}
+                          onAdminClick={setAdminTarget}
+                          highlight={app.id === userId}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="sm:hidden space-y-1.5">
+                    {renderMobile(derived.bench, () => null)}
+                  </div>
+                </>
               )}
             </div>
           </div>

@@ -50,7 +50,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-base-900/90 backdrop-blur border-b border-base-800">
+      <header className="sticky top-0 z-40 bg-base-900/90 backdrop-blur border-b border-base-800 pt-[env(safe-area-inset-top)]">
         {/* Desktop */}
         <div className="hidden sm:flex items-center justify-between max-w-6xl mx-auto px-4 h-16">
           <Link to="/" className="flex flex-col group">
