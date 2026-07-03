@@ -12,6 +12,29 @@ export function getSpec(classes, classId, specId) {
   return cls.specs.find((s) => s.id === specId) || null;
 }
 
+/**
+ * 신청/캐릭터 데이터에서 화면에 표시할 특성 목록을 반환.
+ * allSpecNames(여러 특성) 우선, 없으면 specName 하나. 클래스+이름으로 specId를 역해석해
+ * 아이콘 매칭이 가능하게 하고, 최대 3개까지 반환한다. → [{ id, name }]
+ */
+export function appSpecList(classes, app) {
+  if (!app) return [];
+  const cls = getClass(classes, app.classId);
+  const names =
+    app.allSpecNames && app.allSpecNames.length
+      ? app.allSpecNames
+      : app.specName
+      ? [app.specName]
+      : [];
+  return names
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((nm) => {
+      const s = cls ? cls.specs.find((x) => x.name === nm) : null;
+      return { id: s ? s.id : null, name: nm };
+    });
+}
+
 // ── Date helpers (KST local time) ───────────────────────────────────
 
 export function toDateKey(date) {

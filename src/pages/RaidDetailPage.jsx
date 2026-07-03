@@ -16,7 +16,7 @@ import Header from '../components/Header';
 import SynergyBoard from '../components/SynergyBoard';
 import SwapList from '../components/SwapList';
 import ApplicantCard from '../components/ApplicantCard';
-import MobileRosterRow from '../components/MobileRosterRow';
+import RosterListRow from '../components/RosterListRow';
 import BenchCard from '../components/BenchCard';
 import { useToast } from '../components/Toast';
 import ApplyModal from '../components/ApplyModal';
@@ -107,6 +107,15 @@ export default function RaidDetailPage() {
   const [editApply, setEditApply] = useState(false);
   const [reserveRole, setReserveRole] = useState(null);
   const [memberAddOpen, setMemberAddOpen] = useState(false);
+  // 로스터 표시 모드: 'list'(기본) | 'card'
+  const [rosterView, setRosterView] = useState(() => {
+    const v = typeof localStorage !== 'undefined' && localStorage.getItem('kwgu_roster_view');
+    return v === 'card' ? 'card' : 'list';
+  });
+  const setRosterViewPersist = (v) => {
+    setRosterView(v);
+    try { localStorage.setItem('kwgu_roster_view', v); } catch { /* ignore */ }
+  };
   const [adminTarget, setAdminTarget] = useState(null);
   const [raidEditOpen, setRaidEditOpen] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
@@ -252,13 +261,14 @@ export default function RaidDetailPage() {
       </div>
     ));
 
-  // 모바일 전용: 전체폭 1줄 리스트 (이름 크기 통일)
-  const renderMobile = (list, rankFn) =>
+  // 목록형 행 리스트 (모바일·데스크탑 리스트뷰 공용)
+  const renderList = (list, rankFn) =>
     list.map((app) => (
-      <MobileRosterRow
+      <RosterListRow
         key={app.id}
         app={app}
         rank={rankFn(app)}
+        memo={adminView ? memos[app.id] : undefined}
         adminView={adminView}
         onAdminClick={setAdminTarget}
       />
@@ -277,6 +287,37 @@ export default function RaidDetailPage() {
         />
       </div>
     ));
+
+  // 벤치 카드 (여러 캐릭 표시용 전용 카드)
+  const renderBenchCards = (list) =>
+    list.map((app) => (
+      <div key={app.id} style={{ flexBasis: 'calc(50% - 3px)', flexShrink: 0, minWidth: 0 }}>
+        <BenchCard
+          app={app}
+          memo={adminView ? memos[app.id] : undefined}
+          adminView={adminView}
+          onAdminClick={setAdminTarget}
+          highlight={app.id === userId}
+        />
+      </div>
+    ));
+
+  // 로스터 섹션 렌더 — 데스크탑은 카드/리스트 토글, 모바일은 항상 리스트.
+  // cols: 데스크탑 리스트뷰 열 수 (탱힐딜=2, 대기/벤치=1), cardRender: 카드뷰 렌더러
+  const renderRoster = (list, rankFn, cols = 2, cardRender = renderCards) => (
+    <>
+      {rosterView === 'card' ? (
+        <div className="hidden sm:flex flex-wrap justify-center gap-1.5">{cardRender(list, rankFn)}</div>
+      ) : (
+        <div className={`hidden sm:grid gap-1.5 ${cols === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {renderList(list, rankFn)}
+        </div>
+      )}
+      <div className="sm:hidden space-y-1.5">
+        {list.length ? renderList(list, rankFn) : <p className="text-xs text-base-600 text-center py-2">없음</p>}
+      </div>
+    </>
+  );
 
   const waitTotal = derived.waitTanks.length + derived.waitHealers.length + derived.waitDps.length;
 
@@ -467,8 +508,28 @@ export default function RaidDetailPage() {
           </div>
         )}
 
+        {/* ── 뷰 토글 (데스크탑 전용, 모바일은 항상 리스트) ── */}
+        <div className="hidden sm:flex justify-end mt-8">
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-base-850 border border-base-700">
+            <button
+              type="button"
+              onClick={() => setRosterViewPersist('list')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${rosterView === 'list' ? 'bg-base-700 text-white' : 'text-base-400 hover:text-base-200'}`}
+            >
+              목록형
+            </button>
+            <button
+              type="button"
+              onClick={() => setRosterViewPersist('card')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${rosterView === 'card' ? 'bg-base-700 text-white' : 'text-base-400 hover:text-base-200'}`}
+            >
+              카드형
+            </button>
+          </div>
+        </div>
+
         {/* ── Roster (primary) ── */}
-        <div className="mt-10 space-y-4">
+        <div className="mt-4 sm:mt-3 space-y-4">
           <div className="card p-3">
             <SectionHeader
               label="탱커"
@@ -478,14 +539,7 @@ export default function RaidDetailPage() {
               adminMode={adminView}
               onAdd={() => setReserveRole('tank')}
             />
-            <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
-              {renderCards(derived.tanks, (a) => derived.activeRank[a.id])}
-            </div>
-            <div className="sm:hidden space-y-1.5">
-              {derived.tanks.length
-                ? renderMobile(derived.tanks, (a) => derived.activeRank[a.id])
-                : <p className="text-xs text-base-600 text-center py-2">없음</p>}
-            </div>
+            {renderRoster(derived.tanks, (a) => derived.activeRank[a.id])}
           </div>
 
           <div className="card p-3">
@@ -497,14 +551,7 @@ export default function RaidDetailPage() {
               adminMode={adminView}
               onAdd={() => setReserveRole('healer')}
             />
-            <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
-              {renderCards(derived.healers, (a) => derived.activeRank[a.id])}
-            </div>
-            <div className="sm:hidden space-y-1.5">
-              {derived.healers.length
-                ? renderMobile(derived.healers, (a) => derived.activeRank[a.id])
-                : <p className="text-xs text-base-600 text-center py-2">없음</p>}
-            </div>
+            {renderRoster(derived.healers, (a) => derived.activeRank[a.id])}
           </div>
 
           <div className="card p-3">
@@ -522,16 +569,7 @@ export default function RaidDetailPage() {
               <p className="text-xs font-bold text-base-400 mb-1.5">
                 근딜 <span className="text-base-300">{derived.meleeDps.length}</span>
               </p>
-              <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
-                {derived.meleeDps.length
-                  ? renderCards(derived.meleeDps, (a) => derived.activeRank[a.id])
-                  : <span className="text-xs text-base-600 py-2">없음</span>}
-              </div>
-              <div className="sm:hidden space-y-1.5">
-                {derived.meleeDps.length
-                  ? renderMobile(derived.meleeDps, (a) => derived.activeRank[a.id])
-                  : <p className="text-xs text-base-600 py-2">없음</p>}
-              </div>
+              {renderRoster(derived.meleeDps, (a) => derived.activeRank[a.id])}
             </div>
 
             {/* 원딜 */}
@@ -539,16 +577,7 @@ export default function RaidDetailPage() {
               <p className="text-xs font-bold text-base-400 mb-1.5">
                 원딜 <span className="text-base-300">{derived.rangedDps.length}</span>
               </p>
-              <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
-                {derived.rangedDps.length
-                  ? renderCards(derived.rangedDps, (a) => derived.activeRank[a.id])
-                  : <span className="text-xs text-base-600 py-2">없음</span>}
-              </div>
-              <div className="sm:hidden space-y-1.5">
-                {derived.rangedDps.length
-                  ? renderMobile(derived.rangedDps, (a) => derived.activeRank[a.id])
-                  : <p className="text-xs text-base-600 py-2">없음</p>}
-              </div>
+              {renderRoster(derived.rangedDps, (a) => derived.activeRank[a.id])}
             </div>
           </div>
 
@@ -574,12 +603,7 @@ export default function RaidDetailPage() {
                     list.length === 0 ? null : (
                       <div key={label}>
                         <p className="text-xs font-semibold text-base-400 mb-1.5">{label}</p>
-                        <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
-                          {renderCards2(list, (a) => list.indexOf(a) + 1)}
-                        </div>
-                        <div className="sm:hidden space-y-1.5">
-                          {renderMobile(list, (a) => list.indexOf(a) + 1)}
-                        </div>
+                        {renderRoster(list, (a) => list.indexOf(a) + 1, 1, renderCards2)}
                       </div>
                     )
                   )}
@@ -596,24 +620,7 @@ export default function RaidDetailPage() {
               {derived.bench.length === 0 ? (
                 <p className="text-sm text-base-400 text-center py-2">벤치 인원이 없습니다.</p>
               ) : (
-                <>
-                  <div className="hidden sm:flex flex-wrap justify-center gap-1.5">
-                    {derived.bench.map((app) => (
-                      <div key={app.id} style={{ flexBasis: 'calc(50% - 3px)', flexShrink: 0, minWidth: 0 }}>
-                        <BenchCard
-                          app={app}
-                          memo={adminView ? memos[app.id] : undefined}
-                          adminView={adminView}
-                          onAdminClick={setAdminTarget}
-                          highlight={app.id === userId}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="sm:hidden space-y-1.5">
-                    {renderMobile(derived.bench, () => null)}
-                  </div>
-                </>
+                renderRoster(derived.bench, () => null, 1, renderBenchCards)
               )}
             </div>
           </div>
