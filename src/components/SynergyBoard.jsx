@@ -1,5 +1,12 @@
 import { useApp } from '../context/AppContext';
 
+// 시너지 란에서만 쓰는 클래스 축약명 (한 줄에 들어가게).
+const ABBR = {
+  demonhunter: '악사', druid: '드루', evoker: '기원', hunter: '냥꾼', mage: '법사',
+  monk: '수도', paladin: '기사', priest: '사제', rogue: '도적', shaman: '술사',
+  warrior: '전사', warlock: '흑마', deathknight: '죽기',
+};
+
 /**
  * Compact synergy board. Shows only the providing class names: a class
  * chip lights up in its class color when at least one confirmed
@@ -43,7 +50,7 @@ export default function SynergyBoard({ apps, totalCap = 0 }) {
             }}
           >
             {has ? '✓ ' : ''}
-            {cls?.name || ''}
+            {ABBR[s.classId] || cls?.name || ''}
           </span>
         );
       });
@@ -55,8 +62,7 @@ export default function SynergyBoard({ apps, totalCap = 0 }) {
         공격대 시너지 <span className="text-white">현재 인원 {activeCount}/{totalCap}</span>
       </p>
       <div className="flex flex-wrap gap-1">{chipsFor('buff')}</div>
-      <p className="text-[11px] font-bold text-base-400 mt-2 mb-1 px-0.5">유틸리티</p>
-      <div className="flex flex-wrap gap-1">{chipsFor('utility')}</div>
+      <div className="flex flex-wrap gap-1 mt-1.5">{chipsFor('utility')}</div>
     </div>
   );
 }

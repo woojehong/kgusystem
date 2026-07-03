@@ -38,8 +38,8 @@ export default function RosterListRow({ app, rank, memo, adminView, onAdminClick
       style={{ borderLeft: `3px solid ${classColor}` }}
     >
       {/* 1줄: 뱃지 · 이름(고정폭) · 특성 · 템렙 · 순번 */}
-      <div className="grid items-center gap-2" style={{ gridTemplateColumns: '4rem 6.5rem 1fr auto auto' }}>
-        <div className="min-w-0 overflow-hidden flex items-center">
+      <div className="grid items-center gap-2" style={{ gridTemplateColumns: '5rem 8rem 1fr auto auto' }}>
+        <div className="flex items-center justify-center">
           <GuildBadge guildId={app.guildId} guildName={app.guildName || '無'} guildColor={app.guildColor || '#94a3b8'} size="xs" />
         </div>
 

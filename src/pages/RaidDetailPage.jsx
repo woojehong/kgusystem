@@ -424,6 +424,13 @@ export default function RaidDetailPage() {
                   </span>
                 )}
               </span>
+              <span className="ml-auto font-semibold">
+                총원 :{' '}
+                <b className={countFillColor(derived.counts.tank + derived.counts.healer + derived.counts.dps, caps.totalCap)}>
+                  {derived.counts.tank + derived.counts.healer + derived.counts.dps}
+                </b>
+                <span className="text-base-400"> / {caps.totalCap}</span>
+              </span>
             </div>
 
             {raid.description && (
