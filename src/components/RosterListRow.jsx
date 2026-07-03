@@ -28,7 +28,8 @@ export default function RosterListRow({ app, rank, memo, adminView, onAdminClick
   const classColor = app.classColor || '#cbd5e1';
   const specs = appSpecList(gamedata.classes, app);
   const extraSpecs = specs.filter((s) => s.id && s.id !== app.specId).slice(0, 2);
-  const hasCharInfo = !app.isReservation && app.charName && app.server;
+  // 예약자여도 캐릭명+서버가 있으면 외부 링크 생성 가능.
+  const hasCharInfo = app.charName && app.server;
 
   // 아이디 폰트만 동적 축소: 왕관+추가특성(extras)이 많고 이름이 길수록 작게.
   const nameLen = (app.charName || '').length;
@@ -95,14 +96,4 @@ export default function RosterListRow({ app, rank, memo, adminView, onAdminClick
           )}
           {hasCharInfo && (
             <>
-              <a href={wclUrl(app.server, app.charName)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-[11px] text-sky-400 hover:text-sky-200 font-medium shrink-0">WCL</a>
-              <a href={raiderUrl(app.server, app.charName)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-[11px] text-emerald-400 hover:text-emerald-200 font-medium shrink-0">Raider</a>
-              <a href={armoryUrl(app.server, app.charName)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-[11px] text-amber-400 hover:text-amber-200 font-medium shrink-0">전투정보실</a>
-            </>
-          )}
-          {memo && <span className="text-[11px] text-base-300 truncate min-w-0">📝 {memo}</span>}
-        </div>
-      )}
-    </div>
-  );
-}
+              <a href={wclUrl(app.server, app.charName)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-[11px] text-sky-400 hover:text-sky-2

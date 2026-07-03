@@ -194,10 +194,4 @@ export default function ReservationModal({ open, onClose, raid, role }) {
 
         {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
-        <button type="button" className="btn-primary w-full" disabled={busy} onClick={submit}>
-          {busy ? '등록 중...' : '예약 등록'}
-        </button>
-      </div>
-    </Modal>
-  );
-}
+        <button type="button" className="btn-primary w-full" disabled={busy} on

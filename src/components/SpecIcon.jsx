@@ -30,17 +30,4 @@ export default function SpecIcon({ specId, name, size = 16, showName = false, co
         >
           <img
             src={`${import.meta.env.BASE_URL}spec/${specId}.png`}
-            alt=""
-            className="object-cover"
-            style={{ width: '100%', height: '100%', transform: `scale(${ZOOM})`, transformOrigin: 'center' }}
-            onError={() => setBroken(true)}
-            loading="lazy"
-          />
-        </span>
-      )}
-      {showName && name && (
-        <span className="leading-none" style={color ? { color } : undefined}>{name}</span>
-      )}
-    </span>
-  );
-}
+            alt

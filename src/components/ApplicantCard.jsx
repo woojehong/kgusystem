@@ -38,7 +38,8 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
   const { gamedata } = useApp();
   const specs = appSpecList(gamedata.classes, app);
 
-  const hasCharInfo = !app.isReservation && app.charName && app.server;
+  // 예약자여도 캐릭명+서버가 있으면 외부 링크 생성 가능.
+  const hasCharInfo = app.charName && app.server;
   const guildColor = app.guildColor || '#94a3b8';
 
   return (
@@ -111,14 +112,4 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
               <a href={raiderUrl(app.server, app.charName)} target="_blank" rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 className="text-xs text-emerald-400 hover:text-emerald-200 transition font-medium">Raider.io</a>
-              <a href={armoryUrl(app.server, app.charName)} target="_blank" rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="text-xs text-amber-400 hover:text-amber-200 transition font-medium">전투정보실</a>
-            </div>
-          )}
-          {memo && <p className="text-xs text-base-300 break-words">📝 {memo}</p>}
-        </div>
-      )}
-    </div>
-  );
-}
+              <a href={armo
