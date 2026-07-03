@@ -38,13 +38,15 @@ export default function RosterListRow({ app, rank, memo, adminView, onAdminClick
       style={{ borderLeft: `3px solid ${classColor}` }}
     >
       {/* 1줄: 뱃지 · 이름(고정폭) · 특성 · 템렙 · 순번 */}
-      <div className="grid items-center gap-2" style={{ gridTemplateColumns: '5rem 8rem 1fr auto auto' }}>
+      <div className="grid items-center gap-2" style={{ gridTemplateColumns: '5rem 9.5rem 1fr auto auto' }}>
         <div className="flex items-center justify-center">
           <GuildBadge guildId={app.guildId} guildName={app.guildName || '無'} guildColor={app.guildColor || '#94a3b8'} size="xs" />
         </div>
 
+        {/* 왕관(길마) → 1순위 특성 아이콘 → 아이디 */}
         <div className="min-w-0 flex items-center gap-1">
           {app.isGuildMaster && <span className="text-xs leading-none shrink-0" title="길드장">👑</span>}
+          <SpecIcon specId={app.specId} size={16} className="shrink-0" />
           <span className="font-extrabold text-[15px] truncate" style={badgeTextStyle(classColor)}>
             {app.charName}
           </span>
