@@ -252,4 +252,95 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
         {/* 헤더 */}
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <h2 className="text-lg font-black text-white truncate">시뮬레이션 · {raid.title || '공격대'}</h2>
-          <div className="flex items-center gap-2 s
+          <div className="flex items-center gap-2 shrink-0">
+            {modeBtn('1', '1조모드', GROUP_A)}
+            {modeBtn('2', '2조모드', GROUP_B)}
+            <span className="w-px h-6 bg-base-700 mx-0.5" />
+            {/* 프리셋 불러오기 */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPresetOpen((v) => !v)}
+                className="px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white text-sm font-bold transition"
+              >
+                프리셋 불러오기 ▾
+              </button>
+              {presetOpen && (
+                <div className="absolute right-0 mt-1 w-56 max-h-72 overflow-y-auto rounded-xl border border-base-600 bg-base-850 shadow-xl z-20 p-1">
+                  {presets.length === 0 ? (
+                    <p className="text-xs text-base-500 text-center py-3">저장된 프리셋 없음</p>
+                  ) : (
+                    presets.map((p) => (
+                      <div
+                        key={p.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => loadPreset(p)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') loadPreset(p); }}
+                        className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-base-700 cursor-pointer"
+                      >
+                        <span className="text-sm font-semibold text-base-100 truncate">
+                          {p.name} <span className="text-[10px] text-base-500">{p.mode === '2' ? '2조' : '1조'}</span>
+                        </span>
+                        <button type="button" onClick={(e) => deletePreset(e, p.id)} className="shrink-0 text-base-500 hover:text-red-400 text-xs px-1" title="삭제">✕</button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={savePreset} className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold transition">프리셋 저장</button>
+            <button type="button" onClick={handleClose} className="px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-base-200 text-sm font-bold transition">닫기</button>
+          </div>
+        </div>
+
+        {msg && <p className={`text-sm text-center mb-3 ${msg.ok ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>}
+        {mode === '2' && (
+          <p className="text-xs text-base-400 mb-3">각 파티를 <b style={{ color: GROUP_A }}>1조</b> / <b style={{ color: GROUP_B }}>2조</b>로 지정하세요. (겹치지 않게)</p>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_15rem] gap-4">
+          {/* 파티 그리드 — 한 줄에 4파티 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {parties.map((p) => <PartyBox key={p} p={p} />)}
+          </div>
+
+          {/* 파티없음 풀 */}
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => dropTo(null)}
+            className="rounded-xl border border-base-700 bg-base-850/60 p-2 lg:max-h-[70vh] lg:overflow-y-auto"
+          >
+            <p className="text-xs font-bold text-base-300 mb-1.5">파티없음 <span className="text-base-500">{pool.length}</span></p>
+            <div className="space-y-1">
+              {pool.length ? pool.map((m) => <MemberChip key={m.id} m={m} onDragStart={setDragId} />) : (
+                <p className="text-[11px] text-base-600 text-center py-3">모두 배치됨</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 커버리지 코치 */}
+        <div className="mt-4">
+          {mode === '1' ? (
+            <CoveragePanel title="공대 커버리지" members={members} />
+          ) : (
+            <>
+              {warns.length > 0 && (
+                <div className="mb-3 space-y-1">
+                  {warns.map((w) => (
+                    <p key={w.classId} className="text-sm font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">⚠ {w.msg}</p>
+                  ))}
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <CoveragePanel title="1조 커버리지" accent={GROUP_A} members={groupMembers('A')} />
+                <CoveragePanel title="2조 커버리지" accent={GROUP_B} members={groupMembers('B')} />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

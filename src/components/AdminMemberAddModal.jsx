@@ -304,4 +304,11 @@ export default function AdminMemberAddModal({ open, onClose, raid, apps = [] }) 
 
         <div className="flex gap-2 pt-1">
           <button type="button" className="btn-ghost flex-1" onClick={() => onClose(false)}>취소</button>
-          <button type="button" className="btn-primary flex-1" disabled={busy || !member} onClick={submit}
+          <button type="button" className="btn-primary flex-1" disabled={busy || !member} onClick={submit}>
+            {busy ? '추가 중…' : '추가하기'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

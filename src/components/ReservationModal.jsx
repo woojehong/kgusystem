@@ -11,7 +11,7 @@ import SpecIcon from './SpecIcon';
  * position. Class and spec are optional.
  */
 export default function ReservationModal({ open, onClose, raid, role }) {
-  const { gamedata } = useApp();
+  const { gamedata, profile } = useApp();
   const [nickname, setNickname] = useState('');
   const [server, setServer] = useState('');
   const [classId, setClassId] = useState('');
@@ -74,6 +74,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
           status: 'active',
           seq: Date.now(),
           isReservation: true,
+          addedByMaster: profile?.nickname || null,
         },
         memoText
       );
@@ -194,4 +195,10 @@ export default function ReservationModal({ open, onClose, raid, role }) {
 
         {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
-        <button type="button" className="btn-primary w-full" disabled={busy} on
+        <button type="button" className="btn-primary w-full" disabled={busy} onClick={submit}>
+          {busy ? '등록 중...' : '예약 등록'}
+        </button>
+      </div>
+    </Modal>
+  );
+}

@@ -290,6 +290,20 @@ export default function RaidDetailPage() {
       </div>
     ));
 
+  // 데스크탑 2열용 (대기·벤치) — 각 행을 50% 폭으로 감싸 가운데 정렬.
+  const renderList2 = (list, rankFn) =>
+    list.map((app) => (
+      <div key={app.id} style={{ flexBasis: 'calc(50% - 3px)', flexShrink: 0, minWidth: 0 }}>
+        <RosterListRow
+          app={app}
+          rank={rankFn(app)}
+          memo={adminView ? memos[app.id] : undefined}
+          adminView={adminView}
+          onAdminClick={setAdminTarget}
+        />
+      </div>
+    ));
+
   // 대기자/벤치는 한 줄에 2명 (절반 폭)
   const renderCards2 = (list, rankFn) =>
     list.map((app) => (
@@ -326,6 +340,8 @@ export default function RaidDetailPage() {
         <div className="hidden sm:flex flex-wrap justify-center gap-1.5">{cardRender(list, rankFn)}</div>
       ) : cols === 1 ? (
         <div className="hidden sm:grid gap-1.5 grid-cols-1">{renderList(list, rankFn)}</div>
+      ) : cols === 2 ? (
+        <div className="hidden sm:flex flex-wrap justify-center gap-1.5">{renderList2(list, rankFn)}</div>
       ) : (
         <div className="hidden sm:flex flex-wrap justify-center gap-1.5">{renderList4(list, rankFn)}</div>
       )}
@@ -634,7 +650,7 @@ export default function RaidDetailPage() {
                     list.length === 0 ? null : (
                       <div key={label}>
                         <p className="text-xs font-semibold text-base-400 mb-1.5">{label}</p>
-                        {renderRoster(list, (a) => list.indexOf(a) + 1, 1, renderCards2)}
+                        {renderRoster(list, (a) => list.indexOf(a) + 1, 2, renderCards2)}
                       </div>
                     )
                   )}
@@ -651,7 +667,7 @@ export default function RaidDetailPage() {
               {derived.bench.length === 0 ? (
                 <p className="text-sm text-base-400 text-center py-2">벤치 인원이 없습니다.</p>
               ) : (
-                renderRoster(derived.bench, () => null, 1, renderBenchCards)
+                renderRoster(derived.bench, () => null, 2, renderBenchCards)
               )}
             </div>
           </div>
@@ -668,4 +684,60 @@ export default function RaidDetailPage() {
       />
       <ReservationModal
         open={!!reserveRole}
-        onClose={() => setReserveRole
+        onClose={() => setReserveRole(null)}
+        raid={raid}
+        role={reserveRole || 'dps'}
+      />
+      <AdminAppEditModal
+        open={!!adminTarget}
+        onClose={() => setAdminTarget(null)}
+        raid={raid}
+        app={adminTarget}
+      />
+      <AdminMemberAddModal
+        open={memberAddOpen}
+        onClose={() => setMemberAddOpen(false)}
+        raid={raid}
+        apps={apps}
+      />
+      <SimulationModal
+        open={simOpen}
+        onClose={() => setSimOpen(false)}
+        raid={raid}
+        apps={apps}
+      />
+      <RaidFormModal
+        open={raidEditOpen}
+        onClose={() => setRaidEditOpen(false)}
+        raid={raid}
+        applicants={apps}
+      />
+      <Modal open={cancelConfirm} onClose={() => setCancelConfirm(false)} maxWidth="max-w-sm">
+        <div className="text-center py-2 space-y-4">
+          <p className="font-semibold">신청을 취소할까요?</p>
+          <p className="text-sm text-base-400">재신청 시 최후순위로 배정됩니다.</p>
+          <div className="flex gap-2">
+            <button type="button" className="btn-ghost flex-1" onClick={() => setCancelConfirm(false)}>
+              돌아가기
+            </button>
+            <button
+              type="button"
+              className="btn-danger flex-1"
+              onClick={async () => {
+                try {
+                  await cancelApplication(raid.id, userId);
+                  toast('신청이 취소되었습니다');
+                } catch {
+                  toast('취소에 실패했습니다', 'error');
+                }
+                setCancelConfirm(false);
+              }}
+            >
+              신청 취소
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}

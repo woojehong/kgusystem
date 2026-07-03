@@ -112,4 +112,14 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
               <a href={raiderUrl(app.server, app.charName)} target="_blank" rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 className="text-xs text-emerald-400 hover:text-emerald-200 transition font-medium">Raider.io</a>
-              <a href={armo
+              <a href={armoryUrl(app.server, app.charName)} target="_blank" rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs text-amber-400 hover:text-amber-200 transition font-medium">전투정보실</a>
+            </div>
+          )}
+          {memo && <p className="text-xs text-base-300 break-words">📝 {memo}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
