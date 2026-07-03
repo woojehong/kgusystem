@@ -263,7 +263,7 @@ export default function RaidDetailPage() {
       </div>
     ));
 
-  // 목록형 행 리스트 (모바일·데스크탑 리스트뷰 공용)
+  // 모바일 목록 (표 정렬 variant='grid' — 모든 행에서 열 위치 일치)
   const renderList = (list, rankFn) =>
     list.map((app) => (
       <RosterListRow
@@ -273,6 +273,7 @@ export default function RaidDetailPage() {
         memo={adminView ? memos[app.id] : undefined}
         adminView={adminView}
         onAdminClick={setAdminTarget}
+        variant="grid"
       />
     ));
 

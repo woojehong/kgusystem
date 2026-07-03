@@ -4,31 +4,34 @@ import { updateRaid } from '../lib/db';
 import { analyzeCoverage, splitWarnings } from '../lib/raidAbilities';
 import SpecIcon from './SpecIcon';
 
-const MONK_COLOR = '#00c8a0'; // 물리뎀증(수도사)
-const DH_COLOR = '#a330c9'; // 마법뎀증(악마사냥꾼)
-const GROUP_A = '#38bdf8'; // 1조 파랑
-const GROUP_B = '#fbbf24'; // 2조 노랑
+const MONK_COLOR = '#00c8a0';
+const DH_COLOR = '#a330c9';
+const GROUP_A = '#38bdf8';
+const GROUP_B = '#fbbf24';
 const PARTY_CAP = 5;
 
-// 드래그 가능한 공대원 칩. onRemove가 있으면 우클릭으로 파티없음 복귀.
-function MemberChip({ m, onDragStart, onRemove, compact }) {
+// 드래그 가능한 공대원 칩. 다른 칩 위에 드롭하면 그 앞에 삽입(순서 변경/파티 이동).
+function MemberChip({ m, onDragStart, onRemove, onDropHere, fontSize = 13 }) {
   return (
     <div
       draggable
       onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart(m.id); }}
+      onDragOver={onDropHere ? (e) => e.preventDefault() : undefined}
+      onDrop={onDropHere ? (e) => { e.preventDefault(); e.stopPropagation(); onDropHere(m.id); } : undefined}
       onContextMenu={onRemove ? (e) => { e.preventDefault(); onRemove(m.id); } : undefined}
-      className={`flex items-center gap-1.5 rounded-md bg-base-800 border border-base-700 px-2 cursor-grab active:cursor-grabbing hover:border-base-500 ${compact ? 'py-0.5' : 'py-1'}`}
+      className="flex items-center gap-1 rounded-md bg-base-800 border border-base-700 px-1.5 py-0.5 cursor-grab active:cursor-grabbing hover:border-base-500"
       style={{ borderLeft: `3px solid ${m.classColor}` }}
       title={onRemove ? `${m.charName} · 우클릭 시 파티없음으로` : m.charName}
     >
-      <SpecIcon specId={m.specId} size={15} className="shrink-0" />
-      <span className="font-bold text-[13px] truncate min-w-0" style={{ color: m.classColor }}>{m.charName}</span>
-      {m.ilvl != null && <span className="ml-auto shrink-0 pl-1 text-[11px] font-bold text-base-300 tabular-nums">{m.ilvl}</span>}
+      <SpecIcon specId={m.specId} size={14} className="shrink-0" />
+      <span className="font-bold truncate min-w-0 leading-tight" style={{ color: m.classColor, fontSize: `${fontSize}px` }}>{m.charName}</span>
+      {m.ilvl != null && (
+        <span className="ml-auto shrink-0 pl-0.5 tabular-nums text-base-300" style={{ fontSize: `${Math.max(9, fontSize - 2)}px` }}>{m.ilvl}</span>
+      )}
     </div>
   );
 }
 
-// 커버리지 코치 패널. accent가 있으면 테두리/제목에 조 색상.
 function CoveragePanel({ title, accent, members }) {
   const { gamedata } = useApp();
   const cov = analyzeCoverage(members);
@@ -40,21 +43,13 @@ function CoveragePanel({ title, accent, members }) {
       <span className="font-bold" style={{ color: o.classColor }}>{o.charName}</span>
     </span>
   );
-
   const DebuffChip = ({ ok, color, label, owners }) => (
-    <span
-      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[12px] font-bold border"
-      style={{
-        color: ok ? color : '#8b95a7',
-        borderColor: ok ? `${color}66` : '#2a3347',
-        backgroundColor: ok ? `${color}18` : 'transparent',
-      }}
-    >
+    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[12px] font-bold border"
+      style={{ color: ok ? color : '#8b95a7', borderColor: ok ? `${color}66` : '#2a3347', backgroundColor: ok ? `${color}18` : 'transparent' }}>
       {ok ? '✓' : '✕'} {label}
       {ok && <span className="inline-flex items-center gap-1.5">{owners.map((o) => <Owner key={o.id} o={o} />)}</span>}
     </span>
   );
-
   const AbilityList = ({ items }) =>
     items.length ? (
       <div className="flex flex-wrap gap-1.5">
@@ -65,9 +60,7 @@ function CoveragePanel({ title, accent, members }) {
           </span>
         ))}
       </div>
-    ) : (
-      <p className="text-[11px] text-base-600">없음</p>
-    );
+    ) : <p className="text-[11px] text-base-600">없음</p>;
 
   return (
     <div className="rounded-xl border bg-base-900/50 p-3 space-y-2.5" style={{ borderColor: accent ? `${accent}88` : '#1d2433' }}>
@@ -88,109 +81,120 @@ function CoveragePanel({ title, accent, members }) {
   );
 }
 
+const emptyParties = (n) => { const o = {}; for (let i = 1; i <= n; i++) o[i] = []; return o; };
+
 export default function SimulationModal({ open, onClose, raid, apps }) {
   const members = (apps || [])
     .filter((a) => a.status === 'active')
-    .map((a) => ({
-      id: a.id,
-      charName: a.charName,
-      classId: a.classId,
-      specId: a.specId,
-      classColor: a.classColor || '#cbd5e1',
-      role: a.role,
-      ilvl: a.ilvl,
-    }));
+    .map((a) => ({ id: a.id, charName: a.charName, classId: a.classId, specId: a.specId, classColor: a.classColor || '#cbd5e1', role: a.role, ilvl: a.ilvl }));
+  const membersById = Object.fromEntries(members.map((m) => [m.id, m]));
 
   const numParties = members.length >= 26 ? 6 : members.length >= 21 ? 5 : 4;
-  const parties = Array.from({ length: numParties }, (_, i) => i + 1);
+  const partyNums = Array.from({ length: numParties }, (_, i) => i + 1);
+  const chipFont = numParties >= 6 ? 11 : numParties >= 5 ? 12 : 13;
 
   const [mode, setMode] = useState('1');
-  const [assign, setAssign] = useState({});
+  const [parties, setParties] = useState(() => emptyParties(numParties));
   const [split, setSplit] = useState({});
   const [dragId, setDragId] = useState(null);
   const [msg, setMsg] = useState(null);
   const [presetOpen, setPresetOpen] = useState(false);
   const ready = useRef(false);
 
-  // 열릴 때 마지막 작업 상태(raid.simulation) 복원. raid.simulation 자체는 deps에서 제외해 자동저장 루프 방지.
   useEffect(() => {
     if (!open) return;
     ready.current = false;
     const sim = raid.simulation || {};
-    setMode(sim.mode === '2' ? '2' : '1');
-    setAssign(sim.assign || {});
+    const validIds = new Set(members.map((m) => m.id));
+    const orderedIds = members.map((m) => m.id);
+    let init = emptyParties(numParties);
+    if (sim.parties) {
+      for (let i = 1; i <= numParties; i++) init[i] = (sim.parties[i] || []).filter((id) => validIds.has(id));
+    } else if (sim.assign) {
+      orderedIds.forEach((id) => { const p = sim.assign[id]; if (p != null && init[p]) init[p].push(id); });
+    }
+    setParties(init);
     setSplit(sim.split || {});
-    setDragId(null);
-    setMsg(null);
-    setPresetOpen(false);
+    setMode(sim.mode === '2' ? '2' : '1');
+    setDragId(null); setMsg(null); setPresetOpen(false);
     const t = setTimeout(() => { ready.current = true; }, 0);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, raid.id]);
 
-  // 자동 저장 (디바운스) — 저장 버튼 없이도 현재 편성이 유지됨.
   useEffect(() => {
     if (!open || !ready.current) return;
     const t = setTimeout(() => {
-      updateRaid(raid.id, { simulation: { mode, assign, split, updatedAt: Date.now() } }).catch(() => {});
+      updateRaid(raid.id, { simulation: { mode, parties, split, updatedAt: Date.now() } }).catch(() => {});
     }, 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, assign, split, open, raid.id]);
+  }, [mode, parties, split, open, raid.id]);
 
   if (!open) return null;
 
-  const partyMembers = (p) => members.filter((m) => assign[m.id] === p);
-  const pool = members.filter((m) => assign[m.id] == null);
-  const removeToPool = (id) => { setAssign((a) => { const n = { ...a }; delete n[id]; return n; }); setMsg(null); };
+  const assignedIds = new Set(Object.values(parties).flat());
+  const pool = members.filter((m) => !assignedIds.has(m.id));
+  const partyMembers = (p) => (parties[p] || []).map((id) => membersById[id]).filter(Boolean);
 
-  const dropTo = (p) => {
+  const removeToPool = (id) => setParties((prev) => {
+    const next = {}; for (const k of Object.keys(prev)) next[k] = prev[k].filter((x) => x !== id); return next;
+  });
+
+  // targetP=null → 파티없음. beforeId 지정 시 그 앞에 삽입(순서변경/파티간 이동), 없으면 맨 뒤.
+  const moveTo = (targetP, beforeId = null) => {
     if (!dragId) return;
-    if (p != null) {
-      const cur = members.filter((m) => assign[m.id] === p && m.id !== dragId).length;
-      if (cur >= PARTY_CAP) { setMsg({ ok: false, text: `파티 ${p}이(가) 가득 찼습니다 (최대 ${PARTY_CAP}명).` }); setDragId(null); return; }
-      setAssign((a) => ({ ...a, [dragId]: p }));
-    } else {
-      removeToPool(dragId);
-    }
+    const id = dragId;
     setDragId(null);
+    if (targetP != null) {
+      const cur = parties[targetP] || [];
+      if (!cur.includes(id) && cur.length >= PARTY_CAP) { setMsg({ ok: false, text: `파티 ${targetP}이(가) 가득 찼습니다 (최대 ${PARTY_CAP}명).` }); return; }
+    }
+    setParties((prev) => {
+      const next = {}; for (const k of Object.keys(prev)) next[k] = prev[k].filter((x) => x !== id);
+      if (targetP != null) {
+        const arr = next[targetP] ? [...next[targetP]] : [];
+        if (beforeId != null && beforeId !== id) {
+          const idx = arr.indexOf(beforeId);
+          if (idx >= 0) arr.splice(idx, 0, id); else arr.push(id);
+        } else arr.push(id);
+        next[targetP] = arr;
+      }
+      return next;
+    });
     setMsg(null);
   };
 
   const setPartyGroup = (p, g) => setSplit((s) => ({ ...s, [p]: s[p] === g ? null : g }));
-  const groupMembers = (g) => members.filter((m) => assign[m.id] != null && split[assign[m.id]] === g);
+  const groupMembers = (g) => {
+    const ids = [];
+    for (let i = 1; i <= numParties; i++) if (split[i] === g) ids.push(...(parties[i] || []));
+    return ids.map((id) => membersById[id]).filter(Boolean);
+  };
 
-  // 현재 편성을 프리셋으로 저장.
   const savePreset = async () => {
     const list = raid.simPresets || [];
     const name = window.prompt('프리셋 이름을 입력하세요', `프리셋 ${list.length + 1}`);
     if (!name || !name.trim()) return;
-    const preset = { id: String(Date.now()), name: name.trim(), mode, assign, split, savedAt: Date.now() };
-    try {
-      await updateRaid(raid.id, { simPresets: [...list, preset] });
-      setMsg({ ok: true, text: `프리셋 "${preset.name}" 저장됨` });
-    } catch {
-      setMsg({ ok: false, text: '프리셋 저장 실패' });
-    }
+    const preset = { id: String(Date.now()), name: name.trim(), mode, parties, split, savedAt: Date.now() };
+    try { await updateRaid(raid.id, { simPresets: [...list, preset] }); setMsg({ ok: true, text: `프리셋 "${preset.name}" 저장됨` }); }
+    catch { setMsg({ ok: false, text: '프리셋 저장 실패' }); }
   };
-
   const loadPreset = (p) => {
-    setMode(p.mode === '2' ? '2' : '1');
-    setAssign(p.assign || {});
-    setSplit(p.split || {});
-    setPresetOpen(false);
+    const validIds = new Set(members.map((m) => m.id));
+    const init = emptyParties(numParties);
+    if (p.parties) for (let i = 1; i <= numParties; i++) init[i] = (p.parties[i] || []).filter((id) => validIds.has(id));
+    else if (p.assign) members.forEach((m) => { const pn = p.assign[m.id]; if (pn != null && init[pn]) init[pn].push(m.id); });
+    setParties(init); setSplit(p.split || {}); setMode(p.mode === '2' ? '2' : '1'); setPresetOpen(false);
     setMsg({ ok: true, text: `"${p.name}" 불러옴` });
   };
-
   const deletePreset = async (e, id) => {
     e.stopPropagation();
-    try {
-      await updateRaid(raid.id, { simPresets: (raid.simPresets || []).filter((p) => p.id !== id) });
-    } catch { /* noop */ }
+    try { await updateRaid(raid.id, { simPresets: (raid.simPresets || []).filter((p) => p.id !== id) }); } catch { /* noop */ }
   };
 
   const handleClose = () => {
-    if (ready.current) updateRaid(raid.id, { simulation: { mode, assign, split, updatedAt: Date.now() } }).catch(() => {});
+    if (ready.current) updateRaid(raid.id, { simulation: { mode, parties, split, updatedAt: Date.now() } }).catch(() => {});
     onClose();
   };
 
@@ -203,28 +207,28 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
     return (
       <div
         onDragOver={(e) => e.preventDefault()}
-        onDrop={() => dropTo(p)}
-        className="rounded-xl border p-2 min-h-[168px] transition"
+        onDrop={() => moveTo(p, null)}
+        className="rounded-xl border p-1.5 min-h-[152px] transition"
         style={{
           borderColor: grp === 'A' ? `${GROUP_A}99` : grp === 'B' ? `${GROUP_B}99` : '#1d2433',
           background: grp === 'A' ? `${GROUP_A}0d` : grp === 'B' ? `${GROUP_B}0d` : 'rgba(16,20,28,0.6)',
         }}
       >
-        <div className="flex items-center justify-between mb-1.5">
-          <p className="text-xs font-bold text-base-300">
-            파티 {p} <span className="text-base-500">{mem.length}/{PARTY_CAP}</span>
-          </p>
+        <div className="flex items-center justify-between mb-1.5 gap-1">
+          <p className="text-[11px] font-bold text-base-300 truncate">파티 {p} <span className="text-base-500">{mem.length}/{PARTY_CAP}</span></p>
           {mode === '2' && (
-            <div className="flex gap-0.5">
-              <button type="button" onClick={() => setPartyGroup(p, 'A')} className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={{ backgroundColor: grp === 'A' ? GROUP_A : '#1d2433', color: grp === 'A' ? '#06283d' : '#7e93ad' }}>1조</button>
-              <button type="button" onClick={() => setPartyGroup(p, 'B')} className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={{ backgroundColor: grp === 'B' ? GROUP_B : '#1d2433', color: grp === 'B' ? '#3d2c06' : '#7e93ad' }}>2조</button>
+            <div className="flex gap-0.5 shrink-0">
+              <button type="button" onClick={() => setPartyGroup(p, 'A')} className="text-[9px] px-1 py-0.5 rounded font-bold" style={{ backgroundColor: grp === 'A' ? GROUP_A : '#1d2433', color: grp === 'A' ? '#06283d' : '#7e93ad' }}>1조</button>
+              <button type="button" onClick={() => setPartyGroup(p, 'B')} className="text-[9px] px-1 py-0.5 rounded font-bold" style={{ backgroundColor: grp === 'B' ? GROUP_B : '#1d2433', color: grp === 'B' ? '#3d2c06' : '#7e93ad' }}>2조</button>
             </div>
           )}
         </div>
         <div className="space-y-1">
-          {mem.map((m) => <MemberChip key={m.id} m={m} onDragStart={setDragId} onRemove={removeToPool} compact />)}
+          {mem.map((m) => (
+            <MemberChip key={m.id} m={m} onDragStart={setDragId} onRemove={removeToPool} onDropHere={(tid) => moveTo(p, tid)} fontSize={chipFont} />
+          ))}
           {Array.from({ length: Math.max(0, PARTY_CAP - mem.length) }).map((_, i) => (
-            <div key={i} className="h-6 rounded-md border border-dashed border-base-700/50" />
+            <div key={i} className="h-5 rounded-md border border-dashed border-base-700/50" />
           ))}
         </div>
       </div>
@@ -232,16 +236,8 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
   };
 
   const modeBtn = (m, label, color) => (
-    <button
-      type="button"
-      onClick={() => setMode(m)}
-      className="px-3 py-1.5 rounded-lg text-sm font-black transition border"
-      style={
-        mode === m
-          ? { backgroundColor: color, color: '#06131f', borderColor: color }
-          : { backgroundColor: 'transparent', color: '#7e93ad', borderColor: '#2a3347' }
-      }
-    >
+    <button type="button" onClick={() => setMode(m)} className="px-3 py-1.5 rounded-lg text-sm font-black transition border"
+      style={mode === m ? { backgroundColor: color, color: '#06131f', borderColor: color } : { backgroundColor: 'transparent', color: '#7e93ad', borderColor: '#2a3347' }}>
       {label}
     </button>
   );
@@ -249,39 +245,23 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
   return (
     <div className="fixed inset-0 z-50 bg-base-900/95 backdrop-blur-sm overflow-y-auto">
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
-        {/* 헤더 */}
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <h2 className="text-lg font-black text-white truncate">시뮬레이션 · {raid.title || '공격대'}</h2>
           <div className="flex items-center gap-2 shrink-0">
             {modeBtn('1', '1조모드', GROUP_A)}
             {modeBtn('2', '2조모드', GROUP_B)}
             <span className="w-px h-6 bg-base-700 mx-0.5" />
-            {/* 프리셋 불러오기 */}
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setPresetOpen((v) => !v)}
-                className="px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white text-sm font-bold transition"
-              >
-                프리셋 불러오기 ▾
-              </button>
+              <button type="button" onClick={() => setPresetOpen((v) => !v)} className="px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white text-sm font-bold transition">프리셋 불러오기 ▾</button>
               {presetOpen && (
                 <div className="absolute right-0 mt-1 w-56 max-h-72 overflow-y-auto rounded-xl border border-base-600 bg-base-850 shadow-xl z-20 p-1">
                   {presets.length === 0 ? (
                     <p className="text-xs text-base-500 text-center py-3">저장된 프리셋 없음</p>
                   ) : (
                     presets.map((p) => (
-                      <div
-                        key={p.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => loadPreset(p)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') loadPreset(p); }}
-                        className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-base-700 cursor-pointer"
-                      >
-                        <span className="text-sm font-semibold text-base-100 truncate">
-                          {p.name} <span className="text-[10px] text-base-500">{p.mode === '2' ? '2조' : '1조'}</span>
-                        </span>
+                      <div key={p.id} role="button" tabIndex={0} onClick={() => loadPreset(p)} onKeyDown={(e) => { if (e.key === 'Enter') loadPreset(p); }}
+                        className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-base-700 cursor-pointer">
+                        <span className="text-sm font-semibold text-base-100 truncate">{p.name} <span className="text-[10px] text-base-500">{p.mode === '2' ? '2조' : '1조'}</span></span>
                         <button type="button" onClick={(e) => deletePreset(e, p.id)} className="shrink-0 text-base-500 hover:text-red-400 text-xs px-1" title="삭제">✕</button>
                       </div>
                     ))
@@ -295,32 +275,21 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
         </div>
 
         {msg && <p className={`text-sm text-center mb-3 ${msg.ok ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>}
-        {mode === '2' && (
-          <p className="text-xs text-base-400 mb-3">각 파티를 <b style={{ color: GROUP_A }}>1조</b> / <b style={{ color: GROUP_B }}>2조</b>로 지정하세요. (겹치지 않게)</p>
-        )}
+        {mode === '2' && <p className="text-xs text-base-400 mb-3">각 파티를 <b style={{ color: GROUP_A }}>1조</b> / <b style={{ color: GROUP_B }}>2조</b>로 지정하세요. (겹치지 않게) · 같은 파티 안에서 위/아래로 끌어 순서 변경 가능</p>}
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_15rem] gap-4">
-          {/* 파티 그리드 — 한 줄에 4파티 */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {parties.map((p) => <PartyBox key={p} p={p} />)}
-          </div>
-
-          {/* 파티없음 풀 */}
-          <div
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => dropTo(null)}
-            className="rounded-xl border border-base-700 bg-base-850/60 p-2 lg:max-h-[70vh] lg:overflow-y-auto"
-          >
-            <p className="text-xs font-bold text-base-300 mb-1.5">파티없음 <span className="text-base-500">{pool.length}</span></p>
+        {/* 파티 + 파티없음 = 한 줄 (자동 스케일) */}
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${numParties + 1}, minmax(0, 1fr))` }}>
+          {partyNums.map((p) => <PartyBox key={p} p={p} />)}
+          <div onDragOver={(e) => e.preventDefault()} onDrop={() => moveTo(null)} className="rounded-xl border border-base-700 bg-base-850/60 p-1.5 min-h-[152px]">
+            <p className="text-[11px] font-bold text-base-300 mb-1.5 truncate">파티없음 <span className="text-base-500">{pool.length}</span></p>
             <div className="space-y-1">
-              {pool.length ? pool.map((m) => <MemberChip key={m.id} m={m} onDragStart={setDragId} />) : (
-                <p className="text-[11px] text-base-600 text-center py-3">모두 배치됨</p>
-              )}
+              {pool.length ? pool.map((m) => (
+                <MemberChip key={m.id} m={m} onDragStart={setDragId} onDropHere={() => moveTo(null)} fontSize={chipFont} />
+              )) : <p className="text-[10px] text-base-600 text-center py-2">모두 배치됨</p>}
             </div>
           </div>
         </div>
 
-        {/* 커버리지 코치 */}
         <div className="mt-4">
           {mode === '1' ? (
             <CoveragePanel title="공대 커버리지" members={members} />

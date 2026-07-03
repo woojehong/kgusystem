@@ -32,18 +32,16 @@ function AltBox({ specs }) {
 }
 
 // 목록형 로스터 한 줄.
-//   왼쪽: 길드뱃지 · 왕관(길마) · 1순위 특성아이콘 · 아이디
-//   오른쪽: ALT 박스(2·3순위 특성) · 아이템레벨 · 신청번호(가장 오른쪽)
-// 아이디는 박스/다른 요소 크기는 그대로 두고 길고 혼잡할 때만 폰트만 축소.
-// 관리자뷰 2번째 줄: (일반)ID · 링크 · 메모 / (예약)예약등록 관리자 · 링크 · 메모. 메모는 …생략, 행 클릭 시 관리 모달.
-export default function RosterListRow({ app, rank, memo, adminView, onAdminClick }) {
+//   variant='flex' : 데스크탑 4열 카드용 (컴팩트, 우측 밀착)
+//   variant='grid' : 모바일용 표 정렬 (뱃지·아이디·ALT·아이템레벨·순번이 모든 행에서 같은 열)
+// 아이디는 박스 크기는 그대로 두고 길 때만 폰트만 축소. 관리자뷰 2번째 줄: (일반)ID / (예약)예약등록 관리자 · 링크 · 메모(…생략).
+export default function RosterListRow({ app, rank, memo, adminView, onAdminClick, variant = 'flex' }) {
   const { gamedata } = useApp();
   const classColor = app.classColor || '#cbd5e1';
   const specs = appSpecList(gamedata.classes, app);
   const extraSpecs = specs.filter((s) => s.id && s.id !== app.specId).slice(0, 2);
   const hasCharInfo = app.charName && app.server;
 
-  // 아이디 폰트만 동적 축소 (박스 크기는 고정). extra는 이제 우측 ALT라 혼잡도에서 제외.
   const nameLen = (app.charName || '').length;
   let nameSize = 14;
   if (nameLen >= 7) nameSize = 12;
@@ -53,6 +51,24 @@ export default function RosterListRow({ app, rank, memo, adminView, onAdminClick
     fontSize: `${nameSize}px`,
     ...(nameLen >= 6 ? { letterSpacing: '-0.02em' } : {}),
   };
+
+  const badge = (
+    <GuildBadge guildId={app.guildId} guildName={app.guildName || '無'} guildColor={app.guildColor || '#94a3b8'} size="xs" />
+  );
+  const crown = app.isGuildMaster ? (
+    <span className="shrink-0 inline-flex items-center justify-center" style={{ width: 16, height: 16, fontSize: 13, lineHeight: 1, transform: 'translateY(1px)' }} title="길드장">👑</span>
+  ) : null;
+  const nameCluster = (
+    <div className="flex items-center gap-0.5 min-w-0">
+      {crown}
+      <SpecIcon specId={app.specId} size={16} className="shrink-0" />
+      <span className="font-extrabold truncate min-w-0 leading-tight" style={nameStyle}>{app.charName}</span>
+    </div>
+  );
+  const ilvlEl = app.ilvl != null ? (
+    <span className="text-[13px] font-bold text-base-100 tabular-nums">{app.ilvl}</span>
+  ) : null;
+  const rankEl = rank != null ? <Rank rank={rank} /> : null;
 
   return (
     <div
@@ -66,35 +82,25 @@ export default function RosterListRow({ app, rank, memo, adminView, onAdminClick
       style={{ borderLeft: `3px solid ${classColor}` }}
     >
       {/* 1줄 */}
-      <div className="flex items-center gap-1.5">
-        <GuildBadge guildId={app.guildId} guildName={app.guildName || '無'} guildColor={app.guildColor || '#94a3b8'} size="xs" />
-
-        {/* 왕관 · 1순위 특성 · 아이디 (좁은 간격으로 묶음) */}
-        <div className="flex items-center gap-0.5 min-w-0">
-          {app.isGuildMaster && (
-            <span
-              className="shrink-0 inline-flex items-center justify-center"
-              style={{ width: 16, height: 16, fontSize: 13, lineHeight: 1, transform: 'translateY(1px)' }}
-              title="길드장"
-            >
-              👑
-            </span>
-          )}
-          <SpecIcon specId={app.specId} size={16} className="shrink-0" />
-          <span className="font-extrabold truncate min-w-0 leading-tight" style={nameStyle}>
-            {app.charName}
-          </span>
+      {variant === 'grid' ? (
+        <div className="grid items-center gap-1" style={{ gridTemplateColumns: '5rem 1fr 3rem 2.5rem 2.75rem' }}>
+          <div className="flex justify-center min-w-0">{badge}</div>
+          {nameCluster}
+          <div className="flex justify-center">{<AltBox specs={extraSpecs} />}</div>
+          <div className="text-right tabular-nums">{ilvlEl}</div>
+          <div className="flex justify-end">{rankEl}</div>
         </div>
-
-        {/* 우측정렬: ALT · 아이템레벨 · 순번 */}
-        <div className="ml-auto flex items-center gap-2 shrink-0 pl-1">
-          <AltBox specs={extraSpecs} />
-          {app.ilvl != null && (
-            <span className="text-[13px] font-bold text-base-100 tabular-nums">{app.ilvl}</span>
-          )}
-          {rank != null && <Rank rank={rank} />}
+      ) : (
+        <div className="flex items-center gap-1.5">
+          {badge}
+          {nameCluster}
+          <div className="ml-auto flex items-center gap-2 shrink-0 pl-1">
+            <AltBox specs={extraSpecs} />
+            {ilvlEl}
+            {rankEl}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 2줄 (관리자뷰) */}
       {adminView && (
