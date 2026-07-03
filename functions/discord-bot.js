@@ -342,14 +342,16 @@ async function buildDetailEmbed(db, raidId) {
   const col = (arr) => (arr.length ? arr.map(entry).join(NL).slice(0, 1024) : '—');
 
   const fields = [];
-  // 한 섹션을 좌/우 2단으로: 전체폭 헤더 + 인라인 필드 2개(좌단/우단).
+  // 한 섹션을 좌/우 2단으로.
+  //  - 헤더를 '좌단 필드의 이름'으로 두어 헤더가 자기 멤버 바로 위에 붙게 한다.
+  //    (예전엔 헤더/멤버를 각각 빈 필드로 넣어 사이에 빈 줄 2개가 생겨 한 칸씩 밀렸음)
+  //  - 섹션마다 빈 인라인 필드 1개를 더해 인라인 3칸을 채워, 다음 섹션이 새 줄에서 시작하게 한다.
   const pushTwoCol = (label, arr) => {
-    if (!arr.length) { fields.push({ name: label, value: '—', inline: false }); return; }
     const half = Math.ceil(arr.length / 2);
-    fields.push({ name: label, value: ZWS, inline: false });
-    fields.push({ name: ZWS, value: col(arr.slice(0, half)), inline: true });
-    const right = arr.slice(half);
-    fields.push({ name: ZWS, value: right.length ? col(right) : ZWS, inline: true });
+    const rightArr = arr.slice(half);
+    fields.push({ name: label, value: arr.length ? col(arr.slice(0, half)) : '—', inline: true });
+    fields.push({ name: ZWS, value: rightArr.length ? col(rightArr) : ZWS, inline: true });
+    fields.push({ name: ZWS, value: ZWS, inline: true });
   };
 
   const meleeDps = active.dps.filter((a) => !isRangedApp(a));
@@ -1142,11 +1144,4 @@ exports.discordRegisterCommands = onRequest(
           headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(COMMANDS),
         });
-        out.push(`${gid}: [${resp.status}]${resp.ok ? ' OK' : ' ' + (await resp.text()).slice(0, 200)}`);
-      } catch (e) {
-        out.push(`${gid}: 실패 ${e.message}`);
-      }
-    }
-    res.status(200).send('등록 결과\n' + out.join('\n'));
-  }
-);
+        out.pu
