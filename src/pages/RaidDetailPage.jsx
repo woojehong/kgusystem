@@ -365,27 +365,27 @@ export default function RaidDetailPage() {
           <div className="pl-2 pb-6">
             {/* 레이드 수정 / 구성원 초대 / 시뮬레이션 — 우측 상단 절대배치 */}
             {canEdit && (
-              <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+              <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-stretch w-28">
                 <button
                   type="button"
                   onClick={() => setRaidEditOpen(true)}
-                  className="text-sm px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold border border-indigo-400/50 shadow-md transition whitespace-nowrap"
+                  className="w-full text-center text-sm px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold border border-indigo-400/50 shadow-md transition whitespace-nowrap"
                 >
                   레이드 수정
                 </button>
                 <button
                   type="button"
                   onClick={copyInvite}
-                  className="text-sm px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold border border-emerald-400/50 shadow-md transition whitespace-nowrap"
+                  className="w-full text-center text-sm px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold border border-emerald-400/50 shadow-md transition whitespace-nowrap"
                 >
                   {copied ? '복사됨 ✓' : '구성원 초대'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setSimOpen(true)}
-                  className="text-sm px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold border border-violet-400/60 shadow-md ring-1 ring-violet-400/30 transition whitespace-nowrap"
+                  className="w-full text-center text-sm px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold border border-violet-400/60 shadow-md transition whitespace-nowrap"
                 >
-                  🧩 시뮬레이션
+                  시뮬레이션
                 </button>
               </div>
             )}
@@ -678,36 +678,4 @@ export default function RaidDetailPage() {
       />
       <RaidFormModal
         open={raidEditOpen}
-        onClose={() => setRaidEditOpen(false)}
-        raid={raid}
-        applicants={apps}
-      />
-      <Modal open={cancelConfirm} onClose={() => setCancelConfirm(false)} maxWidth="max-w-sm">
-        <div className="text-center py-2 space-y-4">
-          <p className="font-semibold">신청을 취소할까요?</p>
-          <p className="text-sm text-base-400">재신청 시 최후순위로 배정됩니다.</p>
-          <div className="flex gap-2">
-            <button type="button" className="btn-ghost flex-1" onClick={() => setCancelConfirm(false)}>
-              돌아가기
-            </button>
-            <button
-              type="button"
-              className="btn-danger flex-1"
-              onClick={async () => {
-                try {
-                  await cancelApplication(raid.id, userId);
-                  toast('신청이 취소되었습니다');
-                } catch {
-                  toast('취소에 실패했습니다', 'error');
-                }
-                setCancelConfirm(false);
-              }}
-            >
-              신청 취소
-            </button>
-          </div>
-        </div>
-      </Modal>
-    </div>
-  );
-}
+        on

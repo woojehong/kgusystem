@@ -59,10 +59,3 @@ export default function SynergyBoard({ apps, totalCap = 0 }) {
   return (
     <div className="card p-3">
       <p className="font-bold text-sm mb-2" style={{ color: '#e879f9' }}>
-        공격대 시너지 <span className="text-white">현재 인원 {activeCount}/{totalCap}</span>
-      </p>
-      <div className="flex flex-wrap gap-1">{chipsFor('buff')}</div>
-      <div className="flex flex-wrap gap-1 mt-1.5">{chipsFor('utility')}</div>
-    </div>
-  );
-}

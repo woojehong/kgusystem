@@ -48,13 +48,14 @@ function memberHas(app, entry) {
  */
 export function analyzeCoverage(members) {
   const list = members || [];
-  const ownersOf = (entry) => list.filter((m) => memberHas(m, entry)).map((m) => m.charName);
+  // owners는 멤버 객체 그대로 반환 (특성아이콘·클래스컬러 렌더용).
+  const ownersOf = (entry) => list.filter((m) => memberHas(m, entry));
 
   const physOwners = ownersOf(DMG_DEBUFF.physical);
   const magOwners = ownersOf(DMG_DEBUFF.magic);
 
-  const movement = MOVEMENT_ABILITIES.map((e) => ({ name: e.name, owners: ownersOf(e) })).filter((x) => x.owners.length);
-  const raidCds = RAID_CDS.map((e) => ({ name: e.name, owners: ownersOf(e) })).filter((x) => x.owners.length);
+  const movement = MOVEMENT_ABILITIES.map((e) => ({ name: e.name, classId: e.classId, owners: ownersOf(e) })).filter((x) => x.owners.length);
+  const raidCds = RAID_CDS.map((e) => ({ name: e.name, classId: e.classId, owners: ownersOf(e) })).filter((x) => x.owners.length);
 
   return {
     physical: { present: physOwners.length > 0, owners: physOwners },
@@ -79,7 +80,4 @@ export function splitWarnings(groups) {
       if (groupsWith < 2) warns.push({ classId, label, msg: `${label} ${total}명이 한 조에 몰려 있습니다 — 조에 하나씩 나눠주세요.` });
     }
   };
-  check('monk', '수도사(물리뎀증)');
-  check('demonhunter', '악마사냥꾼(마법뎀증)');
-  return warns;
-}
+  check('m
