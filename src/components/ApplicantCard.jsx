@@ -98,11 +98,18 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
       {/* ── 관리자 영역 ── */}
       {adminView && (
         <div className="mt-2 pt-2 border-t border-base-700/60 text-center space-y-1">
-          {app.nickname && (
+          {app.isReservation ? (
             <p className="text-xs text-base-400">
-              로그인ID{' '}
-              <span className="font-semibold text-base-200">{app.nickname}</span>
+              예약등록{' '}
+              <span className="font-semibold text-amber-300">{app.addedByMaster || '관리자'}</span>
             </p>
+          ) : (
+            app.nickname && (
+              <p className="text-xs text-base-400">
+                로그인ID{' '}
+                <span className="font-semibold text-base-200">{app.nickname}</span>
+              </p>
+            )
           )}
           {hasCharInfo && (
             <div className="flex justify-center gap-3 flex-wrap">

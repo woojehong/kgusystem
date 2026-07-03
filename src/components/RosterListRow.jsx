@@ -123,7 +123,7 @@ export default function RosterListRow({ app, rank, memo, adminView, onAdminClick
               <a href={armoryUrl(app.server, app.charName)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-[11px] text-amber-400 hover:text-amber-200 font-medium shrink-0">전투정보실</a>
             </>
           )}
-          {memo && <span className="text-[11px] text-base-300 truncate min-w-0">📝 {memo}</span>}
+          {memo && <span className="text-[11px] text-base-300 truncate min-w-0" title={memo}>📝 {memo}</span>}
         </div>
       )}
     </div>
