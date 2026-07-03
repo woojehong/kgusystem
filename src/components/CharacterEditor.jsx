@@ -1,5 +1,6 @@
 import { useApp } from '../context/AppContext';
 import { badgeTextStyle } from '../lib/utils';
+import SpecIcon from './SpecIcon';
 
 /**
  * Character form: in-game name / realm / class / spec priorities / current ilvl.
@@ -115,6 +116,7 @@ export default function CharacterEditor({ value, onChange }) {
                       {idx + 1}순위
                     </span>
                   )}
+                  <SpecIcon specId={spec.id} size={16} className="mr-1 align-middle" />
                   {spec.name}
                   <span className="ml-1 text-xs text-base-400">
                     {spec.role === 'tank' ? '탱' : spec.role === 'healer' ? '힐' : '딜'}

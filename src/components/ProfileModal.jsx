@@ -9,6 +9,7 @@ import Modal from './Modal';
 import GuildBadge, { buildBadgeStyles } from './GuildBadge';
 import GuildPageEditor from './GuildPageEditor';
 import CharacterEditor, { emptyCharacter, validateCharacter } from './CharacterEditor';
+import SpecIcon from './SpecIcon';
 import { badgeTextStyle, getClass, getSpec } from '../lib/utils';
 import { validateEnglishName, normalizePage } from '../lib/guildPage';
 
@@ -424,10 +425,12 @@ function CharactersTab() {
               </div>
               <p className="text-xs text-base-400 mt-0.5 truncate">
                 {char.server} · {cls?.name || '?'} ·{' '}
-                {(char.specs || []).map((sId, idx) => {
-                  const spec = getSpec(gamedata.classes, char.classId, sId);
-                  return spec ? `${idx + 1}.${spec.name}` : null;
-                }).filter(Boolean).join(' ')}
+                <span className="inline-flex items-center gap-1 align-middle">
+                  {(char.specs || []).map((sId) => {
+                    const spec = getSpec(gamedata.classes, char.classId, sId);
+                    return spec ? <SpecIcon key={sId} specId={sId} name={spec.name} showName size={13} /> : null;
+                  })}
+                </span>
               </p>
             </div>
             <div className="flex gap-1.5 shrink-0 ml-2">

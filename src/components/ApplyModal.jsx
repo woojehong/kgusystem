@@ -4,6 +4,7 @@ import { getCaps, getClass, getSpec, badgeTextStyle } from '../lib/utils';
 import { submitApplication, updateApplication, fetchMemo } from '../lib/db';
 import { useToast } from './Toast';
 import Modal from './Modal';
+import SpecIcon from './SpecIcon';
 
 function Toggle({ on, onChange, disabled }) {
   return (
@@ -443,6 +444,7 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
                             : 'border-base-700 bg-base-850 text-base-200 hover:bg-base-700'
                         }`}
                       >
+                        <SpecIcon specId={s.id} size={16} className="mr-1 align-middle" />
                         {s.name}
                         <span className="ml-1 text-xs text-base-400">
                           {s.role === 'tank' ? '탱' : s.role === 'healer' ? '힐' : '딜'}

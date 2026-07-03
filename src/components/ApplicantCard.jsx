@@ -1,6 +1,8 @@
-import { badgeTextStyle, wclUrl, raiderUrl, armoryUrl } from '../lib/utils';
+import { useApp } from '../context/AppContext';
+import { badgeTextStyle, wclUrl, raiderUrl, armoryUrl, appSpecList } from '../lib/utils';
 import GuildBadge from './GuildBadge';
 import FitText from './FitText';
+import SpecIcon from './SpecIcon';
 
 /**
  * Applicant card.
@@ -33,9 +35,8 @@ function RankBadge({ rank }) {
 }
 
 export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick, borderColor }) {
-  const specDisplay = app.isReservation && !app.classId
-    ? '클래스 미지정'
-    : (app.allSpecNames?.length ? app.allSpecNames : [app.specName]).filter(Boolean).join('·');
+  const { gamedata } = useApp();
+  const specs = appSpecList(gamedata.classes, app);
 
   const hasCharInfo = !app.isReservation && app.charName && app.server;
   const guildColor = app.guildColor || '#94a3b8';
@@ -76,8 +77,14 @@ export default function ApplicantCard({ app, rank, memo, adminView, onAdminClick
         className="flex flex-col items-center gap-0.5 sm:grid sm:gap-0 sm:items-center min-w-0"
         style={{ gridTemplateColumns: '1fr auto 1fr' }}
       >
-        <span className="text-xs truncate max-w-full text-center sm:text-left" style={badgeTextStyle(app.classColor)}>
-          {specDisplay}
+        <span className="flex items-center gap-1 flex-wrap justify-center sm:justify-start text-xs max-w-full min-w-0">
+          {app.isReservation && !app.classId ? (
+            <span style={badgeTextStyle(app.classColor)}>클래스 미지정</span>
+          ) : (
+            specs.map((s, i) => (
+              <SpecIcon key={s.id || s.name || i} specId={s.id} name={s.name} showName size={14} color={app.classColor} className="font-medium" />
+            ))
+          )}
         </span>
         <span className="text-sm font-bold text-base-100 text-center px-1">
           {app.ilvl != null ? app.ilvl : ''}

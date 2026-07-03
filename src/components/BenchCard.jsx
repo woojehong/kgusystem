@@ -1,5 +1,7 @@
-import { badgeTextStyle } from '../lib/utils';
+import { useApp } from '../context/AppContext';
+import { badgeTextStyle, getClass } from '../lib/utils';
 import GuildBadge from './GuildBadge';
+import SpecIcon from './SpecIcon';
 
 /**
  * Bench (standby reserve) applicant card. A single person can list multiple
@@ -7,6 +9,7 @@ import GuildBadge from './GuildBadge';
  * count toward the active roster or the waitlist.
  */
 export default function BenchCard({ app, memo, adminView, onAdminClick, highlight }) {
+  const { gamedata } = useApp();
   const chars =
     app.benchChars && app.benchChars.length
       ? app.benchChars
@@ -37,14 +40,18 @@ export default function BenchCard({ app, memo, adminView, onAdminClick, highligh
 
       {/* 복수 캐릭터 */}
       <div className="flex flex-wrap justify-center gap-x-2 gap-y-0.5">
-        {chars.map((c, i) => (
-          <span key={i} className="text-xs" style={badgeTextStyle(c.classColor || '#cbd5e1')}>
-            {c.charName}
-            {c.specNames && c.specNames.length > 0 && (
-              <span className="text-base-300"> · {c.specNames.join('/')}</span>
-            )}
-          </span>
-        ))}
+        {chars.map((c, i) => {
+          const cls = getClass(gamedata.classes, c.classId);
+          return (
+            <span key={i} className="text-xs inline-flex items-center gap-1">
+              <span style={badgeTextStyle(c.classColor || '#cbd5e1')}>{c.charName}</span>
+              {(c.specNames || []).map((nm, j) => {
+                const s = cls ? cls.specs.find((x) => x.name === nm) : null;
+                return <SpecIcon key={j} specId={s ? s.id : null} name={nm} showName size={13} color={c.classColor || '#cbd5e1'} className="text-base-300" />;
+              })}
+            </span>
+          );
+        })}
       </div>
 
       {/* 관리자 영역 */}

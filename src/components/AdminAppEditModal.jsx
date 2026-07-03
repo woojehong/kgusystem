@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatDateLabel, badgeTextStyle } from '../lib/utils';
+import SpecIcon from './SpecIcon';
 import { updateApplication, cancelApplication, fetchMemo, setUserNotice } from '../lib/db';
 import Modal from './Modal';
 
@@ -228,6 +229,7 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
                     specId === s.id ? 'border-indigo-400 bg-indigo-500/15' : 'border-base-700 bg-base-850 hover:bg-base-700'
                   }`}
                 >
+                  <SpecIcon specId={s.id} size={16} className="mr-1 align-middle" />
                   {s.name}
                 </button>
               ))}

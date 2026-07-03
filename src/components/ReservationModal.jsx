@@ -4,6 +4,7 @@ import { badgeTextStyle } from '../lib/utils';
 import { submitApplication } from '../lib/db';
 import { randomId } from '../lib/utils';
 import Modal from './Modal';
+import SpecIcon from './SpecIcon';
 
 /**
  * Admin reservation form. A reservation occupies a slot in the chosen
@@ -162,6 +163,7 @@ export default function ReservationModal({ open, onClose, raid, role }) {
                     specId === s.id ? 'border-indigo-400 bg-indigo-500/15' : 'border-base-700 bg-base-850 hover:bg-base-700'
                   }`}
                 >
+                  <SpecIcon specId={s.id} size={16} className="mr-1 align-middle" />
                   {s.name}
                 </button>
               ))}
