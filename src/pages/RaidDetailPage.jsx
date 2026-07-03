@@ -678,4 +678,36 @@ export default function RaidDetailPage() {
       />
       <RaidFormModal
         open={raidEditOpen}
-        onClose={() => setRaidEditOpen(false)
+        onClose={() => setRaidEditOpen(false)}
+        raid={raid}
+        applicants={apps}
+      />
+      <Modal open={cancelConfirm} onClose={() => setCancelConfirm(false)} maxWidth="max-w-sm">
+        <div className="text-center py-2 space-y-4">
+          <p className="font-semibold">신청을 취소할까요?</p>
+          <p className="text-sm text-base-400">재신청 시 최후순위로 배정됩니다.</p>
+          <div className="flex gap-2">
+            <button type="button" className="btn-ghost flex-1" onClick={() => setCancelConfirm(false)}>
+              돌아가기
+            </button>
+            <button
+              type="button"
+              className="btn-danger flex-1"
+              onClick={async () => {
+                try {
+                  await cancelApplication(raid.id, userId);
+                  toast('신청이 취소되었습니다');
+                } catch {
+                  toast('취소에 실패했습니다', 'error');
+                }
+                setCancelConfirm(false);
+              }}
+            >
+              신청 취소
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
