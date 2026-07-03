@@ -803,4 +803,9 @@ export default function ProfileModal({ open, onClose }) {
           </button>
         ))}
       </div>
-      {tab === 'basic'      && <Bas
+      {tab === 'basic'      && <BasicTab onClose={onClose} />}
+      {tab === 'characters' && <CharactersTab />}
+      {tab === 'guild'      && <GuildTab onClose={onClose} />}
+    </Modal>
+  );
+}

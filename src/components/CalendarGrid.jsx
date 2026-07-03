@@ -341,4 +341,24 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
         <div className="flex items-center gap-2 mb-2">
           <span className="flex-1 h-px bg-base-700/70" />
           <h3 className="text-sm font-bold text-base-200">{formatDateLabel(selectedKey)}</h3>
-          <s
+          <span className="flex-1 h-px bg-base-700/70" />
+        </div>
+        {selectedRaids.length === 0 ? (
+          <p className="text-center text-sm text-base-500 py-6">이 날 예정된 레이드가 없습니다.</p>
+        ) : (
+          <div className="space-y-2">
+            {selectedRaids.map((r) => (
+              <MobileRaidRow
+                key={r.id}
+                r={r}
+                count={counts[r.id]}
+                mine={mineMap[r.id]}
+                unionGuild={unionGuild}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
