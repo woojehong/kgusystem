@@ -96,4 +96,13 @@ export default function RosterListRow({ app, rank, memo, adminView, onAdminClick
           {hasCharInfo && (
             <>
               <a href={wclUrl(app.server, app.charName)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-[11px] text-sky-400 hover:text-sky-200 font-medium shrink-0">WCL</a>
-              <a href={ra
+              <a href={raiderUrl(app.server, app.charName)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-[11px] text-emerald-400 hover:text-emerald-200 font-medium shrink-0">Raider</a>
+              <a href={armoryUrl(app.server, app.charName)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-[11px] text-amber-400 hover:text-amber-200 font-medium shrink-0">전투정보실</a>
+            </>
+          )}
+          {memo && <span className="text-[11px] text-base-300 truncate min-w-0">📝 {memo}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
