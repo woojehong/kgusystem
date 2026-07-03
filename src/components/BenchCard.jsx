@@ -55,4 +55,16 @@ export default function BenchCard({ app, memo, adminView, onAdminClick, highligh
       </div>
 
       {/* 관리자 영역 */}
-      {adminVie
+      {adminView && (
+        <div className="mt-2 pt-2 border-t border-base-700/60 text-center space-y-1">
+          {app.nickname && (
+            <p className="text-xs text-base-400">
+              로그인ID <span className="font-semibold text-base-200">{app.nickname}</span>
+            </p>
+          )}
+          {memo && <p className="text-xs text-base-300 break-words">📝 {memo}</p>}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -80,4 +80,7 @@ export function splitWarnings(groups) {
       if (groupsWith < 2) warns.push({ classId, label, msg: `${label} ${total}명이 한 조에 몰려 있습니다 — 조에 하나씩 나눠주세요.` });
     }
   };
-  check('m
+  check('monk', '수도사(물리뎀증)');
+  check('demonhunter', '악마사냥꾼(마법뎀증)');
+  return warns;
+}

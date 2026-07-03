@@ -12,6 +12,11 @@ import { useState } from 'react';
  *  - showName: 아이콘 옆에 이름도 표시할지
  *  - color   : 이름 색 (보통 클래스 컬러)
  */
+// 원본 이미지의 가운데 몇 %만 사용할지 (테두리 링을 잘라내기 위함).
+// 0.8 = 가운데 80%만 보이도록 1/0.8 = 1.25배 확대 후 clip.
+const VISIBLE = 0.8;
+const ZOOM = 1 / VISIBLE;
+
 export default function SpecIcon({ specId, name, size = 16, showName = false, color, className = '' }) {
   const [broken, setBroken] = useState(false);
   const hasIcon = !!specId && !broken;
@@ -19,16 +24,19 @@ export default function SpecIcon({ specId, name, size = 16, showName = false, co
   return (
     <span className={`inline-flex items-center gap-1 align-middle ${className}`}>
       {hasIcon && (
-        <img
-          src={`${import.meta.env.BASE_URL}spec/${specId}.png`}
-          alt=""
-          width={size}
-          height={size}
+        <span
+          className="inline-block overflow-hidden rounded-full shrink-0 align-middle bg-transparent"
           style={{ width: size, height: size }}
-          className="rounded-[3px] object-contain shrink-0"
-          onError={() => setBroken(true)}
-          loading="lazy"
-        />
+        >
+          <img
+            src={`${import.meta.env.BASE_URL}spec/${specId}.png`}
+            alt=""
+            className="object-cover"
+            style={{ width: '100%', height: '100%', transform: `scale(${ZOOM})`, transformOrigin: 'center' }}
+            onError={() => setBroken(true)}
+            loading="lazy"
+          />
+        </span>
       )}
       {showName && name && (
         <span className="leading-none" style={color ? { color } : undefined}>{name}</span>

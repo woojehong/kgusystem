@@ -145,4 +145,7 @@ export function emptyCharacter(servers) {
 
 export function validateCharacter(char) {
   if (!char.name.trim()) return '캐릭터명을 입력해주세요.';
-  if (!char.classId) return '클래스를 선택해주�
+  if (!char.classId) return '클래스를 선택해주세요.';
+  if (!char.specs || char.specs.length === 0) return '특성을 1개 이상 선택해주세요.';
+  return null;
+}

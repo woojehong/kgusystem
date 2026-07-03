@@ -505,4 +505,10 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
           {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
           <button type="button" className="btn-primary w-full" disabled={busy} onClick={submit}>
-            {busy ? '처리 중...' : bench ? '�
+            {busy ? '처리 중...' : bench ? '벤치로 등록' : isEdit ? '수정 완료' : '신청하기'}
+          </button>
+        </div>
+      )}
+    </Modal>
+  );
+}
