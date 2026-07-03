@@ -354,7 +354,15 @@ export default function RaidDetailPage() {
         {/* ── Raid header ── */}
         <div className="card relative overflow-hidden p-5" style={{ backgroundColor: diff.soft }}>
           <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
-          <div className="pl-2">
+          {/* 총원 — 박스 우측하단 고정 */}
+          <span className="absolute bottom-4 right-5 z-10 text-sm font-semibold">
+            총원 :{' '}
+            <b className={countFillColor(derived.counts.tank + derived.counts.healer + derived.counts.dps, caps.totalCap)}>
+              {derived.counts.tank + derived.counts.healer + derived.counts.dps}
+            </b>
+            <span className="text-base-400"> / {caps.totalCap}</span>
+          </span>
+          <div className="pl-2 pb-6">
             {/* 레이드 수정 / 구성원 초대 / 시뮬레이션 — 우측 상단 절대배치 */}
             {canEdit && (
               <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
@@ -432,13 +440,6 @@ export default function RaidDetailPage() {
                     </button>
                   </span>
                 )}
-              </span>
-              <span className="ml-auto font-semibold">
-                총원 :{' '}
-                <b className={countFillColor(derived.counts.tank + derived.counts.healer + derived.counts.dps, caps.totalCap)}>
-                  {derived.counts.tank + derived.counts.healer + derived.counts.dps}
-                </b>
-                <span className="text-base-400"> / {caps.totalCap}</span>
               </span>
             </div>
 
@@ -677,36 +678,4 @@ export default function RaidDetailPage() {
       />
       <RaidFormModal
         open={raidEditOpen}
-        onClose={() => setRaidEditOpen(false)}
-        raid={raid}
-        applicants={apps}
-      />
-      <Modal open={cancelConfirm} onClose={() => setCancelConfirm(false)} maxWidth="max-w-sm">
-        <div className="text-center py-2 space-y-4">
-          <p className="font-semibold">신청을 취소할까요?</p>
-          <p className="text-sm text-base-400">재신청 시 최후순위로 배정됩니다.</p>
-          <div className="flex gap-2">
-            <button type="button" className="btn-ghost flex-1" onClick={() => setCancelConfirm(false)}>
-              돌아가기
-            </button>
-            <button
-              type="button"
-              className="btn-danger flex-1"
-              onClick={async () => {
-                try {
-                  await cancelApplication(raid.id, userId);
-                  toast('신청이 취소되었습니다');
-                } catch {
-                  toast('취소에 실패했습니다', 'error');
-                }
-                setCancelConfirm(false);
-              }}
-            >
-              신청 취소
-            </button>
-          </div>
-        </div>
-      </Modal>
-    </div>
-  );
-}
+        onClose={() => setRaidEditOpen(false)

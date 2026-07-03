@@ -298,11 +298,4 @@ export default function AdminAppEditModal({ open, onClose, raid, app }) {
               명단 제외
             </button>
           )}
-          <button type="button" className="btn-primary flex-1" disabled={busy} onClick={save}>
-            {busy ? '저장 중...' : '저장'}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
+          <button type="button" className="btn-primary flex-1" disabled={busy} onClick={sav
