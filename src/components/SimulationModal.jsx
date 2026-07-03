@@ -102,12 +102,15 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
   const [dragId, setDragId] = useState(null);
   const [msg, setMsg] = useState(null);
   const [presetOpen, setPresetOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('1'); // '1'=1열뷰, '2'=2열뷰
   const ready = useRef(false);
 
   const numParties = partyMode;
   const partyNums = Array.from({ length: numParties }, (_, i) => i + 1);
   const chipFont = numParties >= 6 ? 11 : numParties >= 5 ? 12 : 13;
   const groups = activeGroups(mode);
+  const twoCol = viewMode === '2' && numParties % 2 === 0; // 홀수 파티는 2열뷰 불가
+  const leftCols = twoCol ? numParties / 2 : numParties;
 
   useEffect(() => {
     if (!open) return;
@@ -176,6 +179,15 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
   };
 
   const changePartyMode = (n) => {
+    if (n < numParties) {
+      const occupied = [];
+      for (let i = n + 1; i <= numParties; i++) if ((parties[i] || []).length) occupied.push(i);
+      if (occupied.length) {
+        setMsg({ ok: false, text: `파티 ${occupied.join('·')}에 배정된 인원을 먼저 해제(배정 전으로)한 뒤 모드를 변경하세요.` });
+        return;
+      }
+    }
+    setMsg(null);
     setPartyMode(n);
     setParties((prev) => { const next = {}; for (let i = 1; i <= n; i++) next[i] = prev[i] || []; return next; });
   };
@@ -266,6 +278,13 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
       {n}파티모드
     </button>
   );
+  const viewBtn = (v, label, active, disabled) => (
+    <button type="button" disabled={disabled} onClick={() => setViewMode(v)} title={disabled ? '홀수 파티모드에서는 2열뷰를 쓸 수 없습니다' : undefined}
+      className="px-2 py-1 rounded-md text-[11px] font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed"
+      style={active ? { backgroundColor: '#334155', color: '#fff', borderColor: '#475569' } : { backgroundColor: 'transparent', color: '#7e93ad', borderColor: '#2a3347' }}>
+      {label}
+    </button>
+  );
 
   return (
     <div
@@ -322,9 +341,9 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
         )}
 
         {/* 왼쪽: 파티 + 커버리지 | 오른쪽: 배정 전(세로로 길게) */}
-        <div className="grid gap-2 items-stretch" style={{ gridTemplateColumns: `${numParties}fr 1fr` }}>
+        <div className="grid gap-2 items-stretch" style={{ gridTemplateColumns: `${leftCols}fr 1fr` }}>
           <div className="min-w-0 flex flex-col gap-2">
-            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${numParties}, minmax(0, 1fr))` }}>
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${leftCols}, minmax(0, 1fr))` }}>
               {partyNums.map((p) => <PartyBox key={p} p={p} />)}
             </div>
             {/* 커버리지 — 파티 아래(배정 전 열 제외) */}
@@ -348,13 +367,19 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
             )}
           </div>
 
-          {/* 오른쪽: 배정 전 (세로로 길게) */}
-          <div onDragOver={(e) => e.preventDefault()} onDrop={() => moveTo(null)} className="rounded-xl border border-base-700 bg-base-850/60 p-1.5 flex flex-col min-h-[152px]">
-            <p className="text-[11px] font-bold text-base-300 mb-1.5 truncate shrink-0">배정 전 <span className="text-base-500">{pool.length}</span></p>
-            <div className="space-y-1 flex-1">
-              {pool.length ? pool.map((m) => (
-                <MemberChip key={m.id} m={m} onDragStart={setDragId} onDropHere={() => moveTo(null)} fontSize={chipFont} />
-              )) : <p className="text-[10px] text-base-600 text-center py-2">모두 배치됨</p>}
+          {/* 오른쪽: 1열/2열 토글(배정 전 박스 밖 우측상단) + 배정 전(세로로 길게) */}
+          <div className="min-w-0 flex flex-col gap-1">
+            <div className="flex justify-end gap-1">
+              {viewBtn('1', '1열뷰', !twoCol, false)}
+              {viewBtn('2', '2열뷰', twoCol, numParties % 2 !== 0)}
+            </div>
+            <div onDragOver={(e) => e.preventDefault()} onDrop={() => moveTo(null)} className="rounded-xl border border-base-700 bg-base-850/60 p-1.5 flex flex-col flex-1 min-h-[152px]">
+              <p className="text-[11px] font-bold text-base-300 mb-1.5 truncate shrink-0">배정 전 <span className="text-base-500">{pool.length}</span></p>
+              <div className="space-y-1 flex-1">
+                {pool.length ? pool.map((m) => (
+                  <MemberChip key={m.id} m={m} onDragStart={setDragId} onDropHere={() => moveTo(null)} fontSize={chipFont} />
+                )) : <p className="text-[10px] text-base-600 text-center py-2">모두 배치됨</p>}
+              </div>
             </div>
           </div>
         </div>
