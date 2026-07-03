@@ -221,6 +221,18 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
 
   return (
     <>
+      {/* 모바일 전용: 달력 우측상단 일정 추가 (선택한 날짜 기준) */}
+      {isAdmin && (
+        <div className="sm:hidden flex justify-end mb-2">
+          <button
+            type="button"
+            onClick={() => onCreate(selectedKey >= todayKey ? selectedKey : todayKey)}
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:brightness-110 text-white text-sm font-bold shadow transition"
+          >
+            + 일정 추가
+          </button>
+        </div>
+      )}
       <div style={{ background: LINE, border: `1px solid ${LINE}` }}>
         <div className="grid grid-cols-7" style={{ gap: '1px', background: LINE }}>
           {/* 요일 헤더 */}
@@ -249,7 +261,7 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
               <div
                 key={key}
                 onClick={() => setSelectedKey(key)}
-                className={`relative flex flex-col p-1.5 sm:p-2.5 min-h-[58px] sm:min-h-[124px] ${
+                className={`relative flex flex-col px-1 py-1.5 sm:p-2.5 min-h-[58px] sm:min-h-[124px] ${
                   isSelected ? 'ring-2 ring-indigo-400 sm:ring-0' : ''
                 }`}
                 style={{
@@ -259,9 +271,9 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                 }}
               >
                 {/* 날짜 */}
-                <div className="flex items-center justify-between gap-1 mb-1 sm:mb-2 sm:block">
+                <div className="mb-1 sm:mb-2 sm:block text-center">
                   <span
-                    className={`text-[10px] sm:text-sm font-extrabold leading-tight text-outline break-keep min-w-0 sm:block sm:text-center ${
+                    className={`text-[10px] sm:text-sm font-extrabold leading-tight text-outline whitespace-nowrap sm:block ${
                       isToday
                         ? 'text-amber-300'
                         : dow === 0
@@ -273,11 +285,12 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
                   >
                     {day.getMonth() + 1}월 {day.getDate()}일
                   </span>
+                  {/* 데스크탑 전용: 칸별 레이드 추가 (모바일은 달력 상단 버튼 사용) */}
                   {isAdmin && !isPast && (
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); onCreate(key); }}
-                      className="shrink-0 w-6 h-6 sm:w-5 sm:h-5 sm:absolute sm:top-1.5 sm:right-1.5 z-10 rounded-md bg-base-700/90 hover:bg-indigo-500/60 text-base-300 hover:text-white font-bold text-sm sm:text-xs transition leading-none flex items-center justify-center"
+                      className="hidden sm:flex sm:absolute sm:top-1.5 sm:right-1.5 z-10 w-5 h-5 rounded-md bg-base-700/90 hover:bg-indigo-500/60 text-base-300 hover:text-white font-bold text-xs transition leading-none items-center justify-center"
                       title="레이드 추가"
                     >
                       +
@@ -328,24 +341,4 @@ export default function CalendarGrid({ raids, counts = {}, mineMap = {}, onCreat
         <div className="flex items-center gap-2 mb-2">
           <span className="flex-1 h-px bg-base-700/70" />
           <h3 className="text-sm font-bold text-base-200">{formatDateLabel(selectedKey)}</h3>
-          <span className="flex-1 h-px bg-base-700/70" />
-        </div>
-        {selectedRaids.length === 0 ? (
-          <p className="text-center text-sm text-base-500 py-6">이 날 예정된 레이드가 없습니다.</p>
-        ) : (
-          <div className="space-y-2">
-            {selectedRaids.map((r) => (
-              <MobileRaidRow
-                key={r.id}
-                r={r}
-                count={counts[r.id]}
-                mine={mineMap[r.id]}
-                unionGuild={unionGuild}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
+          <s
