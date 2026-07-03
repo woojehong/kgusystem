@@ -22,6 +22,7 @@ import { useToast } from '../components/Toast';
 import ApplyModal from '../components/ApplyModal';
 import ReservationModal from '../components/ReservationModal';
 import AdminMemberAddModal from '../components/AdminMemberAddModal';
+import SimulationModal from '../components/SimulationModal';
 import AdminAppEditModal from '../components/AdminAppEditModal';
 import RaidFormModal from '../components/RaidFormModal';
 import Modal from '../components/Modal';
@@ -107,6 +108,7 @@ export default function RaidDetailPage() {
   const [editApply, setEditApply] = useState(false);
   const [reserveRole, setReserveRole] = useState(null);
   const [memberAddOpen, setMemberAddOpen] = useState(false);
+  const [simOpen, setSimOpen] = useState(false);
   // 로스터 표시 모드: 'list'(기본) | 'card'
   const [rosterView, setRosterView] = useState(() => {
     const v = typeof localStorage !== 'undefined' && localStorage.getItem('kwgu_roster_view');
@@ -353,22 +355,29 @@ export default function RaidDetailPage() {
         <div className="card relative overflow-hidden p-5" style={{ backgroundColor: diff.soft }}>
           <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: diff.color }} />
           <div className="pl-2">
-            {/* 레이드 수정 / 구성원 초대 — 우측 상단 절대배치 (제목 행 높이에 영향 없음) */}
+            {/* 레이드 수정 / 구성원 초대 / 시뮬레이션 — 우측 상단 절대배치 */}
             {canEdit && (
               <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
                 <button
                   type="button"
                   onClick={() => setRaidEditOpen(true)}
-                  className="text-sm px-4 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white font-bold border border-base-500 shadow transition whitespace-nowrap"
+                  className="text-sm px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold border border-indigo-400/50 shadow-md transition whitespace-nowrap"
                 >
                   레이드 수정
                 </button>
                 <button
                   type="button"
                   onClick={copyInvite}
-                  className="text-sm px-4 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white font-bold border border-base-500 shadow transition whitespace-nowrap"
+                  className="text-sm px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold border border-emerald-400/50 shadow-md transition whitespace-nowrap"
                 >
                   {copied ? '복사됨 ✓' : '구성원 초대'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimOpen(true)}
+                  className="text-sm px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold border border-violet-400/60 shadow-md ring-1 ring-violet-400/30 transition whitespace-nowrap"
+                >
+                  🧩 시뮬레이션
                 </button>
               </div>
             )}
@@ -660,38 +669,16 @@ export default function RaidDetailPage() {
         raid={raid}
         apps={apps}
       />
+      <SimulationModal
+        open={simOpen}
+        onClose={() => setSimOpen(false)}
+        raid={raid}
+        apps={apps}
+      />
       <RaidFormModal
         open={raidEditOpen}
         onClose={() => setRaidEditOpen(false)}
         raid={raid}
         applicants={apps}
       />
-      <Modal open={cancelConfirm} onClose={() => setCancelConfirm(false)} maxWidth="max-w-sm">
-        <div className="text-center py-2 space-y-4">
-          <p className="font-semibold">신청을 취소할까요?</p>
-          <p className="text-sm text-base-400">재신청 시 최후순위로 배정됩니다.</p>
-          <div className="flex gap-2">
-            <button type="button" className="btn-ghost flex-1" onClick={() => setCancelConfirm(false)}>
-              돌아가기
-            </button>
-            <button
-              type="button"
-              className="btn-danger flex-1"
-              onClick={async () => {
-                try {
-                  await cancelApplication(raid.id, userId);
-                  toast('신청이 취소되었습니다');
-                } catch {
-                  toast('취소에 실패했습니다', 'error');
-                }
-                setCancelConfirm(false);
-              }}
-            >
-              신청 취소
-            </button>
-          </div>
-        </div>
-      </Modal>
-    </div>
-  );
-}
+      <
