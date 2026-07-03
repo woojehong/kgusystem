@@ -95,7 +95,7 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
   const membersById = Object.fromEntries(members.map((m) => [m.id, m]));
   const autoParties = members.length >= 26 ? 6 : members.length >= 21 ? 5 : 4;
 
-  const [mode, setMode] = useState('1');
+  const [mode, setMode] = useState('2');
   const [partyMode, setPartyMode] = useState(autoParties);
   const [parties, setParties] = useState(() => emptyParties(autoParties));
   const [split, setSplit] = useState({});
@@ -125,7 +125,7 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
     setPartyMode(savedCount);
     setParties(init);
     setSplit(sim.split || {});
-    setMode(sim.mode === '3' ? '3' : sim.mode === '2' ? '2' : '1');
+    setMode(['1', '2', '3'].includes(sim.mode) ? sim.mode : '2');
     setDragId(null); setMsg(null); setPresetOpen(false);
     const t = setTimeout(() => { ready.current = true; }, 0);
     return () => clearTimeout(t);
@@ -255,30 +255,41 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
   };
 
   const modeBtn = (m, label, color) => (
-    <button type="button" onClick={() => setMode(m)} className="px-3 py-1.5 rounded-lg text-sm font-black transition border"
+    <button type="button" onClick={() => setMode(m)} className="w-full text-center px-2 py-1.5 rounded-lg text-sm font-black transition border whitespace-nowrap"
       style={mode === m ? { backgroundColor: color, color: '#06131f', borderColor: color } : { backgroundColor: 'transparent', color: '#7e93ad', borderColor: '#2a3347' }}>
       {label}
     </button>
   );
   const partyBtn = (n) => (
-    <button key={n} type="button" onClick={() => changePartyMode(n)} className="px-2.5 py-1 rounded-lg text-xs font-bold border transition"
+    <button key={n} type="button" onClick={() => changePartyMode(n)} className="w-full text-center px-2 py-1.5 rounded-lg text-xs font-bold border transition whitespace-nowrap"
       style={partyMode === n ? { backgroundColor: '#6366f1', color: '#fff', borderColor: '#6366f1' } : { backgroundColor: 'transparent', color: '#7e93ad', borderColor: '#2a3347' }}>
-      {n}파티 모드
+      {n}파티모드
     </button>
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-base-900/95 backdrop-blur-sm overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 bg-base-900/95 backdrop-blur-sm overflow-y-auto"
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+    >
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
           <h2 className="text-lg font-black text-white truncate pt-1.5">시뮬레이션 · {raid.title || '공격대'}</h2>
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            {/* 1행: 조 모드 + 프리셋/닫기 */}
+          <div className="flex items-start gap-2 shrink-0">
+            {/* 조 모드(위) + 파티 수 모드(아래) — 칸 맞춤 */}
+            <div className="flex flex-col gap-1.5 w-64">
+              <div className="grid grid-cols-3 gap-1.5">
+                {modeBtn('1', '1조모드', GROUPS.A.color)}
+                {modeBtn('2', '2조모드', GROUPS.B.color)}
+                {modeBtn('3', '3조모드', GROUPS.C.color)}
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {partyBtn(4)}{partyBtn(5)}{partyBtn(6)}
+              </div>
+            </div>
+            <span className="w-px self-stretch bg-base-700 mx-0.5" />
+            {/* 프리셋 / 닫기 */}
             <div className="flex items-center gap-2">
-              {modeBtn('1', '1조모드', GROUPS.A.color)}
-              {modeBtn('2', '2조모드', GROUPS.B.color)}
-              {modeBtn('3', '3조모드', GROUPS.C.color)}
-              <span className="w-px h-6 bg-base-700 mx-0.5" />
               <div className="relative">
                 <button type="button" onClick={() => setPresetOpen((v) => !v)} className="px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-white text-sm font-bold transition">프리셋 불러오기 ▾</button>
                 {presetOpen && (
@@ -299,12 +310,6 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
               </div>
               <button type="button" onClick={savePreset} className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold transition">프리셋 저장</button>
               <button type="button" onClick={handleClose} className="px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-base-200 text-sm font-bold transition">닫기</button>
-            </div>
-            {/* 2행: 파티 수 모드 (조 모드 밑에) */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-semibold text-base-500 mr-0.5">파티 수</span>
-              {partyBtn(4)}{partyBtn(5)}{partyBtn(6)}
-              {partyMode !== autoParties && <span className="text-[10px] text-base-500 ml-0.5">(자동 {autoParties})</span>}
             </div>
           </div>
         </div>

@@ -22,7 +22,7 @@ function Rank({ rank }) {
 function AltBox({ specs }) {
   if (!specs.length) return null;
   return (
-    <div className="shrink-0 flex flex-col items-center" title="스왑 가능 특성">
+    <div className="shrink-0 flex flex-col items-center" title={`스왑 가능 특성: ${specs.map((s) => s.name).filter(Boolean).join(', ')}`}>
       <span className="text-[7px] font-black leading-none text-base-300 bg-base-700 rounded px-1 py-px tracking-[0.15em]">ALT</span>
       <div className="flex items-center gap-0.5 mt-0.5">
         {specs.map((s) => <SpecIcon key={s.id} specId={s.id} size={12} />)}
