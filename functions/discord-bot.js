@@ -1144,4 +1144,11 @@ exports.discordRegisterCommands = onRequest(
           headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(COMMANDS),
         });
-        out.pu
+        out.push(`${gid}: [${resp.status}]${resp.ok ? ' OK' : ' ' + (await resp.text()).slice(0, 200)}`);
+      } catch (e) {
+        out.push(`${gid}: 실패 ${e.message}`);
+      }
+    }
+    res.status(200).send('등록 결과\n' + out.join('\n'));
+  }
+);
