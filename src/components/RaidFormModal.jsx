@@ -75,7 +75,7 @@ function TimeInput({ label, value, onChange, hint }) {
 // ── Modal ────────────────────────────────────────────────────────────
 
 export default function RaidFormModal({ open, onClose, dateKey, raid, applicants = [] }) {
-  const { guilds, profile } = useApp();
+  const { guilds, profile, subCategories } = useApp();
   const isEdit = !!raid;
 
   const sortedGuilds = useMemo(() => sortGuilds(guilds).filter((g) => !g.isNone && !g.isUnion), [guilds]);
@@ -93,6 +93,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const [minIlvl, setMinIlvl] = useState('');
   const [description, setDescription] = useState('');
   const [partyType, setPartyType] = useState('union');
+  const [subCategory, setSubCategory] = useState('none');
   const [allowedGuilds, setAllowedGuilds] = useState('all');
   const [allowNoGuild, setAllowNoGuild] = useState(false);
   const [error, setError] = useState('');
@@ -123,6 +124,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setMinIlvl(raid.minIlvl == null ? '' : String(raid.minIlvl));
       setDescription(raid.description || '');
       setPartyType(raid.partyType || 'union');
+      setSubCategory(raid.subCategory || 'none');
       setAllowedGuilds(raid.allowedGuilds ?? 'all');
       setAllowNoGuild(raid.allowNoGuild !== false);
     } else {
@@ -138,6 +140,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setMinIlvl('');
       setDescription('');
       setPartyType('union');
+      setSubCategory('none');
       setAllowedGuilds('all');
       setAllowNoGuild(false);
     }
@@ -226,6 +229,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
         minIlvl: noIlvlLimit ? null : Number(minIlvl),
         description: description.trim(),
         partyType,
+        subCategory,
         allowedGuilds: finalAllowedGuilds,
         allowNoGuild,
       };
@@ -291,9 +295,9 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
           />
         </div>
 
-        {/* 파티 성격 */}
+        {/* 대분류 (파티 성격) */}
         <div>
-          <label className="label-sm">파티 성격</label>
+          <label className="label-sm">대분류</label>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -318,6 +322,27 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
             >
               {myGuild ? `${myGuild.name} 레이드` : '길드 레이드'}
             </button>
+          </div>
+        </div>
+
+        {/* 소분류 */}
+        <div>
+          <label className="label-sm">소분류</label>
+          <div className="flex flex-wrap gap-2">
+            {subCategories.map((sc) => (
+              <button
+                key={sc.id}
+                type="button"
+                onClick={() => setSubCategory(sc.id)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                  subCategory === sc.id
+                    ? 'border-indigo-400 bg-indigo-500/15 text-indigo-200'
+                    : 'border-base-700 text-base-400 hover:text-base-200'
+                }`}
+              >
+                {sc.label}
+              </button>
+            ))}
           </div>
         </div>
 

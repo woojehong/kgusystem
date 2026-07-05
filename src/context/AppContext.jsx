@@ -11,7 +11,7 @@ import { doc, onSnapshot, collection } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { loadGamedata } from '../lib/db';
 import { sortGuilds } from '../lib/utils';
-import { CLASSES, SYNERGIES, SERVERS, SEED_GUILDS } from '../lib/constants';
+import { CLASSES, SYNERGIES, SERVERS, SEED_GUILDS, DEFAULT_SUBCATEGORIES } from '../lib/constants';
 
 const AppContext = createContext(null);
 
@@ -28,6 +28,7 @@ export function AppProvider({ children }) {
     servers: SERVERS,
   });
   const [guilds, setGuilds] = useState(SEED_GUILDS.map(({ id, ...g }) => ({ id, ...g })));
+  const [subCategories, setSubCategories] = useState(DEFAULT_SUBCATEGORIES);
   const [adminMode, setAdminModeState] = useState(
     () => localStorage.getItem(ADMIN_MODE_KEY) === 'on'
   );
@@ -107,6 +108,24 @@ export function AppProvider({ children }) {
     return unsub;
   }, [authUser?.uid]);
 
+  // 관리형 소분류 목록 (Firestore config/raidMeta → 없으면 상수 폴백). 'none'은 항상 포함.
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, 'config', 'raidMeta'),
+      (snap) => {
+        const list = snap.exists() ? snap.data().subCategories : null;
+        if (Array.isArray(list) && list.length) {
+          const hasNone = list.some((s) => s && s.id === 'none');
+          setSubCategories(hasNone ? list : [{ id: 'none', label: '없음(기본)' }, ...list]);
+        } else {
+          setSubCategories(DEFAULT_SUBCATEGORIES);
+        }
+      },
+      () => setSubCategories(DEFAULT_SUBCATEGORIES)
+    );
+    return unsub;
+  }, [authUser?.uid]);
+
   const value = useMemo(() => {
     const role = profile?.role || 'user';
     return {
@@ -121,8 +140,9 @@ export function AppProvider({ children }) {
       setAdminMode,
       gamedata,
       guilds: sortGuilds(guilds),
+      subCategories,
     };
-  }, [authUser, authReady, userId, profile, adminMode, setAdminMode, gamedata, guilds]);
+  }, [authUser, authReady, userId, profile, adminMode, setAdminMode, gamedata, guilds, subCategories]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

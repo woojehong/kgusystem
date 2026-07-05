@@ -41,6 +41,20 @@ export const UNION_LEADER_LABEL = '연합 길드 길드장';
 
 export const SUPER_ADMIN_PATH = 'kga_adminnn';
 
+// ── 레이드 소분류 (관리형 목록의 기본값) ────────────────────────────
+// 'none' = 없음(기본). 슈퍼관리자가 Firestore config/raidMeta.subCategories 로 덮어쓸 수 있고,
+// 없으면 이 기본값을 사용한다. id는 저장/필터 매칭용, label은 표시용.
+export const SUBCAT_NONE = 'none';
+export const DEFAULT_SUBCATEGORIES = [
+  { id: 'none', label: '없음(기본)' },
+  { id: 'goojeong', label: '고정' },
+  { id: 'bangoojeong', label: '반고정' },
+  { id: 'hagwon', label: '학원' },
+  { id: 'bbeonggae', label: '벙개' },
+  { id: 'global', label: '글로벌' },
+  { id: 'yeneung', label: '예능' },
+];
+
 // ── Classes & specializations (Midnight expansion) ──────────────────
 
 export const CLASSES = [

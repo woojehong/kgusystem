@@ -473,9 +473,10 @@ exports.discordInteractions = onRequest(
       if (name === '일정') {
         try {
           const db = getFirestore();
-          const filter = channelFilter(body.channel_id);
+          const channels = await loadChannels(db);
+          const ch = channels.find((c) => c.channelId === body.channel_id) || { filter: 'union', subFilter: 'all' };
           const gmap = await loadGuildIdByEnglish(db);
-          const raids = (await upcomingRaids(db, 50)).filter((r) => raidMatchesFilter(r, filter, gmap));
+          const raids = (await upcomingRaids(db, 50)).filter((r) => raidMatchesChannel(r, ch, gmap));
           const embed = await buildScheduleEmbed(db, raids.slice(0, 8));
           const components = [];
           if (raids.length > 0) {
@@ -539,9 +540,10 @@ exports.discordInteractions = onRequest(
             res.json({ type: REPLY.MESSAGE, data: { content: '먼저 `/연동` 으로 웹 계정을 연결해주세요.', flags: EPHEMERAL } });
             return;
           }
-          const filter = channelFilter(body.channel_id);
+          const channels = await loadChannels(db);
+          const ch = channels.find((c) => c.channelId === body.channel_id) || { filter: 'union', subFilter: 'all' };
           const gmap = await loadGuildIdByEnglish(db);
-          const raids = (await upcomingRaids(db, 50)).filter((r) => raidMatchesFilter(r, filter, gmap));
+          const raids = (await upcomingRaids(db, 50)).filter((r) => raidMatchesChannel(r, ch, gmap));
           if (raids.length === 0) {
             res.json({ type: REPLY.MESSAGE, data: { content: '지금 신청할 수 있는 레이드가 없어요.', flags: EPHEMERAL } });
             return;
@@ -955,9 +957,30 @@ function raidMatchesFilter(raid, filter, gmap) {
   }
   return raid.partyType === filter;
 }
-function channelFilter(channelId) {
-  const ch = CARD_CHANNELS.find((c) => c.channelId === channelId);
-  return ch ? ch.filter : 'union';
+// 채널 설정을 Firestore(cardChannels)에서 로드. 비어 있으면 최초 1회 기본 채널을 시드(소분류='전부').
+async function loadChannels(db) {
+  const snap = await db.collection('cardChannels').get();
+  if (snap.empty) {
+    const batch = db.batch();
+    CARD_CHANNELS.forEach((c) => batch.set(
+      db.collection('cardChannels').doc(c.channelId),
+      { channelId: c.channelId, filter: c.filter, subFilter: 'all', enabled: true, seeded: true }
+    ));
+    await batch.commit();
+    return CARD_CHANNELS.map((c) => ({ channelId: c.channelId, filter: c.filter, subFilter: 'all', enabled: true }));
+  }
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((c) => c.channelId && c.enabled !== false);
+}
+// 채널의 소분류 필터가 레이드의 소분류를 받는가. 'all'/미설정이면 전부 수신.
+function subMatches(channel, raid) {
+  const sub = channel.subFilter;
+  if (!sub || sub === 'all') return true;
+  const raidSub = raid.subCategory || 'none';
+  return Array.isArray(sub) ? sub.includes(raidSub) : sub === raidSub;
+}
+// 대분류 + 소분류 모두 일치해야 그 채널에 송출.
+function raidMatchesChannel(raid, channel, gmap) {
+  return raidMatchesFilter(raid, channel.filter, gmap) && subMatches(channel, raid);
 }
 function raidTimeMillis(r) {
   return r && r.startAt && r.startAt.toMillis ? r.startAt.toMillis() : 0;
@@ -980,15 +1003,15 @@ async function upcomingRaids(db, limit) {
     .sort((a, b) => a.startAt.toMillis() - b.startAt.toMillis());
 }
 
-// 해당 레이드가 속하는(필터에 맞는) 채널 목록
-function channelsForRaid(raid, gmap) {
-  return CARD_CHANNELS.filter((ch) => raidMatchesFilter(raid, ch.filter, gmap));
+// 해당 레이드가 속하는(대+소 필터에 맞는) 채널 목록. channels는 loadChannels 결과.
+function channelsForRaid(raid, gmap, channels) {
+  return (channels || []).filter((ch) => raidMatchesChannel(raid, ch, gmap));
 }
 
 // 지정한 채널만 출발순 재구성 (channels 미지정 시 전체). 다른 채널 상태는 유지.
 // 먼 미래부터 게시 = 가까운 게 맨 아래.
 async function rebuildBoard(db, token, channels) {
-  const targets = channels || CARD_CHANNELS;
+  const targets = channels || (await loadChannels(db));
   if (!targets.length) return;
   const boardSnap = await db.collection('meta').doc('discordBoard').get();
   const board = (boardSnap.exists && boardSnap.data()) || {};
@@ -1004,7 +1027,7 @@ async function rebuildBoard(db, token, channels) {
     for (const id of (board[ch.channelId] || [])) {
       await deleteChannelMessage(token, ch.channelId, id);
     }
-    const matching = all.filter((r) => raidMatchesFilter(r, ch.filter, gmap));
+    const matching = all.filter((r) => raidMatchesChannel(r, ch, gmap));
     const ordered = [...matching].reverse();
     const ids = [];
     for (const r of ordered) {
@@ -1040,7 +1063,8 @@ exports.cardOnRaidCreated = onDocumentCreated(
     if (!raid || raid.deleted) return;
     const db = getFirestore();
     const gmap = await loadGuildIdByEnglish(db);
-    await rebuildBoard(db, DISCORD_BOT_TOKEN.value(), channelsForRaid(raid, gmap));
+    const channels = await loadChannels(db);
+    await rebuildBoard(db, DISCORD_BOT_TOKEN.value(), channelsForRaid(raid, gmap, channels));
   }
 );
 
@@ -1056,10 +1080,12 @@ exports.cardOnRaidUpdated = onDocumentUpdated(
     const timeChanged = raidTimeMillis(before) !== raidTimeMillis(after);
     const deletedToggled = (!!before.deleted) !== (!!after.deleted);
     const partyChanged = (before.partyType || '') !== (after.partyType || '');
-    if (timeChanged || deletedToggled || partyChanged) {
+    const subChanged = (before.subCategory || 'none') !== (after.subCategory || 'none');
+    if (timeChanged || deletedToggled || partyChanged || subChanged) {
       const gmap = await loadGuildIdByEnglish(db);
+      const channels = await loadChannels(db);
       const affected = new Map();
-      [...channelsForRaid(before, gmap), ...channelsForRaid(after, gmap)].forEach((c) => affected.set(c.channelId, c));
+      [...channelsForRaid(before, gmap, channels), ...channelsForRaid(after, gmap, channels)].forEach((c) => affected.set(c.channelId, c));
       await rebuildBoard(db, token, [...affected.values()]);
       return;
     }
@@ -1078,11 +1104,12 @@ exports.cardOnRaidDeleted = onDocumentDeleted(
     const db = getFirestore();
     const token = DISCORD_BOT_TOKEN.value();
     const gmap = await loadGuildIdByEnglish(db);
+    const channels = await loadChannels(db);
     // 필터상 속했던 채널 + 실제 카드가 박혀있던 채널을 합쳐 정리
     const affected = new Map();
-    channelsForRaid(raid, gmap).forEach((c) => affected.set(c.channelId, c));
+    channelsForRaid(raid, gmap, channels).forEach((c) => affected.set(c.channelId, c));
     Object.keys(raid.discordCards || {}).forEach((channelId) => {
-      const ch = CARD_CHANNELS.find((c) => c.channelId === channelId);
+      const ch = channels.find((c) => c.channelId === channelId);
       if (ch) affected.set(ch.channelId, ch);
     });
     if (!affected.size) return;
