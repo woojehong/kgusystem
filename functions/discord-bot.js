@@ -498,6 +498,66 @@ exports.discordInteractions = onRequest(
         }
         return;
       }
+      if (name === '채널등록' || name === '채널수정') {
+        const reply = (content) => res.json({ type: REPLY.MESSAGE, data: { content, flags: EPHEMERAL } });
+        try {
+          const db = getFirestore();
+          const opts = {};
+          (body.data.options || []).forEach((o) => { opts[o.name] = o.value; });
+          const channelId = body.channel_id;
+          const ref = db.collection('cardChannels').doc(channelId);
+
+          if (name === '채널수정' && opts['동작'] === 'delete') {
+            await ref.delete();
+            reply('🗑️ 이 채널의 레이드 알림 등록을 삭제했어요.');
+            return;
+          }
+
+          const guilds = await loadGuildsFull(db);
+          const subcats = await loadSubCats(db);
+
+          const majorRaw = (opts['대분류'] || '').trim();
+          let filter = null;
+          if (majorRaw) {
+            if (majorRaw === '연합' || majorRaw.toLowerCase() === 'union') filter = 'union';
+            else {
+              const g = guilds.find((x) => x.name === majorRaw || x.englishName === majorRaw || x.badgeName === majorRaw);
+              if (!g) { reply(`대분류 "${majorRaw}"를 못 찾았어요.\n가능: 연합, ${guilds.map((x) => x.name).join(', ')}`); return; }
+              filter = g.englishName ? `guild:${g.englishName}` : g.id;
+            }
+          }
+
+          const subRaw = (opts['소분류'] || '').trim();
+          let subFilter;
+          if (!subRaw || subRaw === '전부' || subRaw.toLowerCase() === 'all') subFilter = 'all';
+          else {
+            const ids = [];
+            for (const part of subRaw.split(/[,\s]+/).filter(Boolean)) {
+              const sc = subcats.find((s) => s.label === part || s.id === part || (s.label || '').replace('(기본)', '') === part);
+              if (!sc) { reply(`소분류 "${part}"를 못 찾았어요.\n가능: 전부, ${subcats.map((s) => s.label).join(', ')}`); return; }
+              ids.push(sc.id);
+            }
+            subFilter = ids.length ? ids : 'all';
+          }
+
+          if (name === '채널등록') {
+            if (!filter) { reply('대분류를 입력해주세요. 예: `연합`, `와우팩토리`'); return; }
+            await ref.set({ channelId, filter, subFilter, serverId: body.guild_id || null, enabled: true, updatedAt: Date.now() });
+            reply(`✅ 이 채널을 레이드 알림 채널로 등록했어요.\n· 대분류: **${majorRaw}**\n· 소분류: **${subFilter === 'all' ? '전부' : subRaw}**\n새 레이드부터 이 채널에 표시됩니다.`);
+          } else {
+            const snap = await ref.get();
+            if (!snap.exists) { reply('이 채널은 아직 등록돼 있지 않아요. 먼저 `/채널등록` 을 해주세요.'); return; }
+            const patch = { updatedAt: Date.now() };
+            if (filter) patch.filter = filter;
+            if (subRaw) patch.subFilter = subFilter;
+            await ref.set(patch, { merge: true });
+            reply(`✏️ 수정했어요.${filter ? `\n· 대분류: **${majorRaw}**` : ''}${subRaw ? `\n· 소분류: **${subFilter === 'all' ? '전부' : subRaw}**` : ''}`);
+          }
+        } catch (e) {
+          res.json({ type: REPLY.MESSAGE, data: { content: `처리 실패: ${e.message}`, flags: EPHEMERAL } });
+        }
+        return;
+      }
       if (name === '연동') {
         const reply = (content) => res.json({ type: REPLY.MESSAGE, data: { content, flags: EPHEMERAL } });
         try {
@@ -982,6 +1042,24 @@ function subMatches(channel, raid) {
 function raidMatchesChannel(raid, channel, gmap) {
   return raidMatchesFilter(raid, channel.filter, gmap) && subMatches(channel, raid);
 }
+
+// 슬래시 명령용: 길드 전체(연합 제외) + 소분류 목록
+async function loadGuildsFull(db) {
+  const snap = await db.collection('guilds').get();
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((g) => g.id !== '__union__' && !g.isUnion);
+}
+const DEFAULT_SUBCATS = [
+  { id: 'none', label: '없음(기본)' }, { id: 'goojeong', label: '고정' }, { id: 'bangoojeong', label: '반고정' },
+  { id: 'hagwon', label: '학원' }, { id: 'bbeonggae', label: '벙개' }, { id: 'global', label: '글로벌' }, { id: 'yeneung', label: '예능' },
+];
+async function loadSubCats(db) {
+  try {
+    const s = await db.collection('config').doc('raidMeta').get();
+    const l = s.exists && s.data().subCategories;
+    if (Array.isArray(l) && l.length) return l;
+  } catch (e) { /* noop */ }
+  return DEFAULT_SUBCATS;
+}
 function raidTimeMillis(r) {
   return r && r.startAt && r.startAt.toMillis ? r.startAt.toMillis() : 0;
 }
@@ -1148,6 +1226,27 @@ const COMMANDS = [
   { name: '신청', description: '연합 레이드에 신청합니다 (클릭으로 선택)', type: 1 },
   { name: '내신청', description: '내가 신청한 레이드를 보고 변경/취소합니다', type: 1 },
   { name: '내정보', description: '내 캐릭터의 특성·아이템레벨을 보고 수정합니다', type: 1 },
+  {
+    name: '채널등록',
+    description: '이 채널을 레이드 알림 채널로 등록합니다 (서버 관리 권한 필요)',
+    type: 1,
+    default_member_permissions: '32',
+    options: [
+      { name: '대분류', description: '받을 레이드 종류: 연합 또는 길드명 (예: 와우팩토리)', type: 3, required: true },
+      { name: '소분류', description: '기본 전부. 특정만 받으려면 쉼표로 (예: 고정,벙개)', type: 3, required: false },
+    ],
+  },
+  {
+    name: '채널수정',
+    description: '이 채널의 알림 설정을 수정하거나 삭제합니다 (서버 관리 권한 필요)',
+    type: 1,
+    default_member_permissions: '32',
+    options: [
+      { name: '동작', description: '수정 또는 삭제', type: 3, required: true, choices: [{ name: '수정', value: 'edit' }, { name: '삭제', value: 'delete' }] },
+      { name: '대분류', description: '(수정 시) 받을 대분류: 연합 또는 길드명', type: 3, required: false },
+      { name: '소분류', description: '(수정 시) 전부 또는 쉼표로 (예: 고정,벙개)', type: 3, required: false },
+    ],
+  },
 ];
 
 // 명령을 등록할 서버(길드) 목록 — DISCORD_GUILD_ID(한길련) + 아래 추가 서버들
@@ -1162,18 +1261,27 @@ exports.discordRegisterCommands = onRequest(
     }
     const appId = DISCORD_APP_ID.value();
     const token = DISCORD_BOT_TOKEN.value();
-    const guildIds = [DISCORD_GUILD_ID.value(), ...EXTRA_GUILD_IDS];
+    const headers = { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' };
     const out = [];
+    // 1) 전역 등록 — 봇이 있는 모든 서버(신규 포함)에서 사용 가능 (전파 최대 1시간)
+    try {
+      const resp = await fetch(`https://discord.com/api/v10/applications/${appId}/commands`, {
+        method: 'PUT', headers, body: JSON.stringify(COMMANDS),
+      });
+      out.push(`global: [${resp.status}]${resp.ok ? ' OK (전파 최대 1시간)' : ' ' + (await resp.text()).slice(0, 200)}`);
+    } catch (e) {
+      out.push(`global: 실패 ${e.message}`);
+    }
+    // 2) 기존 길드 범위 명령 제거 — 전역과 중복 방지
+    const guildIds = [DISCORD_GUILD_ID.value(), ...EXTRA_GUILD_IDS];
     for (const gid of guildIds) {
       try {
         const resp = await fetch(`https://discord.com/api/v10/applications/${appId}/guilds/${gid}/commands`, {
-          method: 'PUT',
-          headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(COMMANDS),
+          method: 'PUT', headers, body: JSON.stringify([]),
         });
-        out.push(`${gid}: [${resp.status}]${resp.ok ? ' OK' : ' ' + (await resp.text()).slice(0, 200)}`);
+        out.push(`${gid} clear: [${resp.status}]`);
       } catch (e) {
-        out.push(`${gid}: 실패 ${e.message}`);
+        out.push(`${gid} clear: 실패 ${e.message}`);
       }
     }
     res.status(200).send('등록 결과\n' + out.join('\n'));

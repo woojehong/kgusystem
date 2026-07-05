@@ -195,5 +195,17 @@ service cloud.firestore {
         allow write: if false;
       }
     }
+
+    // ── 디스코드 카드 채널 (마스터·슈퍼가 관리, 봇은 Admin SDK로 우회) ──
+    match /cardChannels/{channelId} {
+      allow read: if isSignedIn();
+      allow write: if isSuper() || (isSignedIn() && myUserDoc().isGuildMaster == true);
+    }
+
+    // ── 레이드 메타(소분류 목록 등) — 공개 읽기, 슈퍼만 수정 ──
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isSuper();
+    }
   }
 }

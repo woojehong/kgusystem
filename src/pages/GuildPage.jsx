@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import Header from '../components/Header';
 import { buildBadgeStyles } from '../components/GuildBadge';
 import GuildMemberManager from '../components/GuildMemberManager';
+import GuildDiscordPanel from '../components/GuildDiscordPanel';
 import {
   blockTextStyle,
   imgWidthValue,
@@ -153,6 +154,13 @@ export default function GuildPage() {
 
         {/* ── 길드원 관리 (길드 마스터 전용, 일반 길드만) ── */}
         {!guild.isUnion && !guild.isNone && <GuildMemberManager guild={guild} />}
+
+        {/* ── 디스코드 알림 채널 (마스터 전용, 일반 길드만) ── */}
+        {isOwner && !guild.isUnion && !guild.isNone && (
+          <div className="mt-4">
+            <GuildDiscordPanel guild={guild} />
+          </div>
+        )}
       </main>
     </div>
   );

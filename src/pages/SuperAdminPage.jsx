@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   collection,
   doc,
+  setDoc,
   getDoc,
   getDocs,
   updateDoc,
@@ -1411,6 +1412,62 @@ function SeedTab() {
 
 // ── Page shell ──────────────────────────────────────────────────────
 
+function SubCategoryTab() {
+  const { subCategories } = useApp();
+  const [items, setItems] = useState(subCategories);
+  const [newLabel, setNewLabel] = useState('');
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { setItems(subCategories); }, [subCategories]);
+
+  const save = async (next) => {
+    setBusy(true); setMsg(null);
+    try {
+      await setDoc(doc(db, 'config', 'raidMeta'), { subCategories: next }, { merge: true });
+      setItems(next); setMsg({ ok: true, text: '저장했어요.' });
+    } catch {
+      setMsg({ ok: false, text: '저장 실패.' });
+    } finally { setBusy(false); }
+  };
+  const add = () => {
+    const label = newLabel.trim();
+    if (!label) return;
+    if (items.some((s) => s.label === label)) { setMsg({ ok: false, text: '이미 있는 항목이에요.' }); return; }
+    setNewLabel('');
+    save([...items, { id: `sc_${Date.now().toString(36)}`, label }]);
+  };
+  const remove = (id) => {
+    if (id === 'none') { setMsg({ ok: false, text: '없음(기본)은 삭제할 수 없어요.' }); return; }
+    save(items.filter((s) => s.id !== id));
+  };
+
+  return (
+    <div className="card p-4 space-y-3">
+      <div>
+        <h3 className="font-bold">레이드 소분류 관리</h3>
+        <p className="text-xs text-base-400 mt-1">레이드 등록·채널 필터에 쓰이는 공통 소분류 목록입니다. ‘없음(기본)’은 항상 유지됩니다.</p>
+      </div>
+      <div className="flex gap-2">
+        <input className="input-base flex-1" placeholder="새 소분류 이름 (예: 트라이)" value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} />
+        <button type="button" onClick={add} disabled={busy} className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition disabled:opacity-50">추가</button>
+      </div>
+      {msg && <p className={`text-sm ${msg.ok ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>}
+      <div className="flex flex-wrap gap-2">
+        {items.map((s) => (
+          <span key={s.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-base-700 bg-base-850 text-sm">
+            <span className={s.id === 'none' ? 'text-base-400' : 'text-base-100'}>{s.label}</span>
+            {s.id !== 'none' && (
+              <button type="button" onClick={() => remove(s.id)} className="text-base-500 hover:text-red-400 text-xs" title="삭제">✕</button>
+            )}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SuperAdminPage() {
   const { authReady, authUser, profile, isSuper, gamedata, guilds } = useApp();
   const [tab, setTab] = useState('users');
@@ -1488,6 +1545,7 @@ export default function SuperAdminPage() {
             ['users', '유저 관리'],
             ['guilds', '길드 관리'],
             ['raids', '레이드 / 아카이브'],
+            ['subcat', '소분류'],
             ['system', '시스템'],
           ].map(([key, label]) => (
             <button
@@ -1506,6 +1564,7 @@ export default function SuperAdminPage() {
         {tab === 'users' && <UsersTab guilds={effectiveGuilds} gamedata={gamedata} />}
         {tab === 'guilds' && <GuildsTab guilds={effectiveGuilds} reload={reloadGuilds} />}
         {tab === 'raids' && <RaidsTab />}
+        {tab === 'subcat' && <SubCategoryTab />}
         {tab === 'system' && <SeedTab />}
       </main>
     </div>
