@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useApp } from '../context/AppContext';
 
 const INVITE_URL = 'https://discord.com/oauth2/authorize?client_id=1517416730652315720&permissions=347136&integration_type=0&scope=bot+applications.commands';
+
+// 알려진 길드의 디스코드 서버 ID (guild.discordServerId 미설정 시 폴백 → 자동 매칭)
+const KNOWN_SERVER_IDS = {
+  starfall: '1430130051734704259',
+  'e-ayo': '861086826637557821',
+  gyocharo: '1264845965387501630',
+};
 
 const chip = (on) =>
   `px-3 py-1.5 rounded-full text-xs font-semibold border transition ${on ? 'border-indigo-400 bg-indigo-500/15 text-indigo-200' : 'border-base-700 text-base-400 hover:text-base-200'}`;
@@ -39,17 +46,28 @@ export default function GuildDiscordPanel({ guild }) {
   const [newSub, setNewSub] = useState('all');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [serverIdInput, setServerIdInput] = useState(guild.discordServerId || KNOWN_SERVER_IDS[guild.englishName] || '');
 
   const guildFilter = guild.englishName ? `guild:${guild.englishName}` : guild.id;
+  const serverId = guild.discordServerId || KNOWN_SERVER_IDS[guild.englishName] || '';
   const majorLabel = (f) => (f === 'union' ? '연합' : guild.name);
+
+  const saveServerId = async () => {
+    const sid = serverIdInput.trim();
+    if (sid && !/^\d{5,}$/.test(sid)) { setMsg({ ok: false, text: '서버 ID는 숫자예요.' }); return; }
+    try { await updateDoc(doc(db, 'guilds', guild.id), { discordServerId: sid || null }); setMsg({ ok: true, text: '서버 ID를 저장했어요.' }); }
+    catch { setMsg({ ok: false, text: '서버 ID 저장 실패.' }); }
+  };
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'cardChannels'), (snap) => {
       const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setChannels(all.filter((c) => c.filter === guildFilter || c.filter === guild.id || c.createdByGuild === guild.id));
+      setChannels(all.filter((c) =>
+        c.filter === guildFilter || c.filter === guild.id || c.createdByGuild === guild.id
+        || (serverId && c.serverId === serverId)));
     }, () => {});
     return unsub;
-  }, [guild.id, guildFilter]);
+  }, [guild.id, guildFilter, serverId]);
 
   const subLabel = (sub) => {
     if (!sub || sub === 'all') return '전부';
@@ -63,7 +81,7 @@ export default function GuildDiscordPanel({ guild }) {
     setBusy(true); setMsg(null);
     try {
       await setDoc(doc(db, 'cardChannels', cid), {
-        channelId: cid, filter: newMajor === 'union' ? 'union' : guildFilter, subFilter: newSub, createdByGuild: guild.id, enabled: true, updatedAt: Date.now(),
+        channelId: cid, filter: newMajor === 'union' ? 'union' : guildFilter, subFilter: newSub, createdByGuild: guild.id, serverId: serverId || null, enabled: true, updatedAt: Date.now(),
       });
       setNewId(''); setNewSub('all'); setNewMajor('guild'); setMsg({ ok: true, text: '채널을 등록했어요.' });
     } catch {
@@ -111,9 +129,18 @@ export default function GuildDiscordPanel({ guild }) {
             </ul>
           </div>
 
+          {/* 우리 서버 ID */}
+          <div className="rounded-xl border border-base-700 bg-base-850 p-3 space-y-2">
+            <p className="text-sm font-semibold text-base-100">2) 우리 디스코드 서버 ID <span className="text-[11px] text-base-500 font-normal">(선택 · 넣으면 이 서버의 채널이 아래 목록에 자동 표시)</span></p>
+            <div className="flex gap-2">
+              <input className="input-base flex-1" placeholder="서버 ID (숫자) — 서버 우클릭 → ID 복사" value={serverIdInput} onChange={(e) => setServerIdInput(e.target.value)} />
+              <button type="button" onClick={saveServerId} className="px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-base-200 text-sm font-bold transition shrink-0">저장</button>
+            </div>
+          </div>
+
           {/* 채널 등록 */}
           <div className="rounded-xl border border-base-700 bg-base-850 p-3 space-y-2">
-            <p className="text-sm font-semibold text-base-100">2) 채널 등록</p>
+            <p className="text-sm font-semibold text-base-100">3) 채널 등록</p>
             <p className="text-[12px] text-base-400">
               원하는 <b className="text-base-200"># 텍스트 채널</b>에서 <code className="px-1 rounded bg-base-700 text-base-200">/채널등록</code> 을 입력하거나, 아래에 채널 ID를 넣어 등록하세요.
             </p>

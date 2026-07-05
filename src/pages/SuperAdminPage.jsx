@@ -1416,11 +1416,11 @@ function SeedTab() {
 
 // 최초 배포 후 DB가 비어 있을 때 자동 연동할 기존 기본 채널 (functions의 CARD_CHANNELS와 동일)
 const DEFAULT_CARD_CHANNELS = [
-  { channelId: '1517678646343635064', filter: 'union' },
-  { channelId: '1517705693371830322', filter: 'union' },
-  { channelId: '1517705660903587970', filter: 'guild:starfall' },
-  { channelId: '1519867938671165490', filter: 'guild:e-ayo' },
-  { channelId: '1521323489573994586', filter: 'guild:gyocharo' },
+  { channelId: '1517678646343635064', filter: 'union', serverId: null },                         // 한길련 서버(ID 미상)
+  { channelId: '1517705693371830322', filter: 'union', serverId: '1430130051734704259' },        // 스타폴 서버 · 연합
+  { channelId: '1517705660903587970', filter: 'guild:starfall', serverId: '1430130051734704259' },
+  { channelId: '1519867938671165490', filter: 'guild:e-ayo', serverId: '861086826637557821' },
+  { channelId: '1521323489573994586', filter: 'guild:gyocharo', serverId: '1264845965387501630' },
 ];
 
 function ChanSubPicker({ value, onChange, subCategories }) {
@@ -1460,7 +1460,7 @@ function ChannelsTab({ guilds }) {
           seededOnce.current = true;
           DEFAULT_CARD_CHANNELS.forEach((c) => setDoc(
             doc(db, 'cardChannels', c.channelId),
-            { channelId: c.channelId, filter: c.filter, subFilter: 'all', enabled: true, updatedAt: Date.now() },
+            { channelId: c.channelId, filter: c.filter, subFilter: 'all', serverId: c.serverId || null, enabled: true, updatedAt: Date.now() },
             { merge: true },
           ).catch(() => {}));
         }
@@ -1490,7 +1490,7 @@ function ChannelsTab({ guilds }) {
   const seedDefaults = async () => {
     try {
       for (const c of DEFAULT_CARD_CHANNELS) {
-        await setDoc(doc(db, 'cardChannels', c.channelId), { channelId: c.channelId, filter: c.filter, subFilter: 'all', enabled: true, updatedAt: Date.now() }, { merge: true });
+        await setDoc(doc(db, 'cardChannels', c.channelId), { channelId: c.channelId, filter: c.filter, subFilter: 'all', serverId: c.serverId || null, enabled: true, updatedAt: Date.now() }, { merge: true });
       }
       setMsg({ ok: true, text: '기존 기본 채널을 불러왔어요.' });
     } catch { setMsg({ ok: false, text: '불러오기 실패.' }); }
