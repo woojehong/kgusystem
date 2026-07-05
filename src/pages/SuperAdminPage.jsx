@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   collection,
   doc,
@@ -1414,6 +1414,15 @@ function SeedTab() {
 
 // ── Page shell ──────────────────────────────────────────────────────
 
+// 최초 배포 후 DB가 비어 있을 때 자동 연동할 기존 기본 채널 (functions의 CARD_CHANNELS와 동일)
+const DEFAULT_CARD_CHANNELS = [
+  { channelId: '1517678646343635064', filter: 'union' },
+  { channelId: '1517705693371830322', filter: 'union' },
+  { channelId: '1517705660903587970', filter: 'guild:starfall' },
+  { channelId: '1519867938671165490', filter: 'guild:e-ayo' },
+  { channelId: '1521323489573994586', filter: 'guild:gyocharo' },
+];
+
 function ChanSubPicker({ value, onChange, subCategories }) {
   const isAll = value === 'all' || !value;
   const arr = Array.isArray(value) ? value : [];
@@ -1440,10 +1449,22 @@ function ChannelsTab({ guilds }) {
   const [newSub, setNewSub] = useState('all');
   const [msg, setMsg] = useState(null);
 
+  const seededOnce = useRef(false);
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, 'cardChannels'),
-      (s) => setChannels(s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.filter || '').localeCompare(b.filter || ''))),
+      (s) => {
+        setChannels(s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.filter || '').localeCompare(b.filter || '')));
+        // 비어 있으면(최초 배포 직후) 기존 기본 채널을 자동 연동 — 1회만.
+        if (s.empty && !seededOnce.current) {
+          seededOnce.current = true;
+          DEFAULT_CARD_CHANNELS.forEach((c) => setDoc(
+            doc(db, 'cardChannels', c.channelId),
+            { channelId: c.channelId, filter: c.filter, subFilter: 'all', enabled: true, updatedAt: Date.now() },
+            { merge: true },
+          ).catch(() => {}));
+        }
+      },
       () => {}
     );
     return unsub;
@@ -1465,6 +1486,14 @@ function ChannelsTab({ guilds }) {
       await setDoc(doc(db, 'cardChannels', cid), { channelId: cid, filter: newFilter, subFilter: newSub, enabled: true, updatedAt: Date.now() });
       setNewId(''); setNewFilter('union'); setNewSub('all'); setMsg({ ok: true, text: '추가했어요.' });
     } catch { setMsg({ ok: false, text: '추가 실패.' }); }
+  };
+  const seedDefaults = async () => {
+    try {
+      for (const c of DEFAULT_CARD_CHANNELS) {
+        await setDoc(doc(db, 'cardChannels', c.channelId), { channelId: c.channelId, filter: c.filter, subFilter: 'all', enabled: true, updatedAt: Date.now() }, { merge: true });
+      }
+      setMsg({ ok: true, text: '기존 기본 채널을 불러왔어요.' });
+    } catch { setMsg({ ok: false, text: '불러오기 실패.' }); }
   };
 
   return (
@@ -1491,7 +1520,10 @@ function ChannelsTab({ guilds }) {
       <div className="card p-4">
         <p className="font-bold mb-2">연동된 채널 <span className="text-base-500">{channels.length}</span></p>
         {channels.length === 0 ? (
-          <p className="text-xs text-base-500 text-center py-3">아직 연동된 채널이 없어요.</p>
+          <div className="text-center py-4 space-y-2">
+            <p className="text-xs text-base-500">기존 채널을 자동 연동 중이에요… 안 뜨면 아래 버튼을 눌러주세요.</p>
+            <button type="button" onClick={seedDefaults} className="px-3 py-1.5 rounded-lg bg-base-700 hover:bg-base-600 text-base-200 text-sm font-semibold transition">기존 기본 채널 불러오기</button>
+          </div>
         ) : (
           <div className="space-y-2">
             {channels.map((c) => (
