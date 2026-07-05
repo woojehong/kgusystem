@@ -3,6 +3,8 @@ import {
   collection,
   doc,
   setDoc,
+  deleteDoc,
+  onSnapshot,
   getDoc,
   getDocs,
   updateDoc,
@@ -1412,6 +1414,117 @@ function SeedTab() {
 
 // ── Page shell ──────────────────────────────────────────────────────
 
+function ChanSubPicker({ value, onChange, subCategories }) {
+  const isAll = value === 'all' || !value;
+  const arr = Array.isArray(value) ? value : [];
+  const toggle = (id) => {
+    if (isAll) { onChange([id]); return; }
+    const n = arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id];
+    onChange(n.length ? n : 'all');
+  };
+  return (
+    <div className="flex flex-wrap gap-1">
+      <button type="button" onClick={() => onChange('all')} className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border transition ${isAll ? 'border-indigo-400 bg-indigo-500/15 text-indigo-200' : 'border-base-700 text-base-400 hover:text-base-200'}`}>전부</button>
+      {subCategories.map((sc) => (
+        <button key={sc.id} type="button" onClick={() => toggle(sc.id)} className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border transition ${!isAll && arr.includes(sc.id) ? 'border-indigo-400 bg-indigo-500/15 text-indigo-200' : 'border-base-700 text-base-400 hover:text-base-200'}`}>{sc.label}</button>
+      ))}
+    </div>
+  );
+}
+
+function ChannelsTab({ guilds }) {
+  const { subCategories } = useApp();
+  const [channels, setChannels] = useState([]);
+  const [newId, setNewId] = useState('');
+  const [newFilter, setNewFilter] = useState('union');
+  const [newSub, setNewSub] = useState('all');
+  const [msg, setMsg] = useState(null);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, 'cardChannels'),
+      (s) => setChannels(s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.filter || '').localeCompare(b.filter || ''))),
+      () => {}
+    );
+    return unsub;
+  }, []);
+
+  const majorOptions = [
+    { value: 'union', label: '연합' },
+    ...guilds.filter((g) => !g.isUnion && !g.isNone).map((g) => ({ value: g.englishName ? `guild:${g.englishName}` : g.id, label: g.name })),
+  ];
+  const majorLabel = (f) => majorOptions.find((o) => o.value === f)?.label || f;
+  const subLabel = (sub) => (!sub || sub === 'all') ? '전부' : (Array.isArray(sub) ? sub : [sub]).map((id) => subCategories.find((s) => s.id === id)?.label || id).join(', ');
+
+  const patch = (cid, data) => setDoc(doc(db, 'cardChannels', cid), { ...data, updatedAt: Date.now() }, { merge: true }).catch(() => setMsg({ ok: false, text: '저장 실패.' }));
+  const remove = (cid) => deleteDoc(doc(db, 'cardChannels', cid)).catch(() => setMsg({ ok: false, text: '삭제 실패.' }));
+  const add = async () => {
+    const cid = newId.trim();
+    if (!/^\d{5,}$/.test(cid)) { setMsg({ ok: false, text: '채널 ID는 숫자예요.' }); return; }
+    try {
+      await setDoc(doc(db, 'cardChannels', cid), { channelId: cid, filter: newFilter, subFilter: newSub, enabled: true, updatedAt: Date.now() });
+      setNewId(''); setNewFilter('union'); setNewSub('all'); setMsg({ ok: true, text: '추가했어요.' });
+    } catch { setMsg({ ok: false, text: '추가 실패.' }); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="card p-4 space-y-3">
+        <h3 className="font-bold">디스코드 채널 추가</h3>
+        <input className="input-base" placeholder="채널 ID (숫자)" value={newId} onChange={(e) => setNewId(e.target.value)} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <p className="text-[11px] text-base-500 mb-1">대분류</p>
+            <select className="input-base" value={newFilter} onChange={(e) => setNewFilter(e.target.value)}>
+              {majorOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <p className="text-[11px] text-base-500 mb-1">소분류</p>
+            <ChanSubPicker value={newSub} onChange={setNewSub} subCategories={subCategories} />
+          </div>
+        </div>
+        <button type="button" onClick={add} className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition">추가</button>
+        {msg && <p className={`text-sm ${msg.ok ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>}
+      </div>
+
+      <div className="card p-4">
+        <p className="font-bold mb-2">연동된 채널 <span className="text-base-500">{channels.length}</span></p>
+        {channels.length === 0 ? (
+          <p className="text-xs text-base-500 text-center py-3">아직 연동된 채널이 없어요.</p>
+        ) : (
+          <div className="space-y-2">
+            {channels.map((c) => (
+              <div key={c.id} className="rounded-xl border border-base-700 bg-base-850 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-mono text-base-300 truncate">#{c.channelId} <span className="text-base-500">· {majorLabel(c.filter)} · {subLabel(c.subFilter)}</span></span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button type="button" onClick={() => patch(c.id, { enabled: c.enabled === false })} className={`text-[11px] px-2 py-0.5 rounded font-semibold ${c.enabled === false ? 'bg-base-700 text-base-400' : 'bg-green-500/15 text-green-300'}`}>{c.enabled === false ? '꺼짐' : '켜짐'}</button>
+                    <button type="button" onClick={() => remove(c.id)} className="text-xs text-red-400 hover:text-red-300 font-semibold px-1">삭제</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                  <div>
+                    <p className="text-[11px] text-base-500 mb-1">대분류</p>
+                    <select className="input-base" value={majorOptions.some((o) => o.value === c.filter) ? c.filter : c.filter} onChange={(e) => patch(c.id, { filter: e.target.value })}>
+                      {!majorOptions.some((o) => o.value === c.filter) && <option value={c.filter}>{majorLabel(c.filter)}</option>}
+                      {majorOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-base-500 mb-1">소분류</p>
+                    <ChanSubPicker value={c.subFilter} onChange={(v) => patch(c.id, { subFilter: v })} subCategories={subCategories} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SubCategoryTab() {
   const { subCategories } = useApp();
   const [items, setItems] = useState(subCategories);
@@ -1545,6 +1658,7 @@ export default function SuperAdminPage() {
             ['users', '유저 관리'],
             ['guilds', '길드 관리'],
             ['raids', '레이드 / 아카이브'],
+            ['channels', '디스코드 채널'],
             ['subcat', '소분류'],
             ['system', '시스템'],
           ].map(([key, label]) => (
@@ -1564,6 +1678,7 @@ export default function SuperAdminPage() {
         {tab === 'users' && <UsersTab guilds={effectiveGuilds} gamedata={gamedata} />}
         {tab === 'guilds' && <GuildsTab guilds={effectiveGuilds} reload={reloadGuilds} />}
         {tab === 'raids' && <RaidsTab />}
+        {tab === 'channels' && <ChannelsTab guilds={effectiveGuilds} />}
         {tab === 'subcat' && <SubCategoryTab />}
         {tab === 'system' && <SeedTab />}
       </main>
