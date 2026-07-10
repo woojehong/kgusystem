@@ -13,7 +13,7 @@ import SpecIcon from './SpecIcon';
 import { badgeTextStyle, getClass, getSpec } from '../lib/utils';
 import { validateEnglishName, normalizePage } from '../lib/guildPage';
 
-const MAX_CHARACTERS = 10;
+const MAX_CHARACTERS = 20;
 
 // ── Badge editor constants (same as SuperAdminPage) ─────────────────
 const SHAPE_OPTIONS = [

@@ -369,9 +369,14 @@ export default function SimulationModal({ open, onClose, raid, apps }) {
 
           {/* 오른쪽: 1열/2열 토글(배정 전 박스 밖 우측상단) + 배정 전(세로로 길게) */}
           <div className="min-w-0 flex flex-col gap-1">
-            <div className="flex justify-end gap-1">
-              {viewBtn('1', '1열뷰', !twoCol, false)}
-              {viewBtn('2', '2열뷰', twoCol, numParties % 2 !== 0)}
+            <div className="flex justify-between items-center gap-1">
+              <span className="text-xs font-bold text-base-200 pl-1">
+                전체 <b className="text-white">{members.length}</b><span className="text-base-500">/{raid.totalCap ?? members.length}</span>
+              </span>
+              <div className="flex gap-1">
+                {viewBtn('1', '1열뷰', !twoCol, false)}
+                {viewBtn('2', '2열뷰', twoCol, numParties % 2 !== 0)}
+              </div>
             </div>
             <div onDragOver={(e) => e.preventDefault()} onDrop={() => moveTo(null)} className="rounded-xl border border-base-700 bg-base-850/60 p-1.5 flex flex-col flex-1 min-h-[152px]">
               <p className="text-[11px] font-bold text-base-300 mb-1.5 truncate shrink-0">배정 전 <span className="text-base-500">{pool.length}</span></p>
