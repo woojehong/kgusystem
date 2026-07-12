@@ -194,6 +194,15 @@ service cloud.firestore {
         allow read: if isSuper();
         allow write: if false;
       }
+
+      // 취소 기록: 관리자는 전체 열람, 본인은 자기 것만. 생성은 본인(또는 관리자), 삭제는 관리자.
+      match /cancels/{cancelId} {
+        allow read: if isAdmin() || (isSignedIn() && resource.data.userId == myUserId());
+        allow create: if isSignedIn()
+          && (isAdmin() || request.resource.data.userId == myUserId());
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
     }
 
     // ── 디스코드 카드 채널 (마스터·슈퍼가 관리, 봇은 Admin SDK로 우회) ──

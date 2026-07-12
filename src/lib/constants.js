@@ -94,7 +94,7 @@ export const CLASSES = [
     name: '기원사',
     color: '#33937F',
     specs: [
-      { id: 'ev_devastation', name: '파멸', role: 'dps', range: 'ranged' },
+      { id: 'ev_devastation', name: '황폐', role: 'dps', range: 'ranged' },
       { id: 'ev_preservation', name: '보존', role: 'healer', range: null },
       { id: 'ev_augmentation', name: '증강', role: 'dps', range: 'ranged' },
     ],

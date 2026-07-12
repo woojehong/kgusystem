@@ -21,7 +21,7 @@ import {
   changeNickname,
   resetPinBySuper,
 } from '../lib/auth';
-import { seedInitialData, isSeeded, saveGuild, deleteGuild, softDeleteRaid, restoreRaid, hardDeleteRaid } from '../lib/db';
+import { seedInitialData, isSeeded, saveGuild, deleteGuild, softDeleteRaid, restoreRaid, hardDeleteRaid, migrateEvokerSpecName } from '../lib/db';
 import { DIFFICULTIES, PIN_RULE, UNION_GUILD_ID } from '../lib/constants';
 import {
   formatDateLabel,
@@ -1367,6 +1367,8 @@ function SeedTab() {
   const [seeded, setSeeded] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [busyMig, setBusyMig] = useState(false);
+  const [migMsg, setMigMsg] = useState('');
 
   useEffect(() => {
     isSeeded()
@@ -1408,6 +1410,31 @@ function SeedTab() {
         {busy ? '설치 중...' : seeded ? '재설치 (덮어쓰기)' : '초기 데이터 설치'}
       </button>
       {msg && <p className="text-sm text-green-400">{msg}</p>}
+
+      <div className="pt-4 mt-2 border-t border-base-700 space-y-2">
+        <p className="font-bold">기원사 특성명 수정 (파멸 → 황폐)</p>
+        <p className="text-sm text-base-400 leading-relaxed">
+          기원사 딜 특성이 <b className="text-base-200">파멸</b>로 잘못 등록돼 있던 것을 <b className="text-base-200">황폐</b>로 고칩니다.
+          클래스 데이터를 갱신하고, 기존 신청서에 저장된 특성 이름도 함께 변환합니다. (캐릭터는 영향 없음)
+        </p>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={busyMig}
+          onClick={async () => {
+            setBusyMig(true); setMigMsg('');
+            try {
+              const r = await migrateEvokerSpecName();
+              setMigMsg(`완료 — 클래스 데이터 갱신, 신청서 ${r.apps}건 변환.`);
+            } catch {
+              setMigMsg('실패 — 권한/연결 상태를 확인해주세요.');
+            } finally { setBusyMig(false); }
+          }}
+        >
+          {busyMig ? '변환 중...' : '파멸 → 황폐 변환 실행'}
+        </button>
+        {migMsg && <p className="text-sm text-green-400">{migMsg}</p>}
+      </div>
     </div>
   );
 }

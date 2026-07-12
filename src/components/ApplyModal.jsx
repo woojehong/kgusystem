@@ -295,6 +295,12 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
       return;
     }
 
+    // 신청 가능 길드가 아니면 '대기'로만 등록 — 공대장이 확인 후 확정으로 올림.
+    if (!guildAllowed) {
+      persist('wait', true);
+      return;
+    }
+
     const positionFull = roleActive >= caps[spec.role];
     const totalOver = totalCount > caps.totalCap;
 
@@ -311,20 +317,7 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
       onClose={() => onClose(false)}
       title={isEdit ? '신청 정보 수정' : '파티 참가 신청'}
     >
-      {!guildAllowed ? (
-        <div className="text-center py-6 space-y-3">
-          <div className="text-4xl">🔒</div>
-          <p className="font-semibold">신청 가능 길드가 아닙니다</p>
-          <p className="text-sm text-base-400 leading-relaxed">
-            이 레이드는 특정 길드 소속 인원만 신청할 수 있습니다.
-            <br />
-            소속 길드가 다르게 설정되어 있다면 관리자에게 문의해주세요.
-          </p>
-          <button type="button" className="btn-ghost" onClick={() => onClose(false)}>
-            닫기
-          </button>
-        </div>
-      ) : waitConfirm ? (
+      {waitConfirm ? (
         <div className="text-center py-2 space-y-4">
           <div className="text-4xl">⚠️</div>
           <p className="font-semibold leading-relaxed">
@@ -348,6 +341,17 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
         </div>
       ) : (
         <div className="space-y-4">
+          {/* 신청 가능 길드가 아닌 경우 — 대기로만 등록 안내 */}
+          {!guildAllowed && (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+              <p className="font-semibold text-sm text-amber-300">🕒 대기로 신청됩니다</p>
+              <p className="text-xs text-amber-200/80 leading-relaxed">
+                이 레이드의 신청 가능 길드가 아니라서 <b>대기 목록</b>으로 등록됩니다.
+                공대장이 확인 후 확정 명단에 올릴 수 있습니다.
+              </p>
+            </div>
+          )}
+
           {/* 벤치 토글 */}
           <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/30">
             <div>

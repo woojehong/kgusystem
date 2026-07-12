@@ -11,7 +11,7 @@ import {
   countFillColor,
   readableOn,
 } from '../lib/utils';
-import { updateRaid, fetchAllMemos, cancelApplication } from '../lib/db';
+import { updateRaid, fetchAllMemos, cancelApplication, subscribeCancels, deleteCancelRecord } from '../lib/db';
 import Header from '../components/Header';
 import SynergyBoard from '../components/SynergyBoard';
 import SwapList from '../components/SwapList';
@@ -109,6 +109,8 @@ export default function RaidDetailPage() {
   const [reserveRole, setReserveRole] = useState(null);
   const [memberAddOpen, setMemberAddOpen] = useState(false);
   const [simOpen, setSimOpen] = useState(false);
+  const [cancels, setCancels] = useState([]);
+  const [cancelReason, setCancelReason] = useState('');
   // 로스터 표시 모드: 'list'(기본) | 'card'
   const [rosterView, setRosterView] = useState(() => {
     const v = typeof localStorage !== 'undefined' && localStorage.getItem('kwgu_roster_view');
@@ -143,6 +145,12 @@ export default function RaidDetailPage() {
       .then(setMemos)
       .catch(() => {});
   }, [adminView, raidId, apps]);
+
+  // 취소자 명단 — 관리자는 전체, 일반 사용자는 본인 것만
+  useEffect(() => {
+    if (!raidId || !userId) return undefined;
+    return subscribeCancels(raidId, { isAdmin, userId }, setCancels);
+  }, [raidId, userId, isAdmin]);
 
   const derived = useMemo(() => {
     const actives = apps.filter((a) => a.status === 'active');
@@ -394,35 +402,36 @@ export default function RaidDetailPage() {
             <span className="text-base-400"> / {caps.totalCap}</span>
           </span>
           <div className="pl-2 pb-6">
-            {/* 레이드 수정 / 구성원 초대 / 시뮬레이션 — 우측 상단 절대배치 */}
+            <h1 className={`text-2xl font-black leading-tight break-keep ${canEdit ? 'sm:pr-28' : ''}`}>
+              {raid.title || `${diff.label} 공격대`}
+            </h1>
+
+            {/* 관리 버튼 — 데스크탑: 우상단 절대배치 / 모바일: 제목 아래 가로 배치(제목·시간 겹침 방지) */}
             {canEdit && (
-              <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-stretch w-28">
+              <div className="mt-3 grid grid-cols-3 gap-2 sm:mt-0 sm:grid-cols-1 sm:absolute sm:top-4 sm:right-4 sm:z-10 sm:w-28">
                 <button
                   type="button"
                   onClick={() => setRaidEditOpen(true)}
-                  className="w-full text-center text-sm px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold border border-indigo-400/50 shadow-md transition whitespace-nowrap"
+                  className="w-full text-center text-xs sm:text-sm px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold border border-indigo-400/50 shadow-md transition whitespace-nowrap"
                 >
                   레이드 수정
                 </button>
                 <button
                   type="button"
                   onClick={copyInvite}
-                  className="w-full text-center text-sm px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold border border-emerald-400/50 shadow-md transition whitespace-nowrap"
+                  className="w-full text-center text-xs sm:text-sm px-2 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold border border-emerald-400/50 shadow-md transition whitespace-nowrap"
                 >
                   {copied ? '복사됨 ✓' : '구성원 초대'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setSimOpen(true)}
-                  className="w-full text-center text-sm px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold border border-violet-400/60 shadow-md transition whitespace-nowrap"
+                  className="w-full text-center text-xs sm:text-sm px-2 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold border border-violet-400/60 shadow-md transition whitespace-nowrap"
                 >
                   시뮬레이션
                 </button>
               </div>
             )}
-            <h1 className={`text-2xl font-black leading-tight break-keep ${canEdit ? 'pr-24 sm:pr-28' : ''}`}>
-              {raid.title || `${diff.label} 공격대`}
-            </h1>
 
             <div className="mt-2 flex items-center gap-2.5 flex-wrap">
               <span
@@ -672,6 +681,62 @@ export default function RaidDetailPage() {
               )}
             </div>
           </div>
+
+          {/* 취소자 명단 — 관리자는 전체, 일반 사용자는 본인 기록만 */}
+          {cancels.length > 0 && (
+            <div className="card p-3">
+              <p className="font-bold text-sm mb-2">
+                <span style={{ color: '#f87171' }}>취소자</span>{' '}
+                <span className="text-white">{cancels.length}</span>
+                {!isAdmin && <span className="text-xs text-base-500 font-normal ml-1">(내 기록)</span>}
+              </p>
+              <div className="space-y-1.5">
+                {[...cancels]
+                  .sort((a, b) => (b.cancelledAt?.toMillis?.() || 0) - (a.cancelledAt?.toMillis?.() || 0))
+                  .map((c) => {
+                    const rejoined = apps.some((a) => a.userId === c.userId);
+                    return (
+                      <div
+                        key={c.id}
+                        className="rounded-lg bg-base-850 border border-base-700 px-2.5 py-2"
+                        style={{ borderLeft: `3px solid ${c.classColor || '#64748b'}` }}
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm" style={{ color: c.classColor || '#cbd5e1' }}>
+                            {c.charName || c.nickname}
+                          </span>
+                          {c.specName && <span className="text-[11px] text-base-400">{c.specName}</span>}
+                          {rejoined && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-500/15 text-green-300">
+                              재등록함
+                            </span>
+                          )}
+                          <span className="ml-auto text-[11px] text-base-500 tabular-nums">
+                            {c.cancelledAt?.toDate
+                              ? c.cancelledAt.toDate().toLocaleString('ko-KR', {
+                                  month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+                                })
+                              : ''}
+                          </span>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => deleteCancelRecord(raid.id, c.id).catch(() => {})}
+                              className="text-[11px] text-red-400 hover:text-red-300 font-semibold px-1"
+                            >
+                              제외
+                            </button>
+                          )}
+                        </div>
+                        {c.reason && (
+                          <p className="text-[11px] text-base-300 mt-1 break-words">📝 {c.reason}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -713,12 +778,34 @@ export default function RaidDetailPage() {
         raid={raid}
         applicants={apps}
       />
-      <Modal open={cancelConfirm} onClose={() => setCancelConfirm(false)} maxWidth="max-w-sm">
-        <div className="text-center py-2 space-y-4">
-          <p className="font-semibold">신청을 취소할까요?</p>
-          <p className="text-sm text-base-400">재신청 시 최후순위로 배정됩니다.</p>
+      <Modal
+        open={cancelConfirm}
+        onClose={() => { setCancelConfirm(false); setCancelReason(''); }}
+        maxWidth="max-w-sm"
+      >
+        <div className="py-2 space-y-4">
+          <div className="text-center space-y-1">
+            <p className="font-semibold">신청을 취소할까요?</p>
+            <p className="text-sm text-base-400">재신청 시 최후순위로 배정됩니다.</p>
+          </div>
+          <div>
+            <label className="label-sm">
+              취소 사유 <span className="text-base-500 font-normal">(선택 · 공대장만 열람)</span>
+            </label>
+            <textarea
+              className="input-base"
+              rows={2}
+              placeholder="예: 일정이 겹쳐서요"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+          </div>
           <div className="flex gap-2">
-            <button type="button" className="btn-ghost flex-1" onClick={() => setCancelConfirm(false)}>
+            <button
+              type="button"
+              className="btn-ghost flex-1"
+              onClick={() => { setCancelConfirm(false); setCancelReason(''); }}
+            >
               돌아가기
             </button>
             <button
@@ -726,12 +813,13 @@ export default function RaidDetailPage() {
               className="btn-danger flex-1"
               onClick={async () => {
                 try {
-                  await cancelApplication(raid.id, userId);
+                  await cancelApplication(raid.id, userId, myApp, cancelReason);
                   toast('신청이 취소되었습니다');
                 } catch {
                   toast('취소에 실패했습니다', 'error');
                 }
                 setCancelConfirm(false);
+                setCancelReason('');
               }}
             >
               신청 취소

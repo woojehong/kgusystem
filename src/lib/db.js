@@ -3,6 +3,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   where,
   setDoc,
@@ -49,6 +50,34 @@ export async function seedInitialData() {
 export async function isSeeded() {
   const snap = await getDoc(doc(db, 'meta', 'seed'));
   return snap.exists();
+}
+
+// ── 마이그레이션: 기원사 특성명 '파멸' → '황폐' ──────────────────────
+// gamedata/classes 재시드 + 기존 신청서(apps)의 특성 '이름' 변환.
+// (캐릭터는 특성을 id로 저장하므로 변환 불필요)
+export async function migrateEvokerSpecName() {
+  const result = { apps: 0 };
+  await setDoc(doc(db, 'gamedata', 'classes'), { list: CLASSES });
+
+  const fix = (v) => (v === '파멸' ? '황폐' : v);
+  const raidsSnap = await getDocs(collection(db, 'raids'));
+  for (const r of raidsSnap.docs) {
+    const appsSnap = await getDocs(collection(db, 'raids', r.id, 'apps'));
+    for (const a of appsSnap.docs) {
+      const d = a.data();
+      if (d.classId !== 'evoker') continue;
+      const patch = {};
+      if (d.specName === '파멸') patch.specName = '황폐';
+      if (Array.isArray(d.allSpecNames) && d.allSpecNames.includes('파멸')) {
+        patch.allSpecNames = d.allSpecNames.map(fix);
+      }
+      if (Object.keys(patch).length) {
+        await updateDoc(doc(db, 'raids', r.id, 'apps', a.id), patch);
+        result.apps += 1;
+      }
+    }
+  }
+  return result;
 }
 
 // ── Guilds ──────────────────────────────────────────────────────────
@@ -150,11 +179,47 @@ export async function updateApplication(raidId, appId, appData, memoText) {
   await batch.commit();
 }
 
-export async function cancelApplication(raidId, appId) {
+// 신청 취소 — 신청서는 삭제(명단에서 사라짐)하고, 취소 기록은 별도 컬렉션에 남긴다.
+// 별도 문서라 나중에 재등록해도 취소 이력이 유지된다.
+export async function cancelApplication(raidId, appId, appSnapshot, reason) {
+  const a = appSnapshot || {};
   const batch = writeBatch(db);
   batch.delete(appDocRef(raidId, appId));
   batch.delete(memoDocRef(raidId, appId));
+  batch.set(doc(collection(db, 'raids', raidId, 'cancels')), {
+    userId: a.userId || appId,
+    nickname: a.nickname || null,
+    charName: a.charName || null,
+    classId: a.classId || null,
+    className: a.className || null,
+    classColor: a.classColor || null,
+    specId: a.specId || null,
+    specName: a.specName || null,
+    role: a.role || null,
+    guildId: a.guildId || null,
+    guildName: a.guildName || null,
+    guildColor: a.guildColor || null,
+    prevStatus: a.status || null,
+    reason: (reason || '').trim() || null,
+    cancelledAt: serverTimestamp(),
+  });
   await batch.commit();
+}
+
+// 취소 기록 삭제 (관리자가 명단에서 제외)
+export async function deleteCancelRecord(raidId, cancelId) {
+  await deleteDoc(doc(db, 'raids', raidId, 'cancels', cancelId));
+}
+
+// 취소자 명단 구독 — 관리자는 전체, 일반 사용자는 본인 것만 (규칙과 동일하게 쿼리 제한).
+export function subscribeCancels(raidId, { isAdmin, userId }, cb) {
+  const col = collection(db, 'raids', raidId, 'cancels');
+  const q = isAdmin ? col : query(col, where('userId', '==', userId));
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    () => cb([])
+  );
 }
 
 export async function fetchMemo(raidId, appId) {
