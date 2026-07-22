@@ -137,6 +137,13 @@ export async function addComment(postId, { body, author }) {
   await batch.commit();
 }
 
+export function updateComment(postId, commentId, body) {
+  return updateDoc(doc(db, 'posts', postId, 'comments', commentId), {
+    body: body.trim(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function deleteComment(postId, commentId) {
   const batch = writeBatch(db);
   batch.delete(doc(db, 'posts', postId, 'comments', commentId));

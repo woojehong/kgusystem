@@ -8,6 +8,7 @@ import {
   subscribePost,
   subscribeComments,
   addComment,
+  updateComment,
   deleteComment,
   deletePost,
 } from '../lib/board';
@@ -35,15 +36,27 @@ function AuthorLine({ a, time }) {
 
 // 게시글 본문 + 댓글. onRequestEdit(post) → 상위에서 수정 모달 오픈.
 export default function PostDetailModal({ open, postId, onClose, onRequestEdit }) {
-  const { userId, isAdmin, profile } = useApp();
+  const { userId, role, isSuper, profile } = useApp();
   const toast = useToast();
-  const canModerate = isAdmin || !!profile?.isGuildMaster;
+
+  // 삭제 권한: 본인 / 슈퍼 / 마스터(전부) / 관리자(자기 길드 일반 길드원)
+  const canDeleteAuthored = (a) =>
+    !!a && (
+      a.authorId === userId
+      || isSuper
+      || !!profile?.isGuildMaster
+      || (role === 'admin' && a.authorGuildId === profile?.guildId && a.authorRole === 'user' && !a.authorIsMaster)
+    );
+  // 수정 권한: 본인 또는 슈퍼
+  const canEditAuthored = (a) => !!a && (a.authorId === userId || isSuper);
 
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
 
   useEffect(() => {
     if (!open || !postId) return undefined;
@@ -56,8 +69,17 @@ export default function PostDetailModal({ open, postId, onClose, onRequestEdit }
     return () => { unsub1(); unsub2(); };
   }, [open, postId]);
 
-  const canEdit = post && post.authorId === userId;
-  const canDelete = post && (post.authorId === userId || canModerate);
+  const canEditPost = canEditAuthored(post);
+  const canDeletePost = canDeleteAuthored(post);
+
+  const startEditComment = (c) => { setEditingId(c.id); setEditText(c.body); };
+  const saveEditComment = async () => {
+    if (!editText.trim() || busy) return;
+    setBusy(true);
+    try { await updateComment(postId, editingId, editText); setEditingId(null); setEditText(''); }
+    catch { toast('댓글 수정 실패'); }
+    finally { setBusy(false); }
+  };
 
   const submitComment = async () => {
     if (!text.trim() || busy) return;
@@ -117,12 +139,12 @@ export default function PostDetailModal({ open, postId, onClose, onRequestEdit }
             </div>
             <div className="flex items-center justify-between gap-2">
               <AuthorLine a={post} time={fmt(post.createdAt)} />
-              {(canEdit || canDelete) && (
+              {(canEditPost || canDeletePost) && (
                 <div className="flex items-center gap-1 shrink-0">
-                  {canEdit && (
+                  {canEditPost && (
                     <button type="button" onClick={() => onRequestEdit(post)} className="text-xs text-base-400 hover:text-base-100 px-2 py-1 rounded hover:bg-base-700">수정</button>
                   )}
-                  {canDelete && (
+                  {canDeletePost && (
                     <button type="button" onClick={() => setConfirmDel(true)} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/10">삭제</button>
                   )}
                 </div>
@@ -150,16 +172,35 @@ export default function PostDetailModal({ open, postId, onClose, onRequestEdit }
               {comments.length === 0 ? (
                 <p className="text-xs text-base-500 text-center py-3">첫 댓글을 남겨보세요.</p>
               ) : comments.map((c) => {
-                const mine = c.authorId === userId;
+                const editable = canEditAuthored(c);
+                const deletable = canDeleteAuthored(c);
+                const isEditing = editingId === c.id;
                 return (
                   <div key={c.id} className="rounded-xl bg-base-850 border border-base-700 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <AuthorLine a={c} time={fmt(c.createdAt)} />
-                      {(mine || canModerate) && (
-                        <button type="button" onClick={() => removeComment(c.id)} className="text-[11px] text-red-400 hover:text-red-300 shrink-0 px-1.5 py-0.5 rounded hover:bg-red-500/10">삭제</button>
+                      {!isEditing && (editable || deletable) && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          {editable && (
+                            <button type="button" onClick={() => startEditComment(c)} className="text-[11px] text-base-400 hover:text-base-100 px-1.5 py-0.5 rounded hover:bg-base-700">수정</button>
+                          )}
+                          {deletable && (
+                            <button type="button" onClick={() => removeComment(c.id)} className="text-[11px] text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-500/10">삭제</button>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <p className="text-sm text-base-200 leading-relaxed whitespace-pre-wrap mt-1.5">{c.body}</p>
+                    {isEditing ? (
+                      <div className="mt-2 space-y-2">
+                        <textarea className="input-base w-full min-h-[60px] resize-y" value={editText} maxLength={2000} onChange={(e) => setEditText(e.target.value)} />
+                        <div className="flex justify-end gap-2">
+                          <button type="button" className="btn-ghost px-3 py-1 text-xs" onClick={() => { setEditingId(null); setEditText(''); }}>취소</button>
+                          <button type="button" className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold disabled:opacity-50" disabled={busy || !editText.trim()} onClick={saveEditComment}>저장</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-base-200 leading-relaxed whitespace-pre-wrap mt-1.5">{c.body}</p>
+                    )}
                   </div>
                 );
               })}

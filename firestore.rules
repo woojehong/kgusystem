@@ -50,6 +50,24 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/guilds/$(gid)).data.isNone == true;
     }
 
+    // ── 게시판 삭제 권한 (글·댓글 공통) ──────────────────────────────
+    // 관리자(마스터 아님): 자기 길드의 '일반 길드원'(마스터·관리자 제외) 것만 삭제.
+    // 판정은 문서에 비정규화된 작성자 정보(authorGuildId/authorRole/authorIsMaster) 기준.
+    function isRegularOfMyGuild(d) {
+      return myRole() == 'admin'
+        && d.authorGuildId == myUserDoc().guildId
+        && d.authorRole == 'user'
+        && d.authorIsMaster != true;
+    }
+    function boardCanDelete(d) {
+      return isSignedIn() && (
+        d.authorId == myUserId()                 // 본인
+        || isSuper()                             // 슈퍼: 전부
+        || myUserDoc().isGuildMaster == true     // 마스터: 전부
+        || isRegularOfMyGuild(d)                 // 관리자: 자기 길드 일반 길드원
+      );
+    }
+
     // ── Nickname → account mapping (public lookup for login) ───────
 
     match /nicknames/{nickname} {
@@ -229,32 +247,38 @@ service cloud.firestore {
         && (request.resource.data.category != 'notice' || isAdmin() || myUserDoc().isGuildMaster == true)
         && (request.resource.data.pinned == false || isAdmin() || myUserDoc().isGuildMaster == true);
 
+      // 수정: 슈퍼는 전부, 작성자는 본인 글만. (마스터·관리자는 남의 글 수정 불가)
       allow update: if isSignedIn() && (
-        // 댓글 수 카운터만 단독 변경 (댓글 작성/삭제에 수반)
+        // 댓글 수 카운터만 단독 변경 (댓글 작성/삭제에 수반) — 로그인 전원 허용
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
-        // 관리자·마스터: 전체 수정(고정 포함)
-        || isAdmin()
-        || myUserDoc().isGuildMaster == true
-        // 작성자 본인: 분류·고정은 변경 불가
+        // 슈퍼: 전체 수정
+        || isSuper()
+        // 작성자 본인: 분류는 고정. 고정(pinned)은 관리자·마스터 작성자만 토글 가능.
         || (
           resource.data.authorId == myUserId()
           && request.resource.data.authorId == resource.data.authorId
           && request.resource.data.category == resource.data.category
-          && request.resource.data.pinned == resource.data.pinned
+          && (request.resource.data.pinned == resource.data.pinned || isAdmin() || myUserDoc().isGuildMaster == true)
         )
       );
 
-      allow delete: if isSignedIn() && (
-        resource.data.authorId == myUserId() || isAdmin() || myUserDoc().isGuildMaster == true
-      );
+      // 삭제: 본인 / 슈퍼(전부) / 마스터(전부) / 관리자(자기 길드 일반 길드원)
+      allow delete: if boardCanDelete(resource.data);
 
       match /comments/{commentId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn() && request.resource.data.authorId == myUserId();
-        allow update: if false;
-        allow delete: if isSignedIn() && (
-          resource.data.authorId == myUserId() || isAdmin() || myUserDoc().isGuildMaster == true
+        // 수정: 슈퍼 전부, 작성자 본인(내용만)
+        allow update: if isSignedIn() && (
+          isSuper()
+          || (
+            resource.data.authorId == myUserId()
+            && request.resource.data.authorId == resource.data.authorId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body', 'updatedAt'])
+          )
         );
+        // 삭제: 글과 동일 규칙
+        allow delete: if boardCanDelete(resource.data);
       }
     }
 
