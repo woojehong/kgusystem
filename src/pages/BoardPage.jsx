@@ -110,7 +110,7 @@ export default function BoardPage() {
 
         {/* 탭 */}
         <div className="flex gap-2 mb-4 border-b border-base-800 pb-3">
-          {CATEGORIES.map((c) => (
+          {BOARD_TABS.map((c) => (
             <button
               key={c.id}
               type="button"
