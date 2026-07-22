@@ -95,6 +95,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const [partyType, setPartyType] = useState('union');
   const [subCategory, setSubCategory] = useState('none');
   const [allowedGuilds, setAllowedGuilds] = useState('all');
+  const [waitGuilds, setWaitGuilds] = useState('all'); // 'all' | string[] | 'none' — 정식 참가 불가 길드의 대기 신청 허용 범위
   const [allowNoGuild, setAllowNoGuild] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -126,6 +127,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setPartyType(raid.partyType || 'union');
       setSubCategory(raid.subCategory || 'none');
       setAllowedGuilds(raid.allowedGuilds ?? 'all');
+      setWaitGuilds(raid.waitGuilds ?? 'all');
       setAllowNoGuild(raid.allowNoGuild !== false);
     } else {
       setLocalDateKey(defaultDateKey);
@@ -142,6 +144,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
       setPartyType('union');
       setSubCategory('none');
       setAllowedGuilds('all');
+      setWaitGuilds('all');
       setAllowNoGuild(false);
     }
   }, [open, raid]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -149,6 +152,7 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
   const handlePartyTypeChange = (val) => {
     setPartyType(val);
     setAllowedGuilds(val === 'union' ? 'all' : [val]);
+    setWaitGuilds('all');
   };
 
   const toggleAllowedGuild = (guildId) => {
@@ -164,6 +168,21 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
 
   const isAllAllowed = allowedGuilds === 'all';
   const allowedList = isAllAllowed ? [] : (Array.isArray(allowedGuilds) ? allowedGuilds : []);
+
+  // 대기 허용 — 정식 참가 불가 길드들만 대상. 'all'(그 외 전원) | array(선택) | 'none'(대기 불가)
+  const otherGuilds = sortedGuilds.filter((g) => !allowedList.includes(g.id));
+  const waitMode = waitGuilds === 'none' ? 'none' : (Array.isArray(waitGuilds) ? 'some' : 'all');
+  const waitList = Array.isArray(waitGuilds) ? waitGuilds : [];
+  const setWaitMode = (m) => {
+    if (m === 'all') setWaitGuilds('all');
+    else if (m === 'none') setWaitGuilds('none');
+    else setWaitGuilds(otherGuilds.map((g) => g.id)); // 'some' 진입 시 그 외 전원 선택 후 개별 해제
+  };
+  const toggleWaitGuild = (id) => {
+    const cur = Array.isArray(waitGuilds) ? waitGuilds : [];
+    const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+    setWaitGuilds(next.length ? next : 'none');
+  };
 
   const leaderOptions = useMemo(() => {
     const guildLeaders = sortedGuilds.map((g) => `${g.name} 길드장`);
@@ -217,6 +236,8 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
     try {
       const { startAt, endAt } = buildRaidTimes(effectiveDateKey, normStart, normEnd);
       const finalAllowedGuilds = partyType === 'union' ? 'all' : allowedGuilds;
+      // 정식 참가가 전원 허용이면 대기 구분이 무의미 → 'all'
+      const finalWaitGuilds = (partyType === 'union' || finalAllowedGuilds === 'all') ? 'all' : waitGuilds;
       const payload = {
         title: title.trim(),
         dateKey: effectiveDateKey,
@@ -393,6 +414,49 @@ export default function RaidFormModal({ open, onClose, dateKey, raid, applicants
                 </label>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* 대기 허용 길드 — 정식 참가가 특정 길드로 제한된 경우에만 노출 */}
+        {partyType !== 'union' && !isAllAllowed && (
+          <div>
+            <label className="label-sm">대기 허용 길드 <span className="text-[11px] text-base-500 font-normal">(정식 참가 불가 길드의 신청 처리)</span></label>
+            <div className="grid grid-cols-3 gap-1.5 mb-2">
+              {[
+                { id: 'all', label: '그 외 전원 대기' },
+                { id: 'some', label: '지정 길드만' },
+                { id: 'none', label: '대기 불가' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setWaitMode(m.id)}
+                  className={`py-2 rounded-xl text-xs font-bold border transition ${
+                    waitMode === m.id ? 'border-amber-400 bg-amber-500/15 text-amber-200' : 'border-base-700 text-base-400 hover:text-base-200'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-base-400 mb-2">
+              {waitMode === 'all' && '정식 참가 불가 길드는 누구나 대기로 신청할 수 있어요. (공대장이 확정 승격)'}
+              {waitMode === 'none' && '정식 참가 허용 길드만 신청 가능. 그 외에는 신청 자체가 막혀요.'}
+              {waitMode === 'some' && '아래 선택한 길드만 대기로 신청할 수 있어요. 나머지는 신청 불가.'}
+            </p>
+            {waitMode === 'some' && (
+              <div className="space-y-1.5">
+                {otherGuilds.length === 0 ? (
+                  <p className="text-[11px] text-base-500">정식 참가 불가 길드가 없어요.</p>
+                ) : otherGuilds.map((g) => (
+                  <label key={g.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-base-850 border border-base-700 cursor-pointer">
+                    <input type="checkbox" className="w-4 h-4 accent-amber-500" checked={waitList.includes(g.id)} onChange={() => toggleWaitGuild(g.id)} />
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                    <span className="text-sm font-medium" style={{ color: g.color }}>{g.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

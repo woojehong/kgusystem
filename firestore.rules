@@ -217,6 +217,47 @@ service cloud.firestore {
       allow write: if isSuper();
     }
 
+    // ── 게시판 (공지/자유/구인) ─────────────────────────────────────
+    // 읽기: 로그인 전원. 공지 작성·고정: 관리자·마스터만. 자유/구인: 로그인 전원.
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.authorId == myUserId()
+        && request.resource.data.category in ['notice', 'free', 'recruit']
+        && request.resource.data.commentCount == 0
+        && (request.resource.data.category != 'notice' || isAdmin() || myUserDoc().isGuildMaster == true)
+        && (request.resource.data.pinned == false || isAdmin() || myUserDoc().isGuildMaster == true);
+
+      allow update: if isSignedIn() && (
+        // 댓글 수 카운터만 단독 변경 (댓글 작성/삭제에 수반)
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
+        // 관리자·마스터: 전체 수정(고정 포함)
+        || isAdmin()
+        || myUserDoc().isGuildMaster == true
+        // 작성자 본인: 분류·고정은 변경 불가
+        || (
+          resource.data.authorId == myUserId()
+          && request.resource.data.authorId == resource.data.authorId
+          && request.resource.data.category == resource.data.category
+          && request.resource.data.pinned == resource.data.pinned
+        )
+      );
+
+      allow delete: if isSignedIn() && (
+        resource.data.authorId == myUserId() || isAdmin() || myUserDoc().isGuildMaster == true
+      );
+
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.authorId == myUserId();
+        allow update: if false;
+        allow delete: if isSignedIn() && (
+          resource.data.authorId == myUserId() || isAdmin() || myUserDoc().isGuildMaster == true
+        );
+      }
+    }
+
     // ── 포럼 자동생성 요청 — 길드마스터가 생성, 봇(Admin SDK)이 결과 기록 ──
     // create: 본인이 마스터인 그 길드 것만, status는 pending 으로 시작.
     // read: 본인 요청만(결과 구독). update/delete: 봇만(규칙상 금지).

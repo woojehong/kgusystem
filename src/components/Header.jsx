@@ -48,6 +48,13 @@ export default function Header() {
     </button>
   );
 
+  const navLinks = (
+    <>
+      <Link to="/" className={HEADER_BTN}>일정</Link>
+      <Link to="/board" className={HEADER_BTN}>게시판</Link>
+    </>
+  );
+
   return (
     <>
       <header className="sticky top-0 z-40 bg-base-900/90 backdrop-blur border-b border-base-800 pt-[env(safe-area-inset-top)]">
@@ -65,6 +72,7 @@ export default function Header() {
             </span>
           </Link>
           <div className="flex items-center gap-2">
+            {navLinks}
             {profileButton}
             <AdminToggle />
             {logoutButton}
@@ -85,6 +93,7 @@ export default function Header() {
             </span>
           </Link>
           <div className="flex items-center justify-center flex-wrap gap-2">
+            {navLinks}
             {profileButton}
             <AdminToggle />
             {logoutButton}

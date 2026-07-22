@@ -258,9 +258,32 @@ async function createSignup(db, userId, raidId, charIndex, mode) {
     .map((sid) => ((cls.specs || []).find((s) => s.id === sid) || {}).name)
     .filter(Boolean);
 
+  // 신청 자격 3단계 — 웹(ApplyModal)과 동일 규칙: 정식 참가 / 대기만 / 신청 불가
+  const uGuildId = user.guildId || '';
+  const isNoGuild = uGuildId === 'none' || uGuildId === '';
+  const guildAllowed = (() => {
+    if (isNoGuild && raid.allowNoGuild === false) return false;
+    if (!raid.allowedGuilds || raid.allowedGuilds === 'all') return true;
+    if (Array.isArray(raid.allowedGuilds)) return raid.allowedGuilds.includes(uGuildId);
+    return true;
+  })();
+  const waitAllowed = (() => {
+    const w = raid.waitGuilds;
+    if (w === 'none') return false;
+    if (w == null || w === 'all') return true;
+    if (Array.isArray(w)) return isNoGuild ? w.includes('none') : w.includes(uGuildId);
+    return true;
+  })();
+  if (!guildAllowed && !waitAllowed) {
+    return { error: '이 레이드는 소속 길드가 신청할 수 없도록 설정되어 있어요.' };
+  }
+
   let status;
   let swapFlag = false;
-  if (mode === 'bench') {
+  if (!guildAllowed) {
+    // 정식 참가 불가 → 대기로만 등록 (벤치 요청이어도 대기 처리, 웹과 동일)
+    status = 'wait';
+  } else if (mode === 'bench') {
     status = 'bench';
   } else {
     const counts = await getRaidCounts(db, raidId);

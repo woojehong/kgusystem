@@ -3,6 +3,7 @@ import { useApp } from './context/AppContext';
 import { SUPER_ADMIN_PATH } from './lib/constants';
 import LoginPage from './pages/LoginPage';
 import IndexPage from './pages/IndexPage';
+import BoardPage from './pages/BoardPage';
 import RaidDetailPage from './pages/RaidDetailPage';
 import GuildPage from './pages/GuildPage';
 import SuperAdminPage from './pages/SuperAdminPage';
@@ -37,6 +38,14 @@ export default function App() {
           element={
             <RequireAuth>
               <IndexPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/board"
+          element={
+            <RequireAuth>
+              <BoardPage />
             </RequireAuth>
           }
         />

@@ -103,14 +103,28 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
 
   if (!profile) return null;
 
+  const userGuildId = profile.guildId || '';
+  const isNoGuild = userGuildId === 'none' || userGuildId === '';
+
+  // 정식 참가 자격
   const guildAllowed = (() => {
-    const userGuildId = profile.guildId || '';
-    const isNoGuild = userGuildId === 'none' || userGuildId === '';
     if (isNoGuild && raid.allowNoGuild === false) return false;
     if (!raid.allowedGuilds || raid.allowedGuilds === 'all') return true;
     if (Array.isArray(raid.allowedGuilds)) return raid.allowedGuilds.includes(userGuildId);
     return true;
   })();
+
+  // 대기 신청 자격 — 정식 참가 불가일 때만 의미. waitGuilds: 'all'(기본) | array | 'none'
+  const waitAllowed = (() => {
+    const w = raid.waitGuilds;
+    if (w === 'none') return false;
+    if (w == null || w === 'all') return true; // 미설정/전원 → 하위호환(누구나 대기)
+    if (Array.isArray(w)) return isNoGuild ? w.includes('none') : w.includes(userGuildId);
+    return true;
+  })();
+
+  // 신청 자체가 불가한 길드 (정식·대기 모두 불가)
+  const applyBlocked = !guildAllowed && !waitAllowed;
 
   const selectCharacter = (idx) => {
     setCharIndex(idx);
@@ -295,6 +309,11 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
       return;
     }
 
+    // 정식·대기 모두 불가한 길드는 신규 신청 차단. (기존 신청 수정은 허용)
+    if (applyBlocked && !isEdit) {
+      setError('이 레이드는 소속 길드가 신청할 수 없도록 설정되어 있습니다.');
+      return;
+    }
     // 신청 가능 길드가 아니면 '대기'로만 등록 — 공대장이 확인 후 확정으로 올림.
     if (!guildAllowed) {
       persist('wait', true);
@@ -341,12 +360,21 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* 신청 가능 길드가 아닌 경우 — 대기로만 등록 안내 */}
-          {!guildAllowed && (
+          {/* 신청 불가 길드 — 정식·대기 모두 불가 */}
+          {applyBlocked && !isEdit && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 space-y-1">
+              <p className="font-semibold text-sm text-red-300">🚫 신청할 수 없는 레이드</p>
+              <p className="text-xs text-red-200/80 leading-relaxed">
+                이 레이드는 소속 길드가 신청할 수 없도록 설정되어 있습니다.
+              </p>
+            </div>
+          )}
+          {/* 정식 참가는 불가하지만 대기는 가능한 경우 — 대기로만 등록 안내 */}
+          {!applyBlocked && !guildAllowed && (
             <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
               <p className="font-semibold text-sm text-amber-300">🕒 대기로 신청됩니다</p>
               <p className="text-xs text-amber-200/80 leading-relaxed">
-                이 레이드의 신청 가능 길드가 아니라서 <b>대기 목록</b>으로 등록됩니다.
+                이 레이드의 정식 참가 가능 길드가 아니라서 <b>대기 목록</b>으로 등록됩니다.
                 공대장이 확인 후 확정 명단에 올릴 수 있습니다.
               </p>
             </div>
@@ -508,8 +536,8 @@ export default function ApplyModal({ open, onClose, raid, apps, existingApp }) {
 
           {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
-          <button type="button" className="btn-primary w-full" disabled={busy} onClick={submit}>
-            {busy ? '처리 중...' : bench ? '벤치로 등록' : isEdit ? '수정 완료' : '신청하기'}
+          <button type="button" className="btn-primary w-full" disabled={busy || (applyBlocked && !isEdit)} onClick={submit}>
+            {busy ? '처리 중...' : (applyBlocked && !isEdit) ? '신청 불가' : bench ? '벤치로 등록' : isEdit ? '수정 완료' : (!guildAllowed ? '대기로 신청' : '신청하기')}
           </button>
         </div>
       )}
