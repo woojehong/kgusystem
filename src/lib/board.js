@@ -23,6 +23,8 @@ export const CATEGORIES = [
   { id: 'free', label: '자유' },
   { id: 'recruit', label: '구인구직' },
 ];
+// 게시판 상단 탭 — '전체'가 기본. (전체는 열람 전용 필터이지 작성 분류는 아님)
+export const BOARD_TABS = [{ id: 'all', label: '전체' }, ...CATEGORIES];
 export const CAT_LABEL = { notice: '공지', free: '자유', recruit: '구인구직' };
 
 const PAGE = 20;
@@ -41,7 +43,11 @@ function authorFields(author) {
 // ── 목록 (카테고리별 최신순, 페이지네이션) ───────────────────────────
 // afterDoc 을 넘기면 다음 페이지. get 기반(1회 읽기)으로 비용 절약.
 export async function fetchPosts(category, afterDoc) {
-  const base = [collection(db, 'posts'), where('category', '==', category), orderBy('createdAt', 'desc')];
+  const col = collection(db, 'posts');
+  // '전체'는 카테고리 필터 없이 최신순(단일 필드 인덱스만 필요 → 복합 인덱스 불필요).
+  const base = category === 'all'
+    ? [col, orderBy('createdAt', 'desc')]
+    : [col, where('category', '==', category), orderBy('createdAt', 'desc')];
   const q = afterDoc
     ? query(...base, startAfter(afterDoc), limit(PAGE))
     : query(...base, limit(PAGE));

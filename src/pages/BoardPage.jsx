@@ -3,7 +3,7 @@ import Header from '../components/Header';
 import PostFormModal from '../components/PostFormModal';
 import PostDetailModal from '../components/PostDetailModal';
 import GuildBadge from '../components/GuildBadge';
-import { CATEGORIES, fetchPosts, subscribePinnedNotices } from '../lib/board';
+import { BOARD_TABS, fetchPosts, subscribePinnedNotices } from '../lib/board';
 
 function fmt(ts) {
   if (!ts || !ts.toDate) return '';
@@ -41,7 +41,7 @@ function PostRow({ post, onOpen, pinned }) {
 }
 
 export default function BoardPage() {
-  const [tab, setTab] = useState('notice');
+  const [tab, setTab] = useState('all');
   const [posts, setPosts] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
   const [hasMore, setHasMore] = useState(false);
@@ -86,9 +86,9 @@ export default function BoardPage() {
     if (changed) loadFirst(tab);
   };
 
-  // 고정 공지를 목록 위에 노출 (현재 탭이 공지가 아니어도 상시). 목록 내 중복 제거.
+  // 고정 공지는 상단 스트립에 상시 노출 → 아래 목록에서는 항상 중복 제거.
   const pinnedIds = new Set(pinnedNotices.map((p) => p.id));
-  const listPosts = posts.filter((p) => !(tab === 'notice' && pinnedIds.has(p.id)));
+  const listPosts = posts.filter((p) => !pinnedIds.has(p.id));
 
   return (
     <div className="min-h-screen">
