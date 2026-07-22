@@ -8,7 +8,7 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { onDocumentCreated, onDocumentUpdated, onDocumentWritten, onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const { defineSecret } = require('firebase-functions/params');
-const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const { getFirestore, Timestamp, FieldValue } = require('firebase-admin/firestore');
 const crypto = require('crypto');
 const { CLASSES } = require('./wow-data');
 
@@ -420,6 +420,84 @@ async function deleteChannelMessage(token, channelId, messageId) {
     method: 'DELETE',
     headers: { Authorization: `Bot ${token}` },
   });
+}
+
+// ── 포럼 채널 지원 ─────────────────────────────────────────────────────────
+// GET 채널 타입 (15=GUILD_FORUM). 실패 시 null.
+async function getChannelType(token, channelId) {
+  try {
+    const resp = await fetch(`${DISCORD_API}/channels/${channelId}`, { headers: { Authorization: `Bot ${token}` } });
+    if (!resp.ok) return null;
+    const d = await resp.json();
+    return d.type;
+  } catch (e) { return null; }
+}
+// 채널이 포럼인지 — cardChannels.isForum 캐시, 없으면 조회해서 저장.
+async function ensureForumFlag(db, token, channel) {
+  if (typeof channel.isForum === 'boolean') return channel.isForum;
+  const t = await getChannelType(token, channel.channelId);
+  const isForum = t === 15;
+  try { await db.collection('cardChannels').doc(channel.channelId).set({ isForum }, { merge: true }); } catch (e) { /* noop */ }
+  channel.isForum = isForum;
+  return isForum;
+}
+// 포럼 포스트 생성 → 생성된 스레드 id 반환 (스레드 id = 시작 메시지 id).
+async function createForumPost(token, forumChannelId, name, cardPayload) {
+  const resp = await fetch(`${DISCORD_API}/channels/${forumChannelId}/threads`, {
+    method: 'POST',
+    headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: String(name || '공격대').slice(0, 100), auto_archive_duration: 1440, message: cardPayload }),
+  });
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    console.error('[createForumPost] 실패 channel=', forumChannelId, 'status=', resp.status, 'body=', body.slice(0, 300));
+    return null;
+  }
+  const d = await resp.json();
+  return d.id;
+}
+// 포럼 포스트 삭제 (스레드 삭제).
+async function deleteForumPost(token, threadId) {
+  await fetch(`${DISCORD_API}/channels/${threadId}`, { method: 'DELETE', headers: { Authorization: `Bot ${token}` } }).catch(() => {});
+}
+// 포럼 채널에 대해 이 레이드의 포스트를 생성/수정(shouldExist) 또는 삭제.
+async function syncForumPost(db, token, raidId, raid, channel, shouldExist) {
+  const existing = (raid.discordForumPosts || {})[channel.channelId];
+  if (shouldExist) {
+    const card = await buildRaidCard(db, raidId);
+    if (!card) return;
+    if (existing) {
+      const resp = await fetch(`${DISCORD_API}/channels/${existing}/messages/${existing}`, {
+        method: 'PATCH', headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(card),
+      }).catch(() => null);
+      if (resp && resp.ok) return; // 수정 성공
+      // 실패(포스트 삭제됨 등) → 아래에서 재생성
+    }
+    const threadId = await createForumPost(token, channel.channelId, raid.title || '공격대', card);
+    if (threadId) {
+      await db.collection('raids').doc(raidId).set({ discordForumPosts: { [channel.channelId]: threadId } }, { merge: true });
+    }
+  } else if (existing) {
+    await deleteForumPost(token, existing);
+    await db.collection('raids').doc(raidId).update({ [`discordForumPosts.${channel.channelId}`]: FieldValue.delete() }).catch(() => {});
+  }
+}
+
+// 레이드의 모든 포럼 포스트(시작 메시지) 카드 갱신.
+async function refreshForumPosts(db, token, raidId, raid) {
+  const ids = Object.values(raid.discordForumPosts || {});
+  if (!ids.length) return;
+  const card = await buildRaidCard(db, raidId);
+  if (!card) return;
+  for (const threadId of ids) await editChannelMessage(token, threadId, threadId, card);
+}
+// 매칭 채널을 포럼/텍스트로 분리 (isForum 감지·캐시).
+async function splitChannels(db, token, channels) {
+  const forum = []; const text = [];
+  for (const ch of channels) {
+    if (await ensureForumFlag(db, token, ch)) forum.push(ch); else text.push(ch);
+  }
+  return { forum, text };
 }
 
 // 카드 = 상세 임베드(로스터) + 버튼 [신청][상세][웹]
@@ -1140,9 +1218,13 @@ exports.cardOnRaidCreated = onDocumentCreated(
     const raid = event.data.data();
     if (!raid || raid.deleted) return;
     const db = getFirestore();
+    const token = DISCORD_BOT_TOKEN.value();
+    const raidId = event.params.raidId;
     const gmap = await loadGuildIdByEnglish(db);
     const channels = await loadChannels(db);
-    await rebuildBoard(db, DISCORD_BOT_TOKEN.value(), channelsForRaid(raid, gmap, channels));
+    const { forum, text } = await splitChannels(db, token, channelsForRaid(raid, gmap, channels));
+    for (const ch of forum) await syncForumPost(db, token, raidId, raid, ch, true);
+    if (text.length) await rebuildBoard(db, token, text);
   }
 );
 
@@ -1162,14 +1244,27 @@ exports.cardOnRaidUpdated = onDocumentUpdated(
     if (timeChanged || deletedToggled || partyChanged || subChanged) {
       const gmap = await loadGuildIdByEnglish(db);
       const channels = await loadChannels(db);
-      const affected = new Map();
-      [...channelsForRaid(before, gmap, channels), ...channelsForRaid(after, gmap, channels)].forEach((c) => affected.set(c.channelId, c));
-      await rebuildBoard(db, token, [...affected.values()]);
+      const raidId = event.params.raidId;
+      const beforeCh = channelsForRaid(before, gmap, channels);
+      const afterCh = after.deleted ? [] : channelsForRaid(after, gmap, channels);
+      const afterIds = new Set(afterCh.map((c) => c.channelId));
+      const union = new Map();
+      [...beforeCh, ...afterCh].forEach((c) => union.set(c.channelId, c));
+      const textAffected = new Map();
+      for (const ch of union.values()) {
+        if (await ensureForumFlag(db, token, ch)) {
+          await syncForumPost(db, token, raidId, after, ch, afterIds.has(ch.channelId));
+        } else {
+          textAffected.set(ch.channelId, ch);
+        }
+      }
+      if (textAffected.size) await rebuildBoard(db, token, [...textAffected.values()]);
       return;
     }
     if (after.deleted) return;
     if (!displayChanged(before, after)) return; // discordCards만 바뀐 경우(재구성 자기쓰기) 스킵
     await refreshRaidCards(db, token, event.params.raidId, after.discordCards);
+    await refreshForumPosts(db, token, event.params.raidId, after);
   }
 );
 
@@ -1183,12 +1278,18 @@ exports.cardOnRaidDeleted = onDocumentDeleted(
     const token = DISCORD_BOT_TOKEN.value();
     const gmap = await loadGuildIdByEnglish(db);
     const channels = await loadChannels(db);
-    // 필터상 속했던 채널 + 실제 카드가 박혀있던 채널을 합쳐 정리
+    // 포럼 포스트는 저장돼 있던 것 전부 삭제
+    for (const threadId of Object.values(raid.discordForumPosts || {})) {
+      await deleteForumPost(token, threadId);
+    }
+    // 텍스트 채널: 필터상 속했던 + 실제 카드가 박혀있던 채널 재구성 (포럼 제외)
     const affected = new Map();
-    channelsForRaid(raid, gmap, channels).forEach((c) => affected.set(c.channelId, c));
+    for (const ch of channelsForRaid(raid, gmap, channels)) {
+      if (!(await ensureForumFlag(db, token, ch))) affected.set(ch.channelId, ch);
+    }
     Object.keys(raid.discordCards || {}).forEach((channelId) => {
       const ch = channels.find((c) => c.channelId === channelId);
-      if (ch) affected.set(ch.channelId, ch);
+      if (ch && ch.isForum !== true) affected.set(ch.channelId, ch);
     });
     if (!affected.size) return;
     await rebuildBoard(db, token, [...affected.values()]);
@@ -1205,7 +1306,9 @@ exports.cardOnAppChange = onDocumentWritten(
     if (!raidSnap.exists) return;
     const raid = raidSnap.data();
     if (raid.deleted) return;
-    await refreshRaidCards(db, DISCORD_BOT_TOKEN.value(), raidId, raid.discordCards);
+    const token = DISCORD_BOT_TOKEN.value();
+    await refreshRaidCards(db, token, raidId, raid.discordCards);
+    await refreshForumPosts(db, token, raidId, raid);
   }
 );
 
