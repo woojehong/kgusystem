@@ -216,5 +216,18 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isSuper();
     }
+
+    // ── 포럼 자동생성 요청 — 길드마스터가 생성, 봇(Admin SDK)이 결과 기록 ──
+    // create: 본인이 마스터인 그 길드 것만, status는 pending 으로 시작.
+    // read: 본인 요청만(결과 구독). update/delete: 봇만(규칙상 금지).
+    match /forumRequests/{reqId} {
+      allow read: if isSignedIn()
+        && (isSuper() || resource.data.requestedBy == myUserId());
+      allow create: if isSignedIn()
+        && request.resource.data.requestedBy == myUserId()
+        && request.resource.data.status == 'pending'
+        && isGuildMasterOf(request.resource.data.guildId);
+      allow update, delete: if false;
+    }
   }
 }

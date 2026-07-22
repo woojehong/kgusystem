@@ -381,6 +381,7 @@ async function buildDetailEmbed(db, raidId) {
   if (lack.length) distParts.push(`**결여**${NL}${lack.map((id) => CLASS_EMOJI[id] || '').join(' ')}`);
   if (distParts.length) fields.push({ name: '클래스 분포', value: distParts.join(NL + NL), inline: false });
 
+  const summary = `🗓 ${dtShort(raid.startAt)} · ${DIFF_LABEL[raid.difficulty] || ''} · 탱 ${active.tank.length}/${caps.tankCap} · 힐 ${active.healer.length}/${caps.healerCap} · 딜 ${active.dps.length}/${caps.dpsCap}`;
   return {
     embed: {
       title: raid.title || '공격대',
@@ -389,6 +390,7 @@ async function buildDetailEmbed(db, raidId) {
       fields,
     },
     raid,
+    summary,
   };
 }
 
@@ -446,7 +448,7 @@ async function createForumPost(token, forumChannelId, name, cardPayload) {
   const resp = await fetch(`${DISCORD_API}/channels/${forumChannelId}/threads`, {
     method: 'POST',
     headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: String(name || '공격대').slice(0, 100), auto_archive_duration: 1440, message: cardPayload }),
+    body: JSON.stringify({ name: String(name || '공격대').slice(0, 100), auto_archive_duration: 10080, message: cardPayload }),
   });
   if (!resp.ok) {
     const body = await resp.text().catch(() => '');
@@ -460,11 +462,52 @@ async function createForumPost(token, forumChannelId, name, cardPayload) {
 async function deleteForumPost(token, threadId) {
   await fetch(`${DISCORD_API}/channels/${threadId}`, { method: 'DELETE', headers: { Authorization: `Bot ${token}` } }).catch(() => {});
 }
+// 길드용 레이드 포럼 채널을 서버에 생성하고 cardChannels에 자동 등록한다.
+// guild = 우리 시스템 길드 문서(englishName 권장). serverId = 디스코드 서버 ID.
+// 반환: { channelId, name, already? }. 실패 시 한국어 메시지로 throw.
+async function provisionGuildForum(db, token, serverId, guild) {
+  if (!serverId) throw new Error('서버 ID가 없어요.');
+  if (!guild) throw new Error('길드 정보를 찾을 수 없어요.');
+  const filter = guild.englishName ? `guild:${guild.englishName}` : guild.id;
+
+  // 중복 가드 — 같은 서버·같은 대분류의 포럼이 이미 있으면 그걸 재사용.
+  const existSnap = await db.collection('cardChannels').where('serverId', '==', serverId).get();
+  const dup = existSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .find((c) => c.isForum && c.enabled !== false && c.filter === filter);
+  if (dup) return { channelId: dup.channelId, name: null, already: true };
+
+  const name = `${(guild.badgeName || guild.name || '공대').toString().slice(0, 90)}-레이드`.slice(0, 100);
+  const resp = await fetch(`${DISCORD_API}/guilds/${serverId}/channels`, {
+    method: 'POST',
+    headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      type: 15,                 // GUILD_FORUM
+      default_sort_order: 0,    // 0 = 최근 활동순
+      default_forum_layout: 1,  // 1 = 목록형
+      topic: 'Raid schedule feed (auto-managed).',
+    }),
+  });
+  if (!resp.ok) {
+    const t = await resp.text().catch(() => '');
+    if (resp.status === 403) throw new Error('봇에게 "채널 관리" 권한이 없어요. 서버 역할 설정에서 봇에게 채널 관리 권한을 켜주세요.');
+    if (resp.status === 404) throw new Error('봇이 그 서버에 없어요. 먼저 봇을 서버에 초대해주세요.');
+    throw new Error(`포럼 채널 생성 실패(${resp.status}) ${t.slice(0, 150)}`);
+  }
+  const ch = await resp.json();
+  await db.collection('cardChannels').doc(ch.id).set({
+    channelId: ch.id, filter, subFilter: 'all', serverId,
+    isForum: true, enabled: true, createdByGuild: guild.id, autoCreated: true, updatedAt: Date.now(),
+  });
+  return { channelId: ch.id, name: ch.name };
+}
+
 // 포럼 채널에 대해 이 레이드의 포스트를 생성/수정(shouldExist) 또는 삭제.
 async function syncForumPost(db, token, raidId, raid, channel, shouldExist) {
   const existing = (raid.discordForumPosts || {})[channel.channelId];
   if (shouldExist) {
-    const card = await buildRaidCard(db, raidId);
+    const card = await buildRaidCard(db, raidId, true);
     if (!card) return;
     if (existing) {
       const resp = await fetch(`${DISCORD_API}/channels/${existing}/messages/${existing}`, {
@@ -487,7 +530,7 @@ async function syncForumPost(db, token, raidId, raid, channel, shouldExist) {
 async function refreshForumPosts(db, token, raidId, raid) {
   const ids = Object.values(raid.discordForumPosts || {});
   if (!ids.length) return;
-  const card = await buildRaidCard(db, raidId);
+  const card = await buildRaidCard(db, raidId, true);
   if (!card) return;
   for (const threadId of ids) await editChannelMessage(token, threadId, threadId, card);
 }
@@ -501,10 +544,12 @@ async function splitChannels(db, token, channels) {
 }
 
 // 카드 = 상세 임베드(로스터) + 버튼 [신청][상세][웹]
-async function buildRaidCard(db, raidId) {
+// forum=true면 포럼 목록 미리보기용 요약 한 줄(content)을 함께 넣는다.
+async function buildRaidCard(db, raidId, forum) {
   const d = await buildDetailEmbed(db, raidId);
   if (!d) return null;
   return {
+    ...(forum && d.summary ? { content: d.summary } : {}),
     embeds: [d.embed],
     components: [{ type: 1, components: [
       { type: 2, style: 1, label: '🎯 신청', custom_id: `card_signup:${raidId}` },
@@ -518,7 +563,7 @@ async function buildRaidCard(db, raidId) {
 // minInstances:1 — 인스턴스를 항상 깨워둬 콜드스타트 지연/타임아웃을 제거한다.
 // (그래서 결과를 바로 응답해도 3초를 넘지 않음 → "생각 중"/"응답없음" 안 뜸)
 exports.discordInteractions = onRequest(
-  { secrets: [DISCORD_PUBLIC_KEY], minInstances: 1 },
+  { secrets: [DISCORD_PUBLIC_KEY, DISCORD_BOT_TOKEN], minInstances: 1 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method Not Allowed');
@@ -633,6 +678,32 @@ exports.discordInteractions = onRequest(
           }
         } catch (e) {
           res.json({ type: REPLY.MESSAGE, data: { content: `처리 실패: ${e.message}`, flags: EPHEMERAL } });
+        }
+        return;
+      }
+      if (name === '포럼세팅') {
+        const reply = (content) => res.json({ type: REPLY.MESSAGE, data: { content, flags: EPHEMERAL } });
+        try {
+          const db = getFirestore();
+          const discordUser = (body.member && body.member.user) || body.user || {};
+          const discordUserId = discordUser.id;
+          const serverId = body.guild_id;
+          if (!serverId) { reply('서버 안에서 실행해주세요.'); return; }
+          if (!discordUserId) { reply('디스코드 사용자 정보를 확인할 수 없어요.'); return; }
+          const linkSnap = await db.collection('discordLinks').doc(discordUserId).get();
+          if (!linkSnap.exists) { reply('먼저 웹 계정과 연동해주세요. `/연동` 으로 연결할 수 있어요.'); return; }
+          const userSnap = await db.collection('users').doc(linkSnap.data().userId).get();
+          const u = userSnap.exists ? userSnap.data() : {};
+          if (!u.isGuildMaster || !u.guildId) { reply('길드마스터만 사용할 수 있어요.'); return; }
+          const guildDoc = await db.collection('guilds').doc(u.guildId).get();
+          if (!guildDoc.exists) { reply('소속 길드를 찾을 수 없어요.'); return; }
+          const guild = { id: guildDoc.id, ...guildDoc.data() };
+          const token = DISCORD_BOT_TOKEN.value();
+          const r = await provisionGuildForum(db, token, serverId, guild);
+          if (r.already) reply(`ℹ️ 이미 등록된 레이드 포럼이 있어요. (<#${r.channelId}>)`);
+          else reply(`✅ 레이드 포럼 채널을 만들었어요: <#${r.channelId}>\n앞으로 **${guild.name}** 레이드가 여기에 자동으로 올라옵니다.\n(정렬=최근 활동순 · 목록형으로 세팅됨)`);
+        } catch (e) {
+          res.json({ type: REPLY.MESSAGE, data: { content: `실패: ${e.message}`, flags: EPHEMERAL } });
         }
         return;
       }
@@ -1312,6 +1383,34 @@ exports.cardOnAppChange = onDocumentWritten(
   }
 );
 
+// 웹(길드마스터)에서 만든 포럼 생성 요청 → 서버에 포럼 채널 자동 생성 + 등록.
+// 결과는 같은 문서에 status(done/error)·message·channelId 로 기록해 웹이 구독한다.
+exports.onForumRequest = onDocumentCreated(
+  { document: 'forumRequests/{reqId}', secrets: CARD_SECRETS },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const req = snap.data() || {};
+    if (req.status && req.status !== 'pending') return;
+    const db = getFirestore();
+    const token = DISCORD_BOT_TOKEN.value();
+    try {
+      const guildDoc = await db.collection('guilds').doc(req.guildId).get();
+      if (!guildDoc.exists) throw new Error('길드를 찾을 수 없어요.');
+      const guild = { id: guildDoc.id, ...guildDoc.data() };
+      const r = await provisionGuildForum(db, token, String(req.serverId || '').trim(), guild);
+      await snap.ref.set({
+        status: 'done',
+        channelId: r.channelId,
+        message: r.already ? '이미 등록된 포럼이 있어 그대로 사용해요.' : `포럼 채널 "${r.name}"을(를) 만들었어요.`,
+        finishedAt: Date.now(),
+      }, { merge: true });
+    } catch (e) {
+      await snap.ref.set({ status: 'error', message: e.message || '실패', finishedAt: Date.now() }, { merge: true });
+    }
+  }
+);
+
 // ── 슬래시 명령어 등록 ──────────────────────────────────────────────────────
 // 호출: https://<함수주소>/discordRegisterCommands?key=<BOT_REGISTER_KEY값>
 // 서버(길드) 범위로 등록 → 즉시 반영. 명령이 바뀔 때마다 한 번씩 호출.
@@ -1329,6 +1428,12 @@ const COMMANDS = [
   { name: '신청', description: '연합 레이드에 신청합니다 (클릭으로 선택)', type: 1 },
   { name: '내신청', description: '내가 신청한 레이드를 보고 변경/취소합니다', type: 1 },
   { name: '내정보', description: '내 캐릭터의 특성·아이템레벨을 보고 수정합니다', type: 1 },
+  {
+    name: '포럼세팅',
+    description: '이 서버에 우리 길드 레이드 포럼 채널을 자동으로 만듭니다 (길드마스터 전용)',
+    type: 1,
+    default_member_permissions: '32',
+  },
   {
     name: '채널등록',
     description: '이 채널을 레이드 알림 채널로 등록합니다 (서버 관리 권한 필요)',
